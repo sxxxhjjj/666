@@ -1,23 +1,23 @@
--- v085 -- ========================= 
-local version = "Rework" 
-local ver = "v023.4" 
--- ========================= 
--- ====================== LOAD UI ====================== 
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))() 
--- ====================== GameLoad ====================== 
-repeat task.wait() until game:IsLoaded() 
--- ====================== LoadingGui ====================== 
-local p = game:GetService("Players").LocalPlayer 
-local pg = p:WaitForChild("PlayerGui") 
-local function waitLoadingGone() 
-    local gui = pg:FindFirstChild("LoadingGui") 
-    if gui then 
-        WindUI:Notify({ Title = "Initialization", Content = "Game is loading, Please wait.", Duration = 3, Icon = "download" }) 
-        gui.AncestryChanged:Wait() 
+--v085--=========================
+本地版本="返工"
+本地版本="v023.4"
+--=========================
+--======================加载UI ======================
+本地WindUI=loadstring(游戏：HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+--====================== Gameload ======================
+重复任务。等待()直到游戏：IsLoaded()
+--====================== LoadingGui ======================
+本地p=游戏：GetService("玩家").LocalPlayer
+本地pg=p:WaitForChild("PlayerGui")
+局部函数waitLoadingGone()
+本地gui=pg:FindFirstChild("LoadingGui")
+如果贵那么
+WindUI：通知({Title="初始化"，内容="游戏正在加载，请稍候"，持续时间=3，图标="下载"})
+gui.AncestryChanged:Wait()
 结束
-end 
-waitLoadingGone() 
-WindUI:Notify({ Title = "Initialization", Content = "Load complete, Starting in 3s.", Duration = 3, Icon = "shield-check" }) 
+结束
+waitLoadingGone()
+WindUI：通知({Title="初始化"，Content="加载完成，3秒后启动。"，持续时间=3，图标="屏蔽检查"})
 task.wait(3) 
 -- ====================== FPS UNLOCK ====================== 
 local part = Instance.new("Part") 
