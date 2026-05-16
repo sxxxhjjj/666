@@ -1,11 +1,10 @@
--- v085 汉化无后门完整版 | 基于原版 stbb.lua 全部功能保留
+-- v085 汉化界面完整版 | 无后门 | 内部值保持英文
 local version = "Rework"
-local ver = "v023.4-纯净版"
+local ver = "v023.4-优化版"
 
 -- ====================== 加载 UI ======================
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- ====================== 游戏加载 ======================
 repeat task.wait() until game:IsLoaded()
 
 local p = game:GetService("Players").LocalPlayer
@@ -75,18 +74,9 @@ end
 
 function CustomConfig:Load()
     if isfile(self.ConfigPath) then
-        local success, result = pcall(function()
-            return HttpService:JSONDecode(readfile(self.ConfigPath))
-        end)
-        if success and type(result) == "table" then
-            self.ConfigData = result
-            print("[DYHUB] 配置加载成功")
-        else
-            warn("[DYHUB] 配置加载失败，使用默认值")
-            self.ConfigData = {}
-        end
+        local ok, res = pcall(function() return HttpService:JSONDecode(readfile(self.ConfigPath)) end)
+        if ok and type(res) == "table" then self.ConfigData = res else self.ConfigData = {} end
     else
-        print("[DYHUB] 未找到配置文件，创建新配置")
         self.ConfigData = {}
     end
 end
@@ -103,14 +93,14 @@ end
 local Config = CustomConfig.new()
 Config:AutoSave(15)
 
--- ====================== 全局表 ======================
+-- ====================== 全局表（英文内部值，仅用于显示） ======================
 GlobalTables = {
     redeemCodes = { "100MVisit2", "100MVisit1", "CamArmada", "CCTVBase", "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad" },
-    Mode  = { "普通模式", "模糊记忆", "极限模式", "困难模式", "疯狂模式", "噩梦模式", "首领连战", "暗黑维度", "地狱", "迷雾", "圣诞行动1", "僵尸行动1", "坚守模式", "入侵" },
+    Mode  = { "Normal Mode", "Vague Memory", "Extreme Mode", "Hard Mode", "Insane Mode", "Nightmare Mode", "Boss Rush", "Dark Dimension", "Hell", "Mist", "Christmas Act 1", "Zombie Act 1", "Holdout", "Invasion" },
     Votes = { "Normal", "VeryHard", "Hard", "Insane", "Nightmare", "BossRush", "DarkDimension", "Hell", "ThunderStorm", "Christmas", "Zombie", "AstroV2", "Astro", "100MVisit" },
-    Weapon   = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" },
-    MiscShop = { "耳机", "泰坦呼叫", "特种泰坦呼叫", "扬声器呼叫", "手雷", "喷气背包", "透镜" },
-    Gamepasst = { "全部", "幸运加成", "稀有幸运加成", "传说幸运加成" },
+    Weapon   = { "Stungun", "Flamethrower", "Harpoon Gun", "Shot Gun", "Pulse Rifle", "Shot Harpoon Gun", "EPD", "Small Laser Gun" },
+    MiscShop = { "HeadPhone", "Titan-Request", "SpecialTitan-Request", "Speaker-Request", "Grenade", "Jetpack", "Lens" },
+    Gamepasst = { "All", "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" },
     Gamepassts = {},
 }
 
@@ -126,7 +116,7 @@ local HumanoidRootPart   = Character:WaitForChild("HumanoidRootPart")
 
 -- ====================== 配置变量 ======================
 local skillList          = { "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
-local skillDropdownValues = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
+local skillDropdownValues = { "All", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
 
 -- ====================== 状态变量 ======================
 local AutoFarmEnabled        = Config:Get("AutoFarmEnabled", false)
@@ -138,7 +128,7 @@ local AutoSkillEnabled       = false
 local AutoSkipHeliEnabled    = false
 local AutoStartEnabled       = false
 local AutoFillUpEnabled      = false
-local SelectedSkills         = Config:Get("SelectedSkills", { "全部" })
+local SelectedSkills         = Config:Get("SelectedSkills", { "All" })
 local SafeModeEnabled        = false
 local SafeValue              = Config:Get("SafeValue", 30)
 local GodModeEnabled         = false
@@ -166,8 +156,8 @@ local AntiAFK = Config:Get("AntiAfk", true)
 
 local AutoBuyWeaponEnabled   = Config:Get("AutoBuyWeaponEnabled", false)
 local AutoBuyMiscEnabled     = Config:Get("AutoBuyMiscEnabled", false)
-local SelectedWeapon         = Config:Get("SelectedWeapon", "电击枪")
-local SelectedMiscItem       = Config:Get("SelectedMiscItem", "耳机")
+local SelectedWeapon         = Config:Get("SelectedWeapon", "Stungun")
+local SelectedMiscItem       = Config:Get("SelectedMiscItem", "HeadPhone")
 
 -- ====================== 补血区域配置 ======================
 local FILLUP_PART_PATH   = { "HelicopterShop", "ShopXDD", "PartForShop" }
@@ -207,37 +197,24 @@ local AllyNames = {
 local function IsAlly(mob) return AllyNames[mob.Name] ~= nil end
 
 -- ====================== 传送函数 ======================
-function tp(pu79)
+function tp(targetCF)
     pcall(function()
-        local v80 = LocalPlayer
-        if v80 then v80 = LocalPlayer.Character end
-        if v80:FindFirstChild("Humanoid") and v80.Humanoid.Sit == true then v80.Humanoid.Sit = false end
-        NeedNoClip = true
-        local v81 = { Target = pu79.Target or print("目标错误"), Mod = pu79.Mod or CFrame.new(0, 0, 0) }
-        v80:FindFirstChild("HumanoidRootPart").CFrame = v81.Target * v81.Mod
+        if Character:FindFirstChild("Humanoid") and Character.Humanoid.Sit then Character.Humanoid.Sit = false end
+        Character.HumanoidRootPart.CFrame = targetCF
     end)
 end
 
-function Tp(p82)
-    if LocalPlayer.Character.Humanoid.Sit == true then LocalPlayer.Character.Humanoid.Sit = false end
-    for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+function Tp(cf)
+    if Character.Humanoid.Sit then Character.Humanoid.Sit = false end
+    for _, v in pairs(Character:GetDescendants()) do
         if v:IsA("BasePart") then v.CanCollide = false end
     end
-    if not LocalPlayer.Character.HumanoidRootPart:FindFirstChild("BodyClip") then
-        local v87 = Instance.new("BodyVelocity")
-        v87.Parent = LocalPlayer.Character.HumanoidRootPart
-        v87.Name = "BodyClip"
-        v87.Velocity = Vector3.new(0, 0, 0)
-        v87.MaxForce = Vector3.new(5, math.huge, 5)
-    end
-    LocalPlayer.Character.HumanoidRootPart.CFrame = p82
+    Character.HumanoidRootPart.CFrame = cf
 end
 
-function tp1(p89)
-    if LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = p89
-    else
-        warn("玩家角色或 HumanoidRootPart 不存在")
+function tp1(cf)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = cf
     end
 end
 
@@ -348,11 +325,11 @@ local function GetPriorityMob()
     local giant, prompt = GetGiantSTToilet()
     if giant and prompt then return giant, "GiantST", prompt, 4 end
     local heli = GetHelicopter()
-    if heli then return heli, "直升机", nil, 3 end
+    if heli then return heli, "Helicopter", nil, 3 end
     local highHPMob = GetHighHPMob()
-    if highHPMob then return highHPMob, "高血量精英", nil, 2 end
+    if highHPMob then return highHPMob, "HighHP", nil, 2 end
     local nearMob = GetNearestMob()
-    if nearMob then return nearMob, "普通怪物", nil, 1 end
+    if nearMob then return nearMob, "NearestMob", nil, 1 end
     return nil, nil, nil, 0
 end
 
@@ -551,7 +528,7 @@ local function TeleportToMob(mob)
         tween:Play()
         tween.Completed:Wait()
     elseif FarmMode == "tp" then
-        tp({ Target = cf, Mod = CFrame.new(0, 0, 0) })
+        tp(cf)
     elseif FarmMode == "Tp" then
         Tp(cf)
     elseif FarmMode == "tp1" then
@@ -597,7 +574,7 @@ local function StartAutoSkill()
             local mob = GetPriorityMob()
             if mob and not WaitingRespawn then
                 local keysToPress = {}
-                if table.find(SelectedSkills, "全部") then
+                if table.find(SelectedSkills, "All") then
                     keysToPress = skillList
                 else
                     keysToPress = SelectedSkills
@@ -727,7 +704,7 @@ local function SaveAndBoostFPS()
         end)
     end)
 
-    print("[DYHUB] 删除地图: 开启")
+    print("[DYHUB] Delete Map: ON")
 end
 
 local function RestoreBoostFPS()
@@ -769,7 +746,7 @@ local function RestoreBoostFPS()
 
     BoostFPS_OriginalData = {}
     BoostFPS_LightingData = {}
-    print("[DYHUB] 删除地图: 关闭")
+    print("[DYHUB] Delete Map: OFF")
 end
 
 task.spawn(function()
@@ -896,7 +873,7 @@ end
 
 -- ====================== 自动投票系统 ======================
 local AutoVoteEnabled       = Config:Get("AutoVoteEnabled", false)
-local AutoGameValue         = Config:Get("AutoGameValue", "普通模式")
+local AutoGameValue         = Config:Get("AutoGameValue", "Normal Mode")
 local AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
 local AutoVoteValue         = Config:Get("AutoVoteValue", "Normal")
 
@@ -1342,45 +1319,45 @@ local function HandleMiscOptions(selectedOptions)
     MiscOptions = selectedOptions
     local canRun = AutoFarmEnabled or not SyncFarmOnly
 
-    local hasAutoAttack = table.find(selectedOptions, "自动攻击")
+    local hasAutoAttack = table.find(selectedOptions, "Auto Attack")
     if hasAutoAttack and not AutoAttackEnabled and canRun then
         AutoAttackEnabled = true; StartAutoAttack()
     elseif not hasAutoAttack then
         AutoAttackEnabled = false
     end
 
-    local hasAutoSkill = table.find(selectedOptions, "自动技能")
+    local hasAutoSkill = table.find(selectedOptions, "Auto Skill")
     if hasAutoSkill and not AutoSkillEnabled and canRun then
         AutoSkillEnabled = true; StartAutoSkill()
     elseif not hasAutoSkill then
         AutoSkillEnabled = false
     end
 
-    local hasAutoSkipHeli = table.find(selectedOptions, "自动跳过直升机")
+    local hasAutoSkipHeli = table.find(selectedOptions, "Auto Skip Helicopter")
     if hasAutoSkipHeli and not AutoSkipHeliEnabled and canRun then
         AutoSkipHeliEnabled = true; TriggerAutoSkipHeli(true)
     elseif not hasAutoSkipHeli and AutoSkipHeliEnabled then
         AutoSkipHeliEnabled = false; TriggerAutoSkipHeli(false)
     end
 
-    local hasBoostFPS = table.find(selectedOptions, "删除地图")
+    local hasBoostFPS = table.find(selectedOptions, "Delete Map")
     if hasBoostFPS and not BoostFPS_Active then
         SaveAndBoostFPS()
     elseif not hasBoostFPS and BoostFPS_Active then
         RestoreBoostFPS()
     end
 
-    SafeModeEnabled = table.find(selectedOptions, "安全模式") ~= nil
-    GodModeEnabled  = table.find(selectedOptions, "上帝模式") ~= nil
+    SafeModeEnabled = table.find(selectedOptions, "Safe Mode") ~= nil
+    GodModeEnabled  = table.find(selectedOptions, "God Mode") ~= nil
 
-    local hasAutoStart = table.find(selectedOptions, "自动开局")
+    local hasAutoStart = table.find(selectedOptions, "Auto Start")
     if hasAutoStart and not AutoStartEnabled and canRun then
         StartAutoStart()
     elseif not hasAutoStart and AutoStartEnabled then
         StopAutoStart()
     end
 
-    local hasAutoFillUp = table.find(selectedOptions, "自动补血")
+    local hasAutoFillUp = table.find(selectedOptions, "Auto Fill Up")
     if hasAutoFillUp and not AutoFillUpEnabled then
         if canRun then AutoFillUpEnabled = true; StartAutoFillUpLoop() end
     elseif not hasAutoFillUp then
@@ -1406,7 +1383,7 @@ end)
 
 -- ====================== UI 主界面 ======================
 local Window = WindUI:CreateWindow({
-    Title = "DYHUB 汉化纯净版",
+    Title = "DYHUB 汉化界面版",
     IconThemed = true,
     Icon = "rbxassetid://104487529937663",
     Author = "STBB | 纯净版",
@@ -1458,7 +1435,7 @@ Info:Paragraph({
 Info:Divider()
 Info:Section({ Title = "DYHUB 信息", TextXAlignment = "Center", TextSize = 17 })
 Info:Divider()
-Info:Paragraph({ Title = "纯净版", Desc = "无后门 | 全汉化 | 完整功能", Image = "rbxassetid://104487529937663", ImageSize = 30 })
+Info:Paragraph({ Title = "纯净版", Desc = "无后门 | 中文界面 | 完整功能", Image = "rbxassetid://104487529937663", ImageSize = 30 })
 
 -- ====================== 核心页 ======================
 Main:Section({ Title = "自动挂机", Icon = "package" })
@@ -1509,7 +1486,7 @@ ModeDropdown = Main:Dropdown({
 
 MiscDropdown = Main:Dropdown({
     Title = "辅助功能",
-    Values = { "自动攻击", "自动技能", "自动开局", "自动跳过直升机", "自动补血", "安全模式", "上帝模式", "删除地图" },
+    Values = { "Auto Attack", "Auto Skill", "Auto Start", "Auto Skip Helicopter", "Auto Fill Up", "Safe Mode", "God Mode", "Delete Map" },
     Multi = true,
     Value = MiscOptions,
     Callback = function(values)
@@ -1518,7 +1495,7 @@ MiscDropdown = Main:Dropdown({
             local hasFeatures = #values > 0
             local onlyGodOrBoost = true
             for _, v in ipairs(values) do
-                if v ~= "上帝模式" and v ~= "删除地图" then
+                if v ~= "God Mode" and v ~= "Delete Map" then
                     onlyGodOrBoost = false; break
                 end
             end
@@ -1598,11 +1575,52 @@ Main:Slider({
     end
 })
 
+-- 优化按钮
+Main:Button({
+    Title = "优化 UI 性能",
+    Desc = "降低卡顿，释放内存，提升流畅度",
+    Callback = function()
+        -- 降低 ESP 刷新频率
+        if ESPConnection then
+            ESPConnection:Disconnect()
+            local tickCounter = 0
+            ESPConnection = RunService.Heartbeat:Connect(function()
+                tickCounter = tickCounter + 1
+                if tickCounter % 60 == 0 and ESP.Enabled and ESP.MobEnabled then pcall(ScanMobs) end
+                if tickCounter % 90 == 0 and ESP.Enabled and ESP.PlayerEnabled then pcall(ScanPlayers) end
+                if tickCounter % 120 == 0 and ESP.Enabled and ESP.ItemEnabled then pcall(ScanItems) end
+                if tickCounter >= 7200 then tickCounter = 0 end
+            end)
+        end
+        -- 垃圾回收
+        pcall(collectgarbage, "collect")
+        -- 降低画质
+        pcall(function()
+            local UserSettings = game:GetService("UserSettings")
+            local GameSettings = UserSettings:GetService("UserGameSettings")
+            GameSettings.GraphicsQualityLevel = 1
+            GameSettings.SavedQualityLevel = 1
+        end)
+        -- 固定摄像机 FOV
+        pcall(function()
+            workspace.CurrentCamera.FieldOfView = 70
+        end)
+        WindUI:Notify({
+            Title = "优化完成",
+            Content = "已降低 ESP 刷新率、清理内存、调低画质",
+            Duration = 5,
+            Icon = "zap"
+        })
+        Config:Set("Optimized", true)
+        Config:Save()
+    end
+})
+
 Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
 
 Main:Paragraph({
     Title = "优先级顺序",
-    Desc = "GiantST → 直升机 → 高血量精英 → 最近怪物，高级怪物出现时立即切换目标",
+    Desc = "GiantST → Helicopter → HighHP → Nearest，高级怪物出现时立即切换目标",
     Image = "rbxassetid://104487529937663",
     ImageSize = 26,
 })
@@ -1726,7 +1744,7 @@ local ESP = {
     MobEnabled    = Config:Get("EspMobEnabled", true),
     PlayerEnabled = Config:Get("EspPlayerEnabled", true),
     ItemEnabled   = Config:Get("EspItemEnabled", true),
-    Settings      = Config:Get("EspSettings", { "高亮", "距离", "血量", "名称" }),
+    Settings      = Config:Get("EspSettings", { "Highlight", "Distance", "Health", "Name" }),
     SelectedItems = Config:Get("EspSelectedItems", {}),
     MaxDistance   = 1500,
     _mobHighlights    = {},
@@ -1825,10 +1843,10 @@ end
 local function GetESPSettings()
     local s = ESP.Settings
     return {
-        highlight = table.find(s, "高亮") ~= nil,
-        distance  = table.find(s, "距离") ~= nil,
-        health    = table.find(s, "血量") ~= nil,
-        name      = table.find(s, "名称") ~= nil,
+        highlight = table.find(s, "Highlight") ~= nil,
+        distance  = table.find(s, "Distance") ~= nil,
+        health    = table.find(s, "Health") ~= nil,
+        name      = table.find(s, "Name") ~= nil,
     }
 end
 
@@ -2045,7 +2063,7 @@ Main4:Section({ Title = "透视设置", Icon = "settings" })
 
 EspSettingsDropdown = Main4:Dropdown({
     Title = "透视选项", Multi = true,
-    Values = { "高亮", "距离", "血量", "名称" },
+    Values = { "Highlight", "Distance", "Health", "Name" },
     Value = ESP.Settings,
     Callback = function(value)
         ESP.Settings = value or {}; Config:Set("EspSettings", value); Config:Save()
@@ -2173,7 +2191,7 @@ Main2:Button({
         end
         local toUnlock = {}
         for _, v in ipairs(GlobalTables.Gamepassts) do
-            if v == "全部" then
+            if v == "All" then
                 toUnlock = {"LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost"}
                 break
             else
@@ -2380,7 +2398,7 @@ AutoVoteToggle = Main7:Toggle({
 -- ====================== 商店页 ======================
 Main5:Section({ Title = "商店武器", Icon = "helicopter" })
 
-local AutoBuyWeaponValue         = Config:Get("AutoBuyWeaponValue", "电击枪")
+local AutoBuyWeaponValue         = Config:Get("AutoBuyWeaponValue", "Stungun")
 local AutoBuyWeaponToggleEnabled = Config:Get("AutoBuyWeaponEnabled", false)
 
 WeaponDropdown = Main5:Dropdown({
@@ -2415,7 +2433,7 @@ Main5:Button({
 
 Main5:Section({ Title = "商店道具", Icon = "helicopter" })
 
-local AutoBuyMiscValue         = Config:Get("AutoBuyMiscValue", "耳机")
+local AutoBuyMiscValue         = Config:Get("AutoBuyMiscValue", "HeadPhone")
 local AutoBuyMiscToggleEnabled = Config:Get("AutoBuyMiscEnabled", false)
 
 MiscShopDropdown = Main5:Dropdown({
