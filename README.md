@@ -1800,3 +1800,260 @@ if AutoVoteinGameEnabled then SetupAutoVote_InGame(true) end
 -- 打印成功加载标志
 print("[DYHUB] 核心挂机引擎脱壳纯净完整版全部五段合拢，顺利载入完毕！")
 print("[DYHUB] 当前版本状态: " .. version .. " " .. ver .. " | 运行环境: 本地安全盾")
+-- ============================================================
+-- ⚡ 最终自愈融合驱动核心（请确保脚本末尾【只有这一个】片段） ⚡
+-- ============================================================
+
+-- 1. 建立核心全局状态表 (整合全部所需变量)
+local Settings = {
+    AutoFarm = false,
+    AutoAttack = false,
+    AutoSkill = false,
+    NoBarrier = false,
+    GodMode = false,
+    AutoBuyWeapon = false,
+    AutoBuyMisc = false,
+    AutoCollect = false, -- 已融合：全自动资产代币收集开关
+    FarmPosition = "Above",
+    FarmMode = "Tween",
+    HeightValue = 10,
+    HighHPThreshold = 500,
+    GodModeValue = 20,
+    SelectedWeapon = nil,
+    SelectedMisc = nil,
+    SelectedSkills = {"All"},
+    SkillDelay = 0.5,
+    LoopDelay = 0.1,
+    TweenSpeed = 2.5,
+    WaitingRespawn = false
+}
+
+-- 2. 建立本地配置持久化存储
+local HttpService = game:GetService("HttpService")
+local ConfigFolder = "DYHUB_STBB_LOCAL_DATA"
+local ConfigFile = ConfigFolder .. "/saved_settings.json"
+
+if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
+
+local function SaveConfig()
+    pcall(function()
+        writefile(ConfigFile, HttpService:JSONEncode(Settings))
+    end)
+end
+
+local function LoadConfig()
+    if isfile(ConfigFile) then
+        pcall(function()
+            local decoded = HttpService:JSONDecode(readfile(ConfigFile))
+            if type(decoded) == "table" then
+                for k, v in pairs(decoded) do Settings[k] = v end
+            end
+        end)
+    end
+end
+LoadConfig()
+
+-- 3. 关键字扫描反向映射 (自动连通 UI 按钮与业务逻辑)
+local function WireUpControls()
+    pcall(function()
+        -- 核心挂机 Tab 映射 (变量 Main)
+        if Main and Main.Toggles then
+            for _, toggle in pairs(Main.Toggles) do
+                if string.find(toggle.Title, "挂机") or string.find(toggle.Title, "Farm") then
+                    toggle:OnChanged(function(v) Settings.AutoFarm = v SaveConfig() end)
+                elseif string.find(toggle.Title, "普攻") or string.find(toggle.Title, "Attack") then
+                    toggle:OnChanged(function(v) Settings.AutoAttack = v SaveConfig() end)
+                elseif string.find(toggle.Title, "技能") or string.find(toggle.Title, "Skill") then
+                    toggle:OnChanged(function(v) Settings.AutoSkill = v SaveConfig() end)
+                end
+            end
+        end
+
+        -- 玩家强化 Tab 映射 (变量 Main2)
+        if Main2 and Main2.Toggles then
+            for _, toggle in pairs(Main2.Toggles) do
+                if string.find(toggle.Title, "虚空") or string.find(toggle.Title, "Barrier") then
+                    toggle:OnChanged(function(v) Settings.NoBarrier = v SaveConfig() end)
+                elseif string.find(toggle.Title, "无敌") or string.find(toggle.Title, "God") then
+                    toggle:OnChanged(function(v) Settings.GodMode = v SaveConfig() end)
+                end
+            end
+        end
+
+        -- 自动商店 Tab 映射 (变量 Main5)
+        if Main5 and Main5.Toggles then
+            for _, toggle in pairs(Main5.Toggles) do
+                if string.find(toggle.Title, "武器") or string.find(toggle.Title, "Weapon") then
+                    toggle:OnChanged(function(v) Settings.AutoBuyWeapon = v SaveConfig() end)
+                elseif string.find(toggle.Title, "杂项") or string.find(toggle.Title, "Misc") then
+                    toggle:OnChanged(function(v) Settings.AutoBuyMisc = v SaveConfig() end)
+                end
+            end
+        end
+
+        -- 资产收集控制映射 (支持 Main6 遍历)
+        if Main6 and Main6.Toggles then
+            for _, toggle in pairs(Main6.Toggles) do
+                if string.find(toggle.Title, "收集") or string.find(toggle.Title, "Collect") then
+                    toggle:OnChanged(function(v) Settings.AutoCollect = v SaveConfig() end)
+                end
+            end
+        end
+    end)
+end
+
+-- 4. 自动化纯净守护线程后台循环
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    HumanoidRootPart = newChar:WaitForChild("HumanoidRootPart", 10)
+    Settings.WaitingRespawn = false
+end)
+
+-- 【循环 A】全自动传送锁敌机制
+task.spawn(function()
+    while task.wait(0.2) do
+        if Settings.AutoFarm and not Settings.WaitingRespawn then
+            pcall(function()
+                local livingFolder = workspace:FindFirstChild("Living")
+                if livingFolder then
+                    for _, mob in ipairs(livingFolder:GetChildren()) do
+                        if mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+                            local offset = Vector3.new(0, Settings.HeightValue, 0)
+                            if Settings.FarmPosition == "Under" then offset = Vector3.new(0, -Settings.HeightValue, 0) end
+                            
+                            local targetCF = mob.HumanoidRootPart.CFrame * CFrame.new(offset.X, offset.Y, offset.Z)
+                            
+                            if Settings.FarmMode == "Tween" then
+                                TweenService:Create(HumanoidRootPart, TweenInfo.new(Settings.TweenSpeed / 10, Enum.EasingStyle.Linear), {CFrame = targetCF}):Play()
+                            else
+                                HumanoidRootPart.CFrame = targetCF
+                            end
+                            break
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- 【循环 B】核心网络打怪与技能发包
+task.spawn(function()
+    while task.wait(0.1) do
+        if Settings.AutoFarm then
+            -- 自动普攻
+            if Settings.AutoAttack then
+                pcall(function()
+                    VirtualUser:Button1Down(Vector2.new())
+                    local tool = Character:FindFirstChildOfClass("Tool")
+                    if tool and tool:FindFirstChild("Remote") then 
+                        tool.Remote:FireServer(HumanoidRootPart.Position) 
+                    end
+                end)
+            end
+
+            -- 自动技能
+            if Settings.AutoSkill then
+                pcall(function()
+                    for _, skill in ipairs(Settings.SelectedSkills) do
+                        if skill == "All" then
+                            for i = 1, 4 do ReplicatedStorage.SkillRemote:FireServer(tstring(i)) end
+                        else
+                            ReplicatedStorage.SkillRemote:FireServer(skill)
+                        end
+                    end
+                end)
+            end
+        end
+    end
+end)
+
+-- 【循环 C】防边界碰撞与低血量重置自愈
+task.spawn(function()
+    -- 地图虚空边界碰撞刚体强启
+    RunService.Stepped:Connect(function()
+        if Settings.NoBarrier then
+            pcall(function()
+                local barriers = workspace:FindFirstChild("Barriers") or workspace:FindFirstChild("Border")
+                if barriers then
+                    for _, bPart in ipairs(barriers:GetChildren()) do
+                        if bPart:IsA("BasePart") then bPart.CanCollide = true end
+                    end
+                end
+            end)
+        end
+    end)
+
+    -- 安全低血量卡死重置
+    while task.wait(0.5) do
+        if Settings.GodMode and not Settings.WaitingRespawn then
+            pcall(function()
+                local hum = Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 and hum.Health <= Settings.GodModeValue then
+                    Settings.WaitingRespawn = true
+                    ReplicatedStorage.ResetRemote:FireServer()
+                    task.wait(4)
+                end
+            end)
+        end
+    end
+end)
+
+-- 【循环 D】自动资产代币全图瞬移捡取
+task.spawn(function()
+    while task.wait(0.5) do
+        if Settings.AutoCollect and not Settings.WaitingRespawn then
+            pcall(function()
+                for _, obj in ipairs(workspace:GetChildren()) do
+                    if obj.Name == "Blueprint" or obj.Name == "Coin" or obj.Name == "AssetDrop" or obj:FindFirstChild("TouchInterest") then
+                        local part = obj:IsA("BasePart") and obj or obj:FindFirstChildOfClass("BasePart")
+                        if part then 
+                            HumanoidRootPart.CFrame = part.CFrame 
+                            task.wait(0.05) 
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- 【循环 E】自动商店武器与药水选购
+task.spawn(function()
+    while task.wait(10) do
+        if Settings.AutoBuyWeapon and Settings.SelectedWeapon then
+            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", Settings.SelectedWeapon) end)
+        end
+        if Settings.AutoBuyMisc and Settings.SelectedMisc then
+            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", Settings.SelectedMisc) end)
+        end
+    end
+end)
+
+-- 5. 初始化挂载钩子 (确保减号只隐藏UI，完全不干涉后台死循环运行)
+task.spawn(function()
+    task.wait(1)
+    WireUpControls()
+    
+    pcall(function()
+        if Window then
+            Window:EditOpenButton({
+                Title = "展开/隐藏主面板",
+                Icon = "monitor",
+                Draggable = true
+            })
+        end
+    end)
+end)
+
+print("[DYHUB] 终端逻辑自愈完成，已剔除重复代码，全新闭环通电启动！")
