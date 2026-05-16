@@ -1,23 +1,23 @@
---v085--=========================
-本地版本="返工"
-本地版本="v023.4"
---=========================
---======================加载UI ======================
-本地WindUI=loadstring(游戏：HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
---====================== Gameload ======================
-重复任务。等待()直到游戏：IsLoaded()
---====================== LoadingGui ======================
-本地p=游戏：GetService("玩家").LocalPlayer
-本地pg=p:WaitForChild("PlayerGui")
-局部函数waitLoadingGone()
-本地gui=pg:FindFirstChild("LoadingGui")
-如果贵那么
-WindUI：通知({Title="初始化"，内容="游戏正在加载，请稍候"，持续时间=3，图标="下载"})
-gui.AncestryChanged:Wait()
-结束
-结束
-waitLoadingGone()
-WindUI：通知({Title="初始化"，Content="加载完成，3秒后启动。"，持续时间=3，图标="屏蔽检查"})
+-- v085 -- ========================= 
+local version = "Rework" 
+local ver = "v023.4" 
+-- ========================= 
+-- ====================== LOAD UI ====================== 
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))() 
+-- ====================== GameLoad ====================== 
+repeat task.wait() until game:IsLoaded() 
+-- ====================== LoadingGui ====================== 
+local p = game:GetService("Players").LocalPlayer 
+local pg = p:WaitForChild("PlayerGui") 
+local function waitLoadingGone() 
+    local gui = pg:FindFirstChild("LoadingGui") 
+    if gui then 
+        WindUI:Notify({ Title = "Initialization", Content = "Game is loading, Please wait.", Duration = 3, Icon = "download" }) 
+        gui.AncestryChanged:Wait() 
+    end 
+end 
+waitLoadingGone() 
+WindUI:Notify({ Title = "Initialization", Content = "Load complete, Starting in 3s.", Duration = 3, Icon = "shield-check" }) 
 task.wait(3) 
 -- ====================== FPS UNLOCK ====================== 
 local part = Instance.new("Part") 
@@ -834,30 +834,30 @@ Main6:Dropdown({ Title = "Mode Collect", Values = { "Clean", "IDGF" }, Value = C
 Main3:Section({ Title = "Save Config", Icon = "save" }) 
 Main3:Button({ Title = "Save Config (NOW)", Callback = function() Config:Save() WindUI:Notify({ Title = "Config Saved", Content = "Config saved successfully!", Duration = 2, Icon = "save" }) end }) 
 local AutoSaveEnabled, AutoSaveDelay = Config:Get("AutoSaveEnabled", true), Config:Get("AutoSaveDelay", 15) local AutoSaveThread = nil 
-本地函数RestartAutoSave()如果AutoSaveThread启用，则task.cancel(AutoSaveThread)结束如果AutoSaveEnabled，则AutoSaveThread=task.spawn(函数()，而AutoSaveEnabled，则autoSaveThread=task.spawn)完成task.wait(AutoSaveDelay)配置：save()结束结束
-Main3：切换({Title="自动保存配置"，value=AutoSaveEnabled，回调=功能(状态)AutoSaveEnabled=状态配置：设置("AutoSaveEnabled"，状态)配置：保存()重新启动自动保存()结束})
-Main3：输入({Title="延迟保存配置"，默认值=t字符串(自动保存延迟)，占位符="默认值：15"，回调=函数(文本)本地编号=t编号(文本)如果num且num>=1，则AutoSaveDelay=num配置：设置("AutoSaveDelay"，num)配置：保存()重新启动自动保存()结束})
-Main3：节({Title="服务器状态"，图标="服务器"})
-Main3：按钮({Title="Serverhop"，Callback=function()
-本地TeleportService=游戏：GetService("TeleportService")本地服务器={}
-本地成功，result=pcall(函数()返回HTTPService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..游戏。placeId.."/servers/Public？sortOrder=Desc&limit=100"))结束)
-如果成功，结果和结果.数据，则在ipairs中为_，srv(结果.data)执行，如果srv.ID~=game.JobID和srv.playing<srv.maxplayers，则表。插入(服务器，服务器。ID)结束
-如果服务器数量>0，则TeleportService:TeleportToPlaceInstance(游戏。placeId，服务器[数学随机(1，#个服务器)]，LocalPlayer)结束
-结束})
-main3：按钮({Title="Rejoin"，Callback=function()game:GetService("TeleportService")：Teleport(游戏。placeId，LocalPlayer)结束})
-Main3：节({Title="杂项"，图标="设置"})
-Main3：切换({Title="旁路屏障(已修补)"，值=无BarrierActive，回调=函数(值)no BarrierActive=值配置：设置("无障碍"，值)配置：如果值，则保存()然后开始无障碍()否则停止无障碍()结束})
-Main3：切换({Title="Anti AFK"，Value=AntiAFK，Callback=功能(启用)
-AntiAFK=已启用配置：设置("AntiAfk"，已启用)配置：保存()
-如果启用，则任务.派生(函数()游戏。播放器。本地播放器。空闲：连接(函数()VirtualUser:CaptureController()VirtualUser:ClickButton2(Vector2.新的())结束)而AntiAFK执行VirtualUser:CaptureController()VirtualUser:ClickButton2(Vector2.新的())任务.wait(60)结束结束
-结束})
---======================带载自动启动======================
-如果AutoFarmEnabled，则task.等待(2)StartFarmLoop()HandleMiscOptions(MiscOptions)结束
-如果没有激活的障碍物，则启动无隔离栅()结束
-如果ESP.Enabled，则task.wait(2)StartESPLoop()end
-如果AutoBuyWeaponToggleEnabled，则任务.派生(函数()，而AutoBuyWeaponToggleEnabled，如果AutoBuyWeaponValue，则pcall(函数()ReplicatedStorage.ShopSystem:FireServer("Buy"，AutoBuyWeaponValue)结束)结束任务。等待(10)结束结束)结束
-如果AutoBuyMiscToggleEnabled，则任务.派生(函数()，而AutoBuyMiscToggleEnabled，如果AutoBuyMiscValue，则pcall(函数()ReplicatedStorage.ShopSystem:FireServer("Buy"，AutoBuyMiscValue)结束)结束任务。等待(10)结束结束)结束
-如果AutoCollectEnabled，则task.wait(2)StartAutoCollectLoop()结束
-如果AutoVoteEnabled或AutoStartEnabled，则RefreshVoteAndStartSetup()结束
-如果AutoVoteGameEnabled，则SetupAutoVote_InGame(true)结束
-打印("[DYHUB]已成功加载清除版本！远程注入完全关闭。")
+local function RestartAutoSave() if AutoSaveThread then task.cancel(AutoSaveThread) end if AutoSaveEnabled then AutoSaveThread = task.spawn(function() while AutoSaveEnabled do task.wait(AutoSaveDelay) Config:Save() end end) end end 
+Main3:Toggle({ Title = "Auto Save Config", Value = AutoSaveEnabled, Callback = function(state) AutoSaveEnabled = state Config:Set("AutoSaveEnabled", state) Config:Save() RestartAutoSave() end }) 
+Main3:Input({ Title = "Delay Save Config", Default = tostring(AutoSaveDelay), Placeholder = "Default: 15", Callback = function(text) local num = tonumber(text) if num and num >= 1 then AutoSaveDelay = num Config:Set("AutoSaveDelay", num) Config:Save() RestartAutoSave() end end }) 
+Main3:Section({ Title = "Server Status", Icon = "server" }) 
+Main3:Button({ Title = "Serverhop", Callback = function() 
+    local TeleportService = game:GetService("TeleportService") local servers = {} 
+    local success, result = pcall(function() return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100")) end) 
+    if success and result and result.data then for _, srv in ipairs(result.data) do if srv.id ~= game.JobId and srv.playing < srv.maxPlayers then table.insert(servers, srv.id) end end end 
+    if #servers > 0 then TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer) end 
+end }) 
+Main3:Button({ Title = "Rejoin", Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end }) 
+Main3:Section({ Title = "Miscellaneous", Icon = "settings" }) 
+Main3:Toggle({ Title = "Bypass Barrier (PATCHED)", Value = noBarrierActive, Callback = function(value) noBarrierActive = value Config:Set("NoBarrier", value) Config:Save() if value then startNoBarrier() else stopNoBarrier() end end }) 
+Main3:Toggle({ Title = "Anti AFK", Value = AntiAFK, Callback = function(enabled) 
+    AntiAFK = enabled Config:Set("AntiAfk", enabled) Config:Save() 
+    if enabled then task.spawn(function() game.Players.LocalPlayer.Idled:Connect(function() VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.new()) end) while AntiAFK do VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.new()) task.wait(60) end end) end 
+end }) 
+-- ====================== AUTO START ON LOAD ====================== 
+if AutoFarmEnabled then task.wait(2) StartFarmLoop() HandleMiscOptions(MiscOptions) end 
+if noBarrierActive then startNoBarrier() end 
+if ESP.Enabled then task.wait(2) StartESPLoop() end 
+if AutoBuyWeaponToggleEnabled then task.spawn(function() while AutoBuyWeaponToggleEnabled do if AutoBuyWeaponValue then pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", AutoBuyWeaponValue) end) end task.wait(10) end end) end 
+if AutoBuyMiscToggleEnabled then task.spawn(function() while AutoBuyMiscToggleEnabled do if AutoBuyMiscValue then pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", AutoBuyMiscValue) end) end task.wait(10) end end) end 
+if AutoCollectEnabled then task.wait(2) StartAutoCollectLoop() end 
+if AutoVoteEnabled or AutoStartEnabled then RefreshVoteAndStartSetup() end 
+if AutoVoteinGameEnabled then SetupAutoVote_InGame(true) end 
+print("[DYHUB] Cleaned Version loaded successfully! Remote injection completely cut off.")
