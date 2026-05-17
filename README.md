@@ -1,4 +1,5 @@
 -- v085 汉化无后门完整版 | 基于原版 stbb.lua 完整修改
+-- 修改：UI 全中文，内部存储/通信使用英文
 local version = "Rework"
 local ver = "v023.4-纯净版"
 
@@ -167,8 +168,6 @@ Info:Section({ Title = "DYHUB 信息", TextXAlignment = "Center", TextSize = 17 
 Info:Divider()
 Info:Paragraph({ Title = "纯净版", Desc = "无后门 | 中文界面 | 完整功能", Image = "rbxassetid://104487529937663", ImageSize = 30 })
 
--- 已删除 Discord 信息加载块
-
 -- ====================== SERVICES ======================
 local TweenService       = game:GetService("TweenService")
 local ReplicatedStorage  = game:GetService("ReplicatedStorage")
@@ -184,33 +183,34 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 -- ====================== GLOBAL TABLES ======================
 GlobalTables = {
     redeemCodes = { "100MVisit2", "100MVisit1", "CamArmada", "CCTVBase", "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad" },
-    Mode  = { "普通模式", "模糊记忆", "极限模式", "困难模式", "疯狂模式", "噩梦模式", "首领连战", "暗黑维度", "地狱", "迷雾", "圣诞行动1", "僵尸行动1", "坚守模式", "入侵" },
+    -- 模式名称（中文显示），内部存储用英文映射
+    ModeDisplay = { "普通模式", "模糊记忆", "极限模式", "困难模式", "疯狂模式", "噩梦模式", "首领连战", "暗黑维度", "地狱", "迷雾", "圣诞行动1", "僵尸行动1", "坚守模式", "入侵" },
+    ModeInternal = {
+        ["普通模式"] = "Normal Mode", ["模糊记忆"] = "Vague Memory", ["极限模式"] = "Extreme Mode",
+        ["困难模式"] = "Hard Mode", ["疯狂模式"] = "Insane Mode", ["噩梦模式"] = "Nightmare Mode",
+        ["首领连战"] = "Boss Rush", ["暗黑维度"] = "Dark Dimension", ["地狱"] = "Hell", ["迷雾"] = "Mist",
+        ["圣诞行动1"] = "Christmas Act 1", ["僵尸行动1"] = "Zombie Act 1", ["坚守模式"] = "Holdout", ["入侵"] = "Invasion"
+    },
     Votes = {
         "Normal","VeryHard","Hard","Insane","Nightmare","BossRush",
         "DarkDimension","Hell","ThunderStorm","Christmas","Zombie",
         "AstroV2","Astro","100MVisit"
     },
-    Weapon   = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" },
-    MiscShop = { "耳机", "泰坦呼叫", "特种泰坦呼叫", "扬声器呼叫", "手雷", "喷气背包", "透镜" },
+    -- 武器显示中文，内部存储英文
+    WeaponDisplay = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" },
+    WeaponInternal = {
+        ["电击枪"] = "Stungun", ["火焰喷射器"] = "Flamethrower", ["鱼叉枪"] = "Harpoon Gun",
+        ["霰弹枪"] = "Shot Gun", ["脉冲步枪"] = "Pulse Rifle", ["鱼叉霰弹枪"] = "Shot Harpoon Gun",
+        ["EPD"] = "EPD", ["小型激光枪"] = "Small Laser Gun"
+    },
+    -- 道具显示中文，内部存储英文
+    MiscDisplay = { "耳机", "泰坦呼叫", "特种泰坦呼叫", "扬声器呼叫", "手雷", "喷气背包", "透镜" },
+    MiscInternal = {
+        ["耳机"] = "HeadPhone", ["泰坦呼叫"] = "Titan-Request", ["特种泰坦呼叫"] = "SpecialTitan-Request",
+        ["扬声器呼叫"] = "Speaker-Request", ["手雷"] = "Grenade", ["喷气背包"] = "Jetpack", ["透镜"] = "Lens"
+    },
     Gamepasst = { "全部", "幸运加成", "稀有幸运加成", "传说幸运加成" },
     Gamepassts = {},
-}
-
--- 内部映射（商店购买时使用）
-local weaponMap = {
-    ["电击枪"] = "Stungun", ["火焰喷射器"] = "Flamethrower", ["鱼叉枪"] = "Harpoon Gun",
-    ["霰弹枪"] = "Shot Gun", ["脉冲步枪"] = "Pulse Rifle", ["鱼叉霰弹枪"] = "Shot Harpoon Gun",
-    ["EPD"] = "EPD", ["小型激光枪"] = "Small Laser Gun"
-}
-local miscMap = {
-    ["耳机"] = "HeadPhone", ["泰坦呼叫"] = "Titan-Request", ["特种泰坦呼叫"] = "SpecialTitan-Request",
-    ["扬声器呼叫"] = "Speaker-Request", ["手雷"] = "Grenade", ["喷气背包"] = "Jetpack", ["透镜"] = "Lens"
-}
-local modeMap = {
-    ["普通模式"] = "Normal Mode", ["模糊记忆"] = "Vague Memory", ["极限模式"] = "Extreme Mode",
-    ["困难模式"] = "Hard Mode", ["疯狂模式"] = "Insane Mode", ["噩梦模式"] = "Nightmare Mode",
-    ["首领连战"] = "Boss Rush", ["暗黑维度"] = "Dark Dimension", ["地狱"] = "Hell", ["迷雾"] = "Mist",
-    ["圣诞行动1"] = "Christmas Act 1", ["僵尸行动1"] = "Zombie Act 1", ["坚守模式"] = "Holdout", ["入侵"] = "Invasion"
 }
 
 -- ====================== CONFIG VARIABLES ======================
@@ -254,10 +254,22 @@ local _interruptSignal       = false
 local VirtualUser = game:GetService("VirtualUser")
 local AntiAFK = Config:Get("AntiAfk", true)
 
+-- 自动购买配置（存储英文名）
 local AutoBuyWeaponEnabled   = Config:Get("AutoBuyWeaponEnabled", false)
 local AutoBuyMiscEnabled     = Config:Get("AutoBuyMiscEnabled", false)
-local SelectedWeapon         = Config:Get("SelectedWeapon", "电击枪")
-local SelectedMiscItem       = Config:Get("SelectedMiscItem", "耳机")
+-- 兼容旧配置：若配置中是中文则转为英文
+local rawWeapon = Config:Get("SelectedWeapon", "电击枪")
+local rawMisc = Config:Get("SelectedMiscItem", "耳机")
+local SelectedWeapon = GlobalTables.WeaponInternal[rawWeapon] or rawWeapon
+local SelectedMiscItem = GlobalTables.MiscInternal[rawMisc] or rawMisc
+-- 重新保存英文值
+Config:Set("SelectedWeapon", SelectedWeapon)
+Config:Set("SelectedMiscItem", SelectedMiscItem)
+
+-- 自动模式配置（存储英文模式名）
+local rawMode = Config:Get("AutoGameValue", "普通模式")
+local AutoGameValue = GlobalTables.ModeInternal[rawMode] or rawMode
+Config:Set("AutoGameValue", AutoGameValue)
 
 -- ====================== FILL UP PART CONFIG ======================
 local FILLUP_PART_PATH   = { "HelicopterShop", "ShopXDD", "PartForShop" }
@@ -1008,7 +1020,7 @@ end
 -- ============================================================
 
 local AutoVoteEnabled       = Config:Get("AutoVoteEnabled", false)
-local AutoGameValue         = Config:Get("AutoGameValue", "普通模式")
+-- AutoGameValue 已是英文
 local AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
 local AutoVoteValue         = Config:Get("AutoVoteValue", "Normal")
 
@@ -1018,11 +1030,10 @@ local _syncRespawnConn   = nil
 
 local function FireVote_Solo()
     if not AutoGameValue then return end
-    local realMode = modeMap[AutoGameValue] or "Normal Mode"
     pcall(function()
-        ReplicatedStorage.MainHandler:FireServer({ [1] = "StartSolo", [2] = realMode })
+        ReplicatedStorage.MainHandler:FireServer({ [1] = "StartSolo", [2] = AutoGameValue })
     end)
-    print("[DYHUB] 自动投票已触发: " .. realMode)
+    print("[DYHUB] 自动投票已触发: " .. AutoGameValue)
 end
 
 local function FireGetReady()
@@ -2375,12 +2386,22 @@ Main7:Section({ Title = "游戏模式", Icon = "gamepad-2" })
 
 GameModeDropdown = Main7:Dropdown({
     Title = "设置游戏模式",
-    Values = GlobalTables.Mode,
+    Values = GlobalTables.ModeDisplay,
     Multi = false,
-    Value = AutoGameValue,
-    Callback = function(value)
-        AutoGameValue = value; Config:Set("AutoGameValue", value); Config:Save()
-        print("[DYHUB] 游戏模式已选择: " .. tostring(value))
+    Value = (function()
+        for ch, en in pairs(GlobalTables.ModeInternal) do
+            if en == AutoGameValue then return ch end
+        end
+        return "普通模式"
+    end)(),
+    Callback = function(chineseValue)
+        local englishValue = GlobalTables.ModeInternal[chineseValue]
+        if englishValue then
+            AutoGameValue = englishValue
+            Config:Set("AutoGameValue", englishValue)
+            Config:Save()
+            print("[DYHUB] 游戏模式已选择: " .. englishValue)
+        end
     end
 })
 
@@ -2425,8 +2446,7 @@ task.spawn(function()
                 pcall(function() btn:Activate() end)
                 task.wait(0.5)
                 if AutoVoteEnabled then
-                    local realMode = modeMap[AutoGameValue] or "Normal Mode"
-                    ReplicatedStorage.MainHandler:FireServer({ [1] = "StartSolo", [2] = realMode })
+                    ReplicatedStorage.MainHandler:FireServer({ [1] = "StartSolo", [2] = AutoGameValue })
                     WindUI:Notify({ Title = "大厅系统", Content = "游戏模式已创建", Duration = 2 })
                 end
                 break
@@ -2450,31 +2470,39 @@ AutoVoteToggle = Main7:Toggle({
 -- ====================== UI: AUTO BUY ======================
 Main5:Section({ Title = "商店武器", Icon = "helicopter" })
 
-local AutoBuyWeaponValue         = Config:Get("AutoBuyWeaponValue", "电击枪")
-local AutoBuyWeaponToggleEnabled = Config:Get("AutoBuyWeaponEnabled", false)
+-- 读取配置（英文），转换为中文显示
+local currentWeaponEn = Config:Get("SelectedWeapon", "Stungun")
+local currentWeaponDisplay = (function()
+    for ch, en in pairs(GlobalTables.WeaponInternal) do
+        if en == currentWeaponEn then return ch end
+    end
+    return "电击枪"
+end)()
 
 WeaponDropdown = Main5:Dropdown({
     Title = "选择武器",
-    Values = GlobalTables.Weapon, Multi = false, Value = AutoBuyWeaponValue,
-    Callback = function(value)
-        AutoBuyWeaponValue = value
-        Config:Set("AutoBuyWeaponValue", value)
-        Config:Save()
+    Values = GlobalTables.WeaponDisplay, Multi = false, Value = currentWeaponDisplay,
+    Callback = function(chineseValue)
+        local englishValue = GlobalTables.WeaponInternal[chineseValue]
+        if englishValue then
+            SelectedWeapon = englishValue
+            Config:Set("SelectedWeapon", englishValue)
+            Config:Save()
+        end
     end
 })
 
 AutoBuyWeaponToggle = Main5:Toggle({
-    Title = "自动购买武器", Value = AutoBuyWeaponToggleEnabled,
+    Title = "自动购买武器", Value = AutoBuyWeaponEnabled,
     Callback = function(enabled)
-        AutoBuyWeaponToggleEnabled = enabled
+        AutoBuyWeaponEnabled = enabled
         Config:Set("AutoBuyWeaponEnabled", enabled)
         Config:Save()
         if enabled then
             task.spawn(function()
-                while AutoBuyWeaponToggleEnabled do
-                    if AutoBuyWeaponValue then
-                        local realWeapon = weaponMap[AutoBuyWeaponValue] or AutoBuyWeaponValue
-                        pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", realWeapon) end)
+                while AutoBuyWeaponEnabled do
+                    if SelectedWeapon then
+                        pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedWeapon) end)
                     end
                     task.wait(10)
                 end
@@ -2486,40 +2514,46 @@ AutoBuyWeaponToggle = Main5:Toggle({
 Main5:Button({
     Title = "购买武器（一次）",
     Callback = function()
-        if AutoBuyWeaponValue then
-            local realWeapon = weaponMap[AutoBuyWeaponValue] or AutoBuyWeaponValue
-            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", realWeapon) end)
+        if SelectedWeapon then
+            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedWeapon) end)
         end
     end
 })
 
 Main5:Section({ Title = "商店道具", Icon = "helicopter" })
 
-local AutoBuyMiscValue         = Config:Get("AutoBuyMiscValue", "耳机")
-local AutoBuyMiscToggleEnabled = Config:Get("AutoBuyMiscEnabled", false)
+local currentMiscEn = Config:Get("SelectedMiscItem", "HeadPhone")
+local currentMiscDisplay = (function()
+    for ch, en in pairs(GlobalTables.MiscInternal) do
+        if en == currentMiscEn then return ch end
+    end
+    return "耳机"
+end)()
 
 MiscShopDropdown = Main5:Dropdown({
     Title = "选择道具",
-    Values = GlobalTables.MiscShop, Multi = false, Value = AutoBuyMiscValue,
-    Callback = function(value)
-        AutoBuyMiscValue = value
-        Config:Set("AutoBuyMiscValue", value)
-        Config:Save()
+    Values = GlobalTables.MiscDisplay, Multi = false, Value = currentMiscDisplay,
+    Callback = function(chineseValue)
+        local englishValue = GlobalTables.MiscInternal[chineseValue]
+        if englishValue then
+            SelectedMiscItem = englishValue
+            Config:Set("SelectedMiscItem", englishValue)
+            Config:Save()
+        end
     end
 })
 
 AutoBuyMiscToggle = Main5:Toggle({
-    Title = "自动购买道具", Value = AutoBuyMiscToggleEnabled,
+    Title = "自动购买道具", Value = AutoBuyMiscEnabled,
     Callback = function(enabled)
-        AutoBuyMiscToggleEnabled = enabled
+        AutoBuyMiscEnabled = enabled
         Config:Set("AutoBuyMiscEnabled", enabled)
         Config:Save()
         if enabled then
             task.spawn(function()
-                while AutoBuyMiscToggleEnabled do
-                    if AutoBuyMiscValue then
-                        local realMisc = miscMap[AutoBuyMiscValue] or AutoBuyMiscValue
-                        pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", realMisc) end)
+                while AutoBuyMiscEnabled do
+                    if SelectedMiscItem then
+                        pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedMiscItem) end)
                     end
                     task.wait(10)
                 end
@@ -2531,9 +2565,8 @@ AutoBuyMiscToggle = Main5:Toggle({
 Main5:Button({
     Title = "购买道具（一次）",
     Callback = function()
-        if AutoBuyMiscValue then
-            local realMisc = miscMap[AutoBuyMiscValue] or AutoBuyMiscValue
-            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", realMisc) end)
+        if SelectedMiscItem then
+            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedMiscItem) end)
         end
     end
 })
@@ -2679,24 +2712,22 @@ if ESP.Enabled then
     StartESPLoop()
 end
 
-if AutoBuyWeaponToggleEnabled then
+if AutoBuyWeaponEnabled then
     task.spawn(function()
-        while AutoBuyWeaponToggleEnabled do
-            if AutoBuyWeaponValue then
-                local realWeapon = weaponMap[AutoBuyWeaponValue] or AutoBuyWeaponValue
-                pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", realWeapon) end)
+        while AutoBuyWeaponEnabled do
+            if SelectedWeapon then
+                pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedWeapon) end)
             end
             task.wait(10)
         end
     end)
 end
 
-if AutoBuyMiscToggleEnabled then
+if AutoBuyMiscEnabled then
     task.spawn(function()
-        while AutoBuyMiscToggleEnabled do
-            if AutoBuyMiscValue then
-                local realMisc = miscMap[AutoBuyMiscValue] or AutoBuyMiscValue
-                pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", realMisc) end)
+        while AutoBuyMiscEnabled do
+            if SelectedMiscItem then
+                pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedMiscItem) end)
             end
             task.wait(10)
         end
