@@ -5,7 +5,9 @@ local ver = "v023.4-纯净版"
 
 -- ====================== LOAD UI ======================
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-
+if not WindUI then
+    error("WindUI 加载失败，请检查网络")
+end
 -- ====================== GameLoad ======================
 repeat task.wait() until game:IsLoaded()
 
@@ -116,7 +118,7 @@ local userversion = "免费版"
 local Window = WindUI:CreateWindow({
     Title = "DYHUB",
     IconThemed = true,
-    Icon = "rbxassetid://93661445926652/",
+    Icon = "rbxassetid://93661445926652",
     Author = "STBB | " .. userversion,
     Folder = "DYHUB",
     Size = UDim2.fromOffset(550, 380),
@@ -2901,7 +2903,7 @@ do
     end
 
     -- 在“模式”标签页添加切换按钮（不重复，无图标）
-    Main7:Section({ Title = "模式切换", Icon = "" })
+    Main7:Section({ Title = "模式切换"})
     Main7:Button({
         Title = "▶ 自动挂机模式",
         Callback = function()
