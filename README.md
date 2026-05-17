@@ -116,7 +116,7 @@ local userversion = "免费版"
 local Window = WindUI:CreateWindow({
     Title = "DYHUB",
     IconThemed = true,
-    Icon = "rbxassetid://104487529937663",
+    Icon = "rbxassetid://93661445926652/",
     Author = "STBB | " .. userversion,
     Folder = "DYHUB",
     Size = UDim2.fromOffset(550, 380),
@@ -703,6 +703,7 @@ end
 local function StartAutoAttack()
     task.spawn(function()
         while AutoAttackEnabled and AutoFarmEnabled do
+        if getgenv().ACTIVE_MODE ~= "farm" then task.wait(0.5); continue end
             local mob = GetPriorityMob()
             if mob and not WaitingRespawn then
                 pcall(function() ReplicatedStorage.LMB:FireServer() end)
@@ -715,6 +716,7 @@ end
 local function StartAutoSkill()
     task.spawn(function()
         while AutoSkillEnabled and AutoFarmEnabled do
+        if getgenv().ACTIVE_MODE ~= "farm" then task.wait(0.5); continue end
             local mob = GetPriorityMob()
             if mob and not WaitingRespawn then
                 local keysToPress = {}
@@ -972,6 +974,7 @@ local function StartAutoFillUpLoop()
     FillUpRunning = true
     task.spawn(function()
         while AutoFillUpEnabled and AutoFarmEnabled do
+        if getgenv().ACTIVE_MODE ~= "farm" then task.wait(0.5); continue end
             if not IsPlayerHPFull() then
                 if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
                 local waited = 0
@@ -1351,6 +1354,7 @@ local function StartFarmLoop()
     task.spawn(function()
         task.spawn(function()
             while AutoFarmEnabled do
+            if getgenv().ACTIVE_MODE ~= "farm" then task.wait(0.5); continue end
                 if WaitingRespawn and not LockActive then
                     pcall(function()
                         local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = IdlePosition })
@@ -2744,210 +2748,176 @@ if AutoVoteEnabled or AutoStartEnabled then
 end
 
 if AutoVoteinGameEnabled then SetupAutoVote_InGame(true) end
--- ====================== 天文币刷取模块（集成到主脚本，不创建新窗口） ======================
--- 依赖主脚本中已有的：Main, WindUI, LocalPlayer, ReplicatedStorage, RunService, IdlePosition（可选）
--- 不使用 IdlePosition，而是使用突袭坐标作为传送点
-
--- ========== 模块变量 ==========
-local AstroFarmRunning = false
-local AstroOrbitConn = nil
-local AstroStrikeRunning = false
-local AstroForcePos = false
-local AstroAngle = 0
-local AstroGameDuration = 960        -- 单局最大等待时间（秒）
-local AstroFlyRadius = 300           -- 飞行半径
-local AstroFlySpeed = 2              -- 飞行速度
-local AstroStrikePos = Vector3.new(-23.34, -0.19, 0.34)
-local AstroFlyCenter = Vector3.new(0, 250, 0)
-local TELEPORT_CF = CFrame.new(-23.34, -0.19, 0.34)   -- 传送点（突袭坐标）
-
--- ========== UI 检测函数（使用主脚本已有的 pg，如果没有则获取） ==========
-local function IsInLobby()
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then return false end
-    local lobby = pg:FindFirstChild("Lobby")
-    return lobby and lobby.Enabled == true
-end
-
-local function HasVoteUI()
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then return false end
-    for _, v in ipairs(pg:GetDescendants()) do
-        if v:IsA("GuiObject") and v.Visible then
-            local name = v.Name:lower()
-            if name:find("vote") or name:find("map") or name:find("choose") then
-                return true
-            end
-        end
+-- ====================== 天文币刷取模块（模式切换，无UI冲突） ======================
+do
+    -- 初始化全局模式变量（如果还没有）
+    if getgenv().ACTIVE_MODE == nil then
+        getgenv().ACTIVE_MODE = "farm"
     end
-    return false
-end
 
--- ========== 投票与准备（完全复刻原脚本方式） ==========
-local function VoteAndPrepare()
-    local vote = ReplicatedStorage:FindFirstChild("Vote")
-    local getReady = ReplicatedStorage:FindFirstChild("GetReadyRemote")
-    if vote then vote:FireServer("AstroV2") end
-    task.wait(0.3)
-    if getReady then getReady:FireServer("3", true) end
-    task.wait(0.3)
-    if getReady then getReady:FireServer("1", true) end
-end
+    local astroRunning = false
+    local orbitConn = nil
+    local strikeRunning = false
+    local forcePos = false
+    local angle = 0
+    local astroMaxDuration = Config:Get("AstroGameDuration", 960)
+    local astroFlyRadius = Config:Get("AstroFlyRadius", 300)
+    local astroFlySpeed = Config:Get("AstroFlySpeed", 2)
+    local astroStrikePos = Vector3.new(-23.34, -0.19, 0.34)
+    local astroFlyCenter = Vector3.new(0, 250, 0)
+    local astroTeleportCF = CFrame.new(-23.34, -0.19, 0.34)
 
--- ========== 飞行模块（围绕地图中心，使用 Heartbeat 兼容忍者） ==========
-local function StartOrbit()
-    if AstroOrbitConn then AstroOrbitConn:Disconnect() end
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    char.Humanoid.PlatformStand = true
-    AstroAngle = 0
-    AstroForcePos = false
-    AstroOrbitConn = RunService.Heartbeat:Connect(function(dt)
-        if AstroForcePos then
-            AstroAngle = (AstroAngle + AstroFlySpeed * dt) % (math.pi * 2)
-            return
-        end
-        AstroAngle = (AstroAngle + AstroFlySpeed * dt) % (math.pi * 2)
-        local pos = AstroFlyCenter + Vector3.new(math.cos(AstroAngle) * AstroFlyRadius, 0, math.sin(AstroAngle) * AstroFlyRadius)
-        local hrp = char.HumanoidRootPart
-        hrp.CFrame = CFrame.new(pos, AstroFlyCenter)
-        hrp.Velocity = Vector3.zero
-        hrp.RotVelocity = Vector3.zero
-    end)
-end
-
-local function StopOrbit()
-    if AstroOrbitConn then AstroOrbitConn:Disconnect(); AstroOrbitConn = nil end
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.PlatformStand = false
+    local function AstroIsInLobby()
+        local pg = LocalPlayer:FindFirstChild("PlayerGui")
+        return pg and pg:FindFirstChild("Lobby") and pg.Lobby.Enabled == true
     end
-end
 
--- ========== 突袭模块（原样，加保护） ==========
-local function StartStrike()
-    if AstroStrikeRunning then return end
-    AstroStrikeRunning = true
-    task.spawn(function()
-        while AstroStrikeRunning do
-            pcall(function()
-                local remote = ReplicatedStorage:FindFirstChild("VillanArcAirStrike")
-                if remote and remote:IsA("RemoteEvent") then
-                    remote:FireServer(AstroStrikePos)
+    local function AstroHasVoteUI()
+        local pg = LocalPlayer:FindFirstChild("PlayerGui")
+        if not pg then return false end
+        for _, v in ipairs(pg:GetDescendants()) do
+            if v:IsA("GuiObject") and v.Visible then
+                local name = v.Name:lower()
+                if name:find("vote") or name:find("map") or name:find("choose") then
+                    return true
                 end
-            end)
-            task.wait(1)
-        end
-    end)
-end
-
-local function StopStrike()
-    AstroStrikeRunning = false
-end
-
--- ========== 传送至突袭坐标（短暂锁定位置） ==========
-local function TeleportToStrikePos()
-    AstroForcePos = true
-    local start = tick()
-    local conn = RunService.Heartbeat:Connect(function()
-        if tick() - start > 1.5 then
-            conn:Disconnect()
-            AstroForcePos = false
-            return
-        end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = TELEPORT_CF
-            char.HumanoidRootPart.Velocity = Vector3.zero
-        end
-    end)
-end
-
--- ========== 主循环 ==========
-local function AstroFarmLoop()
-    while AstroFarmRunning do
-        -- 1. 等待大厅（Lobby UI 或投票 UI 出现）
-        repeat task.wait(1) until IsInLobby() or HasVoteUI()
-        
-        -- 2. 投票并准备
-        VoteAndPrepare()
-        
-        -- 3. 等待进入地图：投票 UI 消失 + 角色加载完成
-        repeat
-            task.wait(0.5)
-        until (not HasVoteUI()) and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        task.wait(2)   -- 额外稳定
-        
-        -- 4. 开启飞行和突袭
-        StartOrbit()
-        StartStrike()
-        
-        -- 5. 等待游戏结束（最大超时，若中途回到大厅则提前结束）
-        local startTime = tick()
-        while AstroFarmRunning and (tick() - startTime) < AstroGameDuration do
-            task.wait(2)
-            if IsInLobby() or HasVoteUI() then
-                break
             end
         end
-        
-        -- 6. 停止飞行和突袭
-        StopOrbit()
-        StopStrike()
-        
-        -- 7. 传送到突袭坐标
-        TeleportToStrikePos()
-        task.wait(2)
+        return false
     end
-end
 
-local function StartAstroFarm()
-    if AstroFarmRunning then return end
-    AstroFarmRunning = true
-    task.spawn(AstroFarmLoop)
-end
+    local function AstroVoteAndPrepare()
+        local vote = ReplicatedStorage:FindFirstChild("Vote")
+        local getReady = ReplicatedStorage:FindFirstChild("GetReadyRemote")
+        if vote then pcall(function() vote:FireServer("AstroV2") end) end
+        task.wait(0.3)
+        if getReady then pcall(function() getReady:FireServer("3", true) end) end
+        task.wait(0.3)
+        if getReady then pcall(function() getReady:FireServer("1", true) end) end
+    end
 
-local function StopAstroFarm()
-    AstroFarmRunning = false
-    StopOrbit()
-    StopStrike()
-end
+    local function AstroStartOrbit()
+        if orbitConn then orbitConn:Disconnect() end
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        char.Humanoid.PlatformStand = true
+        angle = 0
+        forcePos = false
+        orbitConn = RunService.Heartbeat:Connect(function(dt)
+            if getgenv().ACTIVE_MODE ~= "astro" then return end
+            if forcePos then
+                angle = (angle + astroFlySpeed * dt) % (math.pi * 2)
+                return
+            end
+            angle = (angle + astroFlySpeed * dt) % (math.pi * 2)
+            local pos = astroFlyCenter + Vector3.new(math.cos(angle) * astroFlyRadius, 0, math.sin(angle) * astroFlyRadius)
+            local hrp = char.HumanoidRootPart
+            if hrp then
+                hrp.CFrame = CFrame.new(pos, astroFlyCenter)
+                hrp.Velocity = Vector3.zero
+                hrp.RotVelocity = Vector3.zero
+            end
+        end)
+    end
 
--- ========== 添加 UI 控件到主脚本的 Main Tab（不创建新窗口） ==========
-Main:Section({ Title = "天文币刷取", Icon = "star" })
-Main:Toggle({
-    Title = "自动刷天文币 (AstroV2)",
-    Desc = "基于 UI 检测，进入地图后开始飞行+突袭，结束后传送到突袭坐标",
-    Value = false,
-    Callback = function(state)
-        if state then
-            StartAstroFarm()
-            WindUI:Notify({ Title = "天文币刷取", Content = "已开启，请确保在大厅", Duration = 3, Icon = "star" })
-        else
-            StopAstroFarm()
-            WindUI:Notify({ Title = "天文币刷取", Content = "已关闭", Duration = 2, Icon = "square" })
+    local function AstroStopOrbit()
+        if orbitConn then orbitConn:Disconnect(); orbitConn = nil end
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.PlatformStand = false
         end
     end
-})
-Main:Slider({
-    Title = "单局最大等待时间（秒）",
-    Value = { Min = 600, Max = 1200, Default = AstroGameDuration },
-    Step = 30,
-    Callback = function(v) AstroGameDuration = v end
-})
-Main:Slider({
-    Title = "飞行半径",
-    Value = { Min = 100, Max = 600, Default = AstroFlyRadius },
-    Step = 50,
-    Callback = function(v) AstroFlyRadius = v end
-})
-Main:Slider({
-    Title = "飞行速度",
-    Value = { Min = 1, Max = 10, Default = AstroFlySpeed },
-    Step = 0.5,
-    Callback = function(v) AstroFlySpeed = v end
-})
 
-print("[天文币模块] 已集成到主脚本，使用 UI 检测 + 突袭坐标传送")
+    local function AstroStartStrike()
+        if strikeRunning then return end
+        strikeRunning = true
+        task.spawn(function()
+            while strikeRunning do
+                if getgenv().ACTIVE_MODE ~= "astro" then break end
+                pcall(function()
+                    local remote = ReplicatedStorage:FindFirstChild("VillanArcAirStrike")
+                    if remote then remote:FireServer(astroStrikePos) end
+                end)
+                task.wait(1)
+            end
+        end)
+    end
+
+    local function AstroStopStrike()
+        strikeRunning = false
+    end
+
+    local function AstroTeleportToPos()
+        forcePos = true
+        local start = tick()
+        local conn = RunService.Heartbeat:Connect(function()
+            if tick() - start > 1.5 then
+                conn:Disconnect()
+                forcePos = false
+                return
+            end
+            if getgenv().ACTIVE_MODE ~= "astro" then return end
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = astroTeleportCF
+                char.HumanoidRootPart.Velocity = Vector3.zero
+            end
+        end)
+    end
+
+    local function AstroFarmLoop()
+        while astroRunning do
+            if getgenv().ACTIVE_MODE ~= "astro" then task.wait(0.5); continue end
+            repeat task.wait(1) until AstroIsInLobby() or AstroHasVoteUI()
+            AstroVoteAndPrepare()
+            repeat task.wait(0.5) until (not AstroHasVoteUI()) and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            task.wait(2)
+            AstroStartOrbit()
+            AstroStartStrike()
+            local startTime = tick()
+            while astroRunning and (tick() - startTime) < astroMaxDuration do
+                if getgenv().ACTIVE_MODE ~= "astro" then break end
+                task.wait(2)
+                if AstroIsInLobby() or AstroHasVoteUI() then break end
+            end
+            AstroStopOrbit()
+            AstroStopStrike()
+            AstroTeleportToPos()
+            repeat task.wait(1) until AstroIsInLobby() or AstroHasVoteUI()
+            task.wait(2)
+        end
+    end
+
+    function StartAstroFarm()
+        if astroRunning then return end
+        astroRunning = true
+        task.spawn(AstroFarmLoop)
+    end
+
+    function StopAstroFarm()
+        astroRunning = false
+        AstroStopOrbit()
+        AstroStopStrike()
+    end
+
+    -- 在“模式”标签页添加切换按钮（不重复，无图标）
+    Main7:Section({ Title = "模式切换", Icon = "" })
+    Main7:Button({
+        Title = "▶ 自动挂机模式",
+        Callback = function()
+            getgenv().ACTIVE_MODE = "farm"
+            StopAstroFarm()
+            WindUI:Notify({ Title = "模式", Content = "已切换到自动挂机模式", Duration = 2 })
+        end
+    })
+    Main7:Button({
+        Title = "✈ 天文币刷取模式",
+        Callback = function()
+            getgenv().ACTIVE_MODE = "astro"
+            StartAstroFarm()
+            WindUI:Notify({ Title = "模式", Content = "已切换到天文币刷取模式", Duration = 2 })
+        end
+    })
+end
 print("[DYHUB] 版本 " .. version .. " " .. ver .. " 加载成功！")
 print("[DYHUB] 配置系统已激活 | 自动保存间隔15秒")
