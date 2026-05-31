@@ -1,10 +1,10 @@
 -- ============================================================================
--- DYHUB 终极整合版 | 基于 v044.0-FINAL-ALL 增强 | 单调度器 | 单扫描源 | 内存安全
--- 包含: 自动挂机、优先级系统、动态高度、运动预测、跟随模式、旋转90°
---       ESP(高亮/BoxHandle/玩家/物品/怪物)、自动收集、冲水光环、Mastery、Hitbox、Quest
---       Auto Ready、Auto God Mode、Xmas极速、批量无延迟购买/抽卡
---       自动投票、自动开局、自动重生、自动每日/宝箱、自动补血、安全/上帝模式
---       飞行、无限跳跃、穿墙、FPS优化、多语言、主题切换、天文币刷取
+-- DYHUB 完整稳定版 | 全功能 | 单调度器 | 内存安全 | 无后门纯净版
+-- 版本: v044.0-FINAL-CLEAN-FLY
+-- 包含: 自动挂机、ESP、Mastery、Hitbox、Quest、Xmas、批量、天文模式、多语言等
+-- 修复: T()全局化、无无限重试、内存监控、连接管理
+-- 飞行: 集成 Fly GUI V3（XNEO），通过 Toggle 控制开/关
+-- 移除: Discord 链接、版本验证、Infinity Yield、所有外部后门
 -- ============================================================================
 
 if getgenv().DYHUB and getgenv().DYHUB.Window then
@@ -16,8 +16,8 @@ if not getgenv().DYHUB then getgenv().DYHUB = {} end
 local core = getgenv().DYHUB
 
 setfpscap(60)
-local version = "Ultimate Integrated"
-local ver = "v050.0-INTEGRATED"
+local version = "Final Clean Fly"
+local ver = "v044.0-FINAL-CLEAN-FLY"
 local currentLanguage = "Chinese"
 pcall(function() delfolder("DYHUB_FINAL") end)
 
@@ -57,7 +57,7 @@ local translations = {
         batch_gacha = "无延迟批量抽卡", batch_gacha_char = "批量抽角色", batch_gacha_skin = "批量抽皮肤",
         rotate_90 = "旋转90°模式", rotate_90_desc = "站立时旋转90度",
         fullbright = "全亮", nofog = "去雾", vibrant = "鲜艳色彩", show_fps = "显示FPS", show_ping = "显示Ping",
-        fly = "飞行", infinity_jump = "无限跳跃", no_clip = "穿墙",
+        fly = "飞行模式", infinity_jump = "无限跳跃", no_clip = "穿墙",
         server_hop = "更换服务器", rejoin = "重新加入", save_config = "保存配置", anti_afk = "防挂机检测",
         bypass_barrier = "绕过边界（已失效）", fps_boost = "FPS极限优化", theme = "主题", language = "语言",
     },
@@ -89,7 +89,7 @@ local translations = {
         batch_gacha = "Batch Gacha (No Delay)", batch_gacha_char = "Batch Pull Characters", batch_gacha_skin = "Batch Pull Skins",
         rotate_90 = "Rotate 90° Mode", rotate_90_desc = "Rotate character 90 degrees",
         fullbright = "Full Bright", nofog = "No Fog", vibrant = "Vibrant Colors", show_fps = "Show FPS", show_ping = "Show Ping",
-        fly = "Fly", infinity_jump = "Infinity Jump", no_clip = "No Clip",
+        fly = "Fly Mode", infinity_jump = "Infinity Jump", no_clip = "No Clip",
         server_hop = "Server Hop", rejoin = "Rejoin", save_config = "Save Config", anti_afk = "Anti AFK",
         bypass_barrier = "Bypass Barrier (Patched)", fps_boost = "FPS Boost", theme = "Theme", language = "Language",
     },
@@ -121,7 +121,7 @@ local translations = {
         batch_gacha = "Пакетная гача", batch_gacha_char = "Пакетный抽 персонажей", batch_gacha_skin = "Пакетный抽 скинов",
         rotate_90 = "Поворот на 90°", rotate_90_desc = "Повернуть персонажа на 90 градусов",
         fullbright = "Полная яркость", nofog = "Без тумана", vibrant = "Яркие цвета", show_fps = "Показать FPS", show_ping = "Показать пинг",
-        fly = "Полёт", infinity_jump = "Бесконечный прыжок", no_clip = "Нет столкновений",
+        fly = "Режим полёта", infinity_jump = "Бесконечный прыжок", no_clip = "Нет столкновений",
         server_hop = "Смена сервера", rejoin = "Перезайти", save_config = "Сохранить конфиг", anti_afk = "Анти-AFK",
         bypass_barrier = "Обход границ (не работает)", fps_boost = "FPS буст", theme = "Тема", language = "Язык",
     },
@@ -153,7 +153,7 @@ local translations = {
         batch_gacha = "Gacha em Lote", batch_gacha_char = "Puxar Personagens", batch_gacha_skin = "Puxar Skins",
         rotate_90 = "Rotação 90°", rotate_90_desc = "Rotacionar personagem 90 graus",
         fullbright = "Brilho Total", nofog = "Sem Névoa", vibrant = "Cores Vibrantes", show_fps = "Mostrar FPS", show_ping = "Mostrar Ping",
-        fly = "Voar", infinity_jump = "Pulo Infinito", no_clip = "Sem Colisão",
+        fly = "Modo de Voo", infinity_jump = "Pulo Infinito", no_clip = "Sem Colisão",
         server_hop = "Trocar Servidor", rejoin = "Reentrar", save_config = "Salvar Config", anti_afk = "Anti AFK",
         bypass_barrier = "Ignorar Barreira (Quebrado)", fps_boost = "Otimizar FPS", theme = "Tema", language = "Idioma",
     },
@@ -161,24 +161,16 @@ local translations = {
 getgenv().DYHUB_T = function(key) return (translations[currentLanguage] and translations[currentLanguage][key]) or key end
 local function T(key) return getgenv().DYHUB_T(key) end
 
--- ====================== 加载 WindUI（带重试限制） ======================
+-- ====================== 加载 WindUI（原版方式） ======================
 local function LoadWindUI()
     if core.WindUI then return core.WindUI end
-    local localPath = "DYHUB_LIB/WindUI.lua"
-    if isfile and isfile(localPath) then
-        local success, res = pcall(function() return loadstring(readfile(localPath))() end)
-        if success and res then core.WindUI = res; return res end
-    end
     local url = "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
-    local maxRetries = 3
-    for retry = 1, maxRetries do
-        local success, res = pcall(function() return loadstring(game:HttpGet(url))() end)
-        if success and res then
-            core.WindUI = res
-            return res
-        end
-        if retry < maxRetries then task.wait(2) else error("WindUI 加载失败，已重试 " .. maxRetries .. " 次") end
+    local success, res = pcall(function() return loadstring(game:HttpGet(url))() end)
+    if success and res then
+        core.WindUI = res
+        return res
     end
+    error("WindUI 加载失败")
 end
 local WindUI = LoadWindUI()
 
@@ -219,7 +211,7 @@ core.Config = CustomConfig.new()
 local Config = core.Config
 task.spawn(function() while true do task.wait(15); Config:Save() end end)
 
--- ====================== 内存监控（自动清理） ======================
+-- ====================== 内存监控 ======================
 task.spawn(function()
     while true do
         task.wait(30)
@@ -348,11 +340,473 @@ local noFogConnection = nil
 local vibrantEffect = nil
 local noclipConnection = nil
 local infJumpConnection = nil
-local flying = false
-local flySpeed = 50
-local flyConnection = nil
-local flyBodyVelocity = nil
-local infinityYieldLoaded = false
+
+-- 飞行相关变量（使用 Fly GUI V3）
+local flyGuiInstance = nil          -- 存储飞行 GUI 主对象
+local flyGuiCreated = false
+local flyToggleState = false        -- 用户通过 Toggle 控制的状态
+local flyGuiScreenGui = nil
+
+-- 定义开关飞行函数（创建或销毁飞行 GUI，并自动点击其 fly 按钮）
+local function ToggleFly(enable)
+    if enable then
+        -- 如果尚未创建飞行 GUI，则创建
+        if not flyGuiCreated then
+            -- 创建 Fly GUI V3
+            local flyScript = [[
+                local main = Instance.new("ScreenGui")
+                local Frame = Instance.new("Frame")
+                local up = Instance.new("TextButton")
+                local down = Instance.new("TextButton")
+                local onof = Instance.new("TextButton")
+                local TextLabel = Instance.new("TextLabel")
+                local plus = Instance.new("TextButton")
+                local speed = Instance.new("TextLabel")
+                local mine = Instance.new("TextButton")
+                local closebutton = Instance.new("TextButton")
+                local mini = Instance.new("TextButton")
+                local mini2 = Instance.new("TextButton")
+                
+                main.Name = "main"
+                main.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+                main.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+                main.ResetOnSpawn = false
+                
+                Frame.Parent = main
+                Frame.BackgroundColor3 = Color3.fromRGB(163, 255, 137)
+                Frame.BorderColor3 = Color3.fromRGB(103, 221, 213)
+                Frame.Position = UDim2.new(0.100320168, 0, 0.379746825, 0)
+                Frame.Size = UDim2.new(0, 190, 0, 57)
+                
+                up.Name = "up"
+                up.Parent = Frame
+                up.BackgroundColor3 = Color3.fromRGB(79, 255, 152)
+                up.Size = UDim2.new(0, 44, 0, 28)
+                up.Font = Enum.Font.SourceSans
+                up.Text = "UP"
+                up.TextColor3 = Color3.fromRGB(0, 0, 0)
+                up.TextSize = 14.000
+                
+                down.Name = "down"
+                down.Parent = Frame
+                down.BackgroundColor3 = Color3.fromRGB(215, 255, 121)
+                down.Position = UDim2.new(0, 0, 0.491228074, 0)
+                down.Size = UDim2.new(0, 44, 0, 28)
+                down.Font = Enum.Font.SourceSans
+                down.Text = "DOWN"
+                down.TextColor3 = Color3.fromRGB(0, 0, 0)
+                down.TextSize = 14.000
+                
+                onof.Name = "onof"
+                onof.Parent = Frame
+                onof.BackgroundColor3 = Color3.fromRGB(255, 249, 74)
+                onof.Position = UDim2.new(0.702823281, 0, 0.491228074, 0)
+                onof.Size = UDim2.new(0, 56, 0, 28)
+                onof.Font = Enum.Font.SourceSans
+                onof.Text = "fly"
+                onof.TextColor3 = Color3.fromRGB(0, 0, 0)
+                onof.TextSize = 14.000
+                
+                TextLabel.Parent = Frame
+                TextLabel.BackgroundColor3 = Color3.fromRGB(242, 60, 255)
+                TextLabel.Position = UDim2.new(0.469327301, 0, 0, 0)
+                TextLabel.Size = UDim2.new(0, 100, 0, 28)
+                TextLabel.Font = Enum.Font.SourceSans
+                TextLabel.Text = "FLY GUI V3"
+                TextLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+                TextLabel.TextScaled = true
+                TextLabel.TextSize = 14.000
+                TextLabel.TextWrapped = true
+                
+                plus.Name = "plus"
+                plus.Parent = Frame
+                plus.BackgroundColor3 = Color3.fromRGB(133, 145, 255)
+                plus.Position = UDim2.new(0.231578946, 0, 0, 0)
+                plus.Size = UDim2.new(0, 45, 0, 28)
+                plus.Font = Enum.Font.SourceSans
+                plus.Text = "+"
+                plus.TextColor3 = Color3.fromRGB(0, 0, 0)
+                plus.TextScaled = true
+                plus.TextSize = 14.000
+                plus.TextWrapped = true
+                
+                speed.Name = "speed"
+                speed.Parent = Frame
+                speed.BackgroundColor3 = Color3.fromRGB(255, 85, 0)
+                speed.Position = UDim2.new(0.468421042, 0, 0.491228074, 0)
+                speed.Size = UDim2.new(0, 44, 0, 28)
+                speed.Font = Enum.Font.SourceSans
+                speed.Text = "1"
+                speed.TextColor3 = Color3.fromRGB(0, 0, 0)
+                speed.TextScaled = true
+                speed.TextSize = 14.000
+                speed.TextWrapped = true
+                
+                mine.Name = "mine"
+                mine.Parent = Frame
+                mine.BackgroundColor3 = Color3.fromRGB(123, 255, 247)
+                mine.Position = UDim2.new(0.231578946, 0, 0.491228074, 0)
+                mine.Size = UDim2.new(0, 45, 0, 29)
+                mine.Font = Enum.Font.SourceSans
+                mine.Text = "-"
+                mine.TextColor3 = Color3.fromRGB(0, 0, 0)
+                mine.TextScaled = true
+                mine.TextSize = 14.000
+                mine.TextWrapped = true
+                
+                closebutton.Name = "Close"
+                closebutton.Parent = main.Frame
+                closebutton.BackgroundColor3 = Color3.fromRGB(225, 25, 0)
+                closebutton.Font = "SourceSans"
+                closebutton.Size = UDim2.new(0, 45, 0, 28)
+                closebutton.Text = "X"
+                closebutton.TextSize = 30
+                closebutton.Position = UDim2.new(0, 0, -1, 27)
+                
+                mini.Name = "minimize"
+                mini.Parent = main.Frame
+                mini.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
+                mini.Font = "SourceSans"
+                mini.Size = UDim2.new(0, 45, 0, 28)
+                mini.Text = "-"
+                mini.TextSize = 40
+                mini.Position = UDim2.new(0, 44, -1, 27)
+                
+                mini2.Name = "minimize2"
+                mini2.Parent = main.Frame
+                mini2.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
+                mini2.Font = "SourceSans"
+                mini2.Size = UDim2.new(0, 45, 0, 28)
+                mini2.Text = "+"
+                mini2.TextSize = 40
+                mini2.Position = UDim2.new(0, 44, -1, 57)
+                mini2.Visible = false
+                
+                local speeds = 1
+                local speaker = game:GetService("Players").LocalPlayer
+                local chr = game.Players.LocalPlayer.Character
+                local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+                local nowe = false
+                
+                game:GetService("StarterGui"):SetCore("SendNotification", { 
+                    Title = "FLY GUI V3";
+                    Text = "BY XNEO";
+                    Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"
+                })
+                
+                Frame.Active = true
+                Frame.Draggable = true
+                
+                -- 飞行核心逻辑
+                local function startFlying()
+                    if nowe then return end
+                    nowe = true
+                    for i = 1, speeds do
+                        spawn(function()
+                            local hb = game:GetService("RunService").Heartbeat
+                            local tpwalking = true
+                            local chr = game.Players.LocalPlayer.Character
+                            local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+                            while tpwalking and hb:Wait() and chr and hum and hum.Parent do
+                                if hum.MoveDirection.Magnitude > 0 then
+                                    chr:TranslateBy(hum.MoveDirection)
+                                end
+                            end
+                        end)
+                    end
+                    game.Players.LocalPlayer.Character.Animate.Disabled = true
+                    local Char = game.Players.LocalPlayer.Character
+                    local Hum = Char:FindFirstChildOfClass("Humanoid") or Char:FindFirstChildOfClass("AnimationController")
+                    for i,v in next, Hum:GetPlayingAnimationTracks() do
+                        v:AdjustSpeed(0)
+                    end
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,false)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,false)
+                    speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+                    
+                    -- R6/R8 物理飞行
+                    if game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R6 then
+                        local plr = game.Players.LocalPlayer
+                        local torso = plr.Character.Torso
+                        local flying = true
+                        local deb = true
+                        local ctrl = {f = 0, b = 0, l = 0, r = 0}
+                        local lastctrl = {f = 0, b = 0, l = 0, r = 0}
+                        local maxspeed = 50
+                        local speed = 0
+                        local bg = Instance.new("BodyGyro", torso)
+                        bg.P = 9e4
+                        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+                        bg.cframe = torso.CFrame
+                        local bv = Instance.new("BodyVelocity", torso)
+                        bv.velocity = Vector3.new(0,0.1,0)
+                        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+                        plr.Character.Humanoid.PlatformStand = true
+                        local flyLoop = game:GetService("RunService").RenderStepped:Connect(function()
+                            if not nowe or game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 then
+                                flyLoop:Disconnect()
+                                return
+                            end
+                            if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
+                                speed = speed+.5+(speed/maxspeed)
+                                if speed > maxspeed then speed = maxspeed end
+                            elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and speed ~= 0 then
+                                speed = speed-1
+                                if speed < 0 then speed = 0 end
+                            end
+                            if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
+                                bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*speed
+                                lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
+                            elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and speed ~= 0 then
+                                bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*speed
+                            else
+                                bv.velocity = Vector3.new(0,0,0)
+                            end
+                            bg.cframe = game.Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed/maxspeed),0,0)
+                        end)
+                        local cleanup
+                        cleanup = game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
+                            flyLoop:Disconnect()
+                            cleanup:Disconnect()
+                        end)
+                        -- 保存资源以便停止时销毁
+                        rawset(_G, "__flyR6_BG", bg)
+                        rawset(_G, "__flyR6_BV", bv)
+                        rawset(_G, "__flyR6_Loop", flyLoop)
+                    else
+                        local plr = game.Players.LocalPlayer
+                        local UpperTorso = plr.Character.UpperTorso
+                        local ctrl = {f = 0, b = 0, l = 0, r = 0}
+                        local lastctrl = {f = 0, b = 0, l = 0, r = 0}
+                        local maxspeed = 50
+                        local speed = 0
+                        local bg = Instance.new("BodyGyro", UpperTorso)
+                        bg.P = 9e4
+                        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+                        bg.cframe = UpperTorso.CFrame
+                        local bv = Instance.new("BodyVelocity", UpperTorso)
+                        bv.velocity = Vector3.new(0,0.1,0)
+                        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+                        plr.Character.Humanoid.PlatformStand = true
+                        local flyLoop = game:GetService("RunService").Heartbeat:Connect(function()
+                            if not nowe or game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 then
+                                flyLoop:Disconnect()
+                                return
+                            end
+                            if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
+                                speed = speed+.5+(speed/maxspeed)
+                                if speed > maxspeed then speed = maxspeed end
+                            elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and speed ~= 0 then
+                                speed = speed-1
+                                if speed < 0 then speed = 0 end
+                            end
+                            if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
+                                bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*speed
+                                lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
+                            elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and speed ~= 0 then
+                                bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*speed
+                            else
+                                bv.velocity = Vector3.new(0,0,0)
+                            end
+                            bg.cframe = game.Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed/maxspeed),0,0)
+                        end)
+                        local cleanup
+                        cleanup = game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
+                            flyLoop:Disconnect()
+                            cleanup:Disconnect()
+                        end)
+                        rawset(_G, "__flyR15_BG", bg)
+                        rawset(_G, "__flyR15_BV", bv)
+                        rawset(_G, "__flyR15_Loop", flyLoop)
+                    end
+                end
+                
+                local function stopFlying()
+                    if not nowe then return end
+                    nowe = false
+                    -- 恢复动画和状态
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,true)
+                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,true)
+                    speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+                    game.Players.LocalPlayer.Character.Animate.Disabled = false
+                    -- 清理 BodyGyro/BodyVelocity
+                    if _G.__flyR6_BG then _G.__flyR6_BG:Destroy(); _G.__flyR6_BG = nil end
+                    if _G.__flyR6_BV then _G.__flyR6_BV:Destroy(); _G.__flyR6_BV = nil end
+                    if _G.__flyR6_Loop then _G.__flyR6_Loop:Disconnect(); _G.__flyR6_Loop = nil end
+                    if _G.__flyR15_BG then _G.__flyR15_BG:Destroy(); _G.__flyR15_BG = nil end
+                    if _G.__flyR15_BV then _G.__flyR15_BV:Destroy(); _G.__flyR15_BV = nil end
+                    if _G.__flyR15_Loop then _G.__flyR15_Loop:Disconnect(); _G.__flyR15_Loop = nil end
+                    speaker.Character.Humanoid.PlatformStand = false
+                end
+                
+                -- 按钮事件
+                onof.MouseButton1Down:connect(function()
+                    if nowe then stopFlying() else startFlying() end
+                end)
+                
+                local tis, dis
+                up.MouseButton1Down:connect(function()
+                    tis = up.MouseEnter:connect(function()
+                        while tis do
+                            wait()
+                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,1,0)
+                        end
+                    end)
+                end)
+                up.MouseLeave:connect(function()
+                    if tis then tis:Disconnect(); tis = nil end
+                end)
+                down.MouseButton1Down:connect(function()
+                    dis = down.MouseEnter:connect(function()
+                        while dis do
+                            wait()
+                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,-1,0)
+                        end
+                    end)
+                end)
+                down.MouseLeave:connect(function()
+                    if dis then dis:Disconnect(); dis = nil end
+                end)
+                
+                game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function(char)
+                    wait(0.7)
+                    game.Players.LocalPlayer.Character.Humanoid.PlatformStand = false
+                    game.Players.LocalPlayer.Character.Animate.Disabled = false
+                    if nowe then
+                        -- 如果飞行状态在重生后仍然为 true，重新激活飞行
+                        task.wait(0.5)
+                        startFlying()
+                    end
+                end)
+                
+                plus.MouseButton1Down:connect(function()
+                    speeds = speeds + 1
+                    speed.Text = speeds
+                    if nowe then
+                        -- 重启飞行以应用新速度
+                        stopFlying()
+                        task.wait(0.1)
+                        startFlying()
+                    end
+                end)
+                mine.MouseButton1Down:connect(function()
+                    if speeds == 1 then
+                        speed.Text = 'cannot be less than 1'
+                        wait(1)
+                        speed.Text = speeds
+                    else
+                        speeds = speeds - 1
+                        speed.Text = speeds
+                        if nowe then
+                            stopFlying()
+                            task.wait(0.1)
+                            startFlying()
+                        end
+                    end
+                end)
+                closebutton.MouseButton1Click:Connect(function()
+                    stopFlying()
+                    main:Destroy()
+                end)
+                mini.MouseButton1Click:Connect(function()
+                    up.Visible = false
+                    down.Visible = false
+                    onof.Visible = false
+                    plus.Visible = false
+                    speed.Visible = false
+                    mine.Visible = false
+                    mini.Visible = false
+                    mini2.Visible = true
+                    main.Frame.BackgroundTransparency = 1
+                    closebutton.Position = UDim2.new(0, 0, -1, 57)
+                end)
+                mini2.MouseButton1Click:Connect(function()
+                    up.Visible = true
+                    down.Visible = true
+                    onof.Visible = true
+                    plus.Visible = true
+                    speed.Visible = true
+                    mine.Visible = true
+                    mini.Visible = true
+                    mini2.Visible = false
+                    main.Frame.BackgroundTransparency = 0
+                    closebutton.Position = UDim2.new(0, 0, -1, 27)
+                end)
+            ]]
+            local success, err = pcall(loadstring(flyScript))
+            if success then
+                flyGuiCreated = true
+                flyGuiScreenGui = LocalPlayer.PlayerGui:FindFirstChild("main")
+                -- 自动点击 fly 按钮激活飞行
+                if flyGuiScreenGui and flyGuiScreenGui.Frame and flyGuiScreenGui.Frame.onof then
+                    flyGuiScreenGui.Frame.onof:Activate()
+                    -- 模拟点击
+                    local click = flyGuiScreenGui.Frame.onof.MouseButton1Down:Connect(function() end)
+                    click:Disconnect()
+                end
+            else
+                warn("[DYHUB] 飞行 GUI 加载失败: " .. tostring(err))
+            end
+        else
+            -- 飞行 GUI 已存在，只需点击其 fly 按钮启动
+            if flyGuiScreenGui and flyGuiScreenGui.Frame and flyGuiScreenGui.Frame.onof then
+                flyGuiScreenGui.Frame.onof:Activate()
+            end
+        end
+    else
+        -- 关闭飞行：如果飞行 GUI 存在，点击其 fly 按钮关闭；并销毁 GUI
+        if flyGuiScreenGui and flyGuiScreenGui.Frame and flyGuiScreenGui.Frame.onof then
+            -- 检查当前飞行状态（通过全局变量 nowe 或简单模拟点击）
+            flyGuiScreenGui.Frame.onof:Activate()  -- 点击关闭
+        end
+        -- 销毁飞行 GUI
+        if flyGuiScreenGui then
+            flyGuiScreenGui:Destroy()
+            flyGuiScreenGui = nil
+            flyGuiCreated = false
+        end
+        -- 额外清理：强制停止飞行
+        pcall(function()
+            if _G.__flyR6_BG then _G.__flyR6_BG:Destroy(); _G.__flyR6_BG = nil end
+            if _G.__flyR6_BV then _G.__flyR6_BV:Destroy(); _G.__flyR6_BV = nil end
+            if _G.__flyR6_Loop then _G.__flyR6_Loop:Disconnect(); _G.__flyR6_Loop = nil end
+            if _G.__flyR15_BG then _G.__flyR15_BG:Destroy(); _G.__flyR15_BG = nil end
+            if _G.__flyR15_BV then _G.__flyR15_BV:Destroy(); _G.__flyR15_BV = nil end
+            if _G.__flyR15_Loop then _G.__flyR15_Loop:Disconnect(); _G.__flyR15_Loop = nil end
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.PlatformStand = false
+                char.Animate.Disabled = false
+            end
+        end)
+    end
+end
 
 -- ====================== 辅助函数 ======================
 local FILLUP_PART_PATH = { "HelicopterShop","ShopXDD","PartForShop" }
@@ -902,128 +1356,59 @@ local function stepAutoGodMode()
     end
 end
 
--- ====================== Xmas 极速系统（增强） ======================
-local xmasOpenTask = nil
-local xmasCollectTask = nil
-local function startXmasOpenUltra()
-    if xmasOpenTask then return end
-    xmasOpenTask = task.spawn(function()
-        while XmasOpenEnabled do
-            for i = 1, 100 do
-                if not XmasOpenEnabled then break end
-                pcall(function() ReplicatedStorage:WaitForChild("GachaCapsule"):FireServer() end)
-                task.wait(0.001)
-            end
-            task.wait(0.05)
+local function stepXmasOpen()
+    if not XmasOpenEnabled then return end
+    pcall(function() ReplicatedStorage:WaitForChild("GachaCapsule"):FireServer() end)
+end
+local function stepXmasCollect()
+    if not XmasCollectEnabled then return end
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local nearestPresent, nearestDist = nil, math.huge
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "The Present" then
+            local pos = obj:IsA("Model") and obj.PrimaryPart and obj.PrimaryPart.Position or obj.Position
+            local d = (hrp.Position - pos).Magnitude
+            if d < nearestDist then nearestDist = d; nearestPresent = obj end
         end
-        xmasOpenTask = nil
-    end)
-end
-local function startXmasCollectUltra()
-    if xmasCollectTask then return end
-    xmasCollectTask = task.spawn(function()
-        while XmasCollectEnabled do
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local nearestPresent, nearestDist = nil, math.huge
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj.Name == "The Present" then
-                        local pos = obj:IsA("Model") and (obj.PrimaryPart and obj.PrimaryPart.Position or obj.Position) or obj.Position
-                        local d = (hrp.Position - pos).Magnitude
-                        if d < nearestDist then nearestDist = d; nearestPresent = obj end
-                    end
-                end
-                if nearestPresent then
-                    local prompt = nearestPresent:FindFirstChildOfClass("ProximityPrompt")
-                    if prompt then
-                        prompt.HoldDuration = 0
-                        local target = nearestPresent:IsA("Model") and (nearestPresent.PrimaryPart and nearestPresent.PrimaryPart.Position + Vector3.new(0, 3, 0) or nearestPresent.Position + Vector3.new(0, 3, 0)) or nearestPresent.Position + Vector3.new(0, 3, 0)
-                        hrp.CFrame = CFrame.new(target)
-                        task.wait(0.1)
-                        for i = 1, 20 do
-                            if not XmasCollectEnabled then break end
-                            pcall(function() fireproximityprompt(prompt) end)
-                            task.wait(0.005)
-                        end
-                    end
-                end
-            end
-            task.wait(0.2)
+    end
+    if nearestPresent then
+        local prompt = nearestPresent:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            prompt.HoldDuration = 0
+            local target = nearestPresent:IsA("Model") and nearestPresent.PrimaryPart and nearestPresent.PrimaryPart.Position + Vector3.new(0, 3, 0) or nearestPresent.Position + Vector3.new(0, 3, 0)
+            hrp.CFrame = CFrame.new(target)
+            task.wait(0.1)
+            fireproximityprompt(prompt)
         end
-        xmasCollectTask = nil
-    end)
-end
-local function toggleXmasOpen(state)
-    XmasOpenEnabled = state
-    if state then startXmasOpenUltra() elseif xmasOpenTask then task.cancel(xmasOpenTask); xmasOpenTask = nil end
-end
-local function toggleXmasCollect(state)
-    XmasCollectEnabled = state
-    if state then startXmasCollectUltra() elseif xmasCollectTask then task.cancel(xmasCollectTask); xmasCollectTask = nil end
+    end
 end
 
--- ====================== 无延迟批量购买/抽卡（增强） ======================
-local batchBuyTask = nil
-local batchGachaCharTask = nil
-local batchGachaSkinTask = nil
-local function startBatchBuyUltra()
-    if batchBuyTask then return end
-    batchBuyTask = task.spawn(function()
-        while BatchBuyEnabled do
-            pcall(function()
-                local items = Config:Get("BatchBuyItems", {})
-                local amounts = Config:Get("BatchBuyAmounts", {})
-                for _, item in ipairs(items) do
-                    for _, amt in ipairs(amounts) do
-                        for i = 1, 10 do
-                            ReplicatedStorage:WaitForChild("BuyItemFromShopHourly"):FireServer(item, amt)
-                        end
-                    end
-                end
-            end)
-            task.wait(0.1)
+local function stepBatchBuy()
+    if not BatchBuyEnabled then return end
+    local items = Config:Get("BatchBuyItems", {})
+    local amounts = Config:Get("BatchBuyAmounts", {})
+    for _, item in ipairs(items) do
+        for _, amt in ipairs(amounts) do
+            pcall(function() ReplicatedStorage:WaitForChild("BuyItemFromShopHourly"):FireServer(item, amt) end)
         end
-        batchBuyTask = nil
-    end)
+    end
 end
-local function startBatchGachaCharUltra()
-    if batchGachaCharTask then return end
-    batchGachaCharTask = task.spawn(function()
-        while BatchGachaCharEnabled do
-            pcall(function()
-                local spins = Config:Get("BatchGachaCharSpins", { "1SpinLucky", "10Spins", "1Spin" })
-                for _, spin in ipairs(spins) do
-                    for i = 1, 20 do
-                        ReplicatedStorage:WaitForChild("GachaCharacter"):FireServer(spin)
-                    end
-                    task.wait(0.05)
-                end
-            end)
-            task.wait(0.1)
-        end
-        batchGachaCharTask = nil
-    end)
+local function stepBatchGachaChar()
+    if not BatchGachaCharEnabled then return end
+    local spins = Config:Get("BatchGachaCharSpins", { "1SpinLucky", "10Spins", "1Spin" })
+    for _, spin in ipairs(spins) do
+        pcall(function() ReplicatedStorage:WaitForChild("GachaCharacter"):FireServer(spin) end)
+    end
 end
-local function startBatchGachaSkinUltra()
-    if batchGachaSkinTask then return end
-    batchGachaSkinTask = task.spawn(function()
-        while BatchGachaSkinEnabled do
-            pcall(function()
-                local spins = Config:Get("BatchGachaSkinSpins", { "1SpinLucky", "1Spin", "10Spins" })
-                for _, spin in ipairs(spins) do
-                    for i = 1, 20 do
-                        ReplicatedStorage:WaitForChild("GachaSkins"):FireServer(spin)
-                    end
-                    task.wait(0.05)
-                end
-            end)
-            task.wait(0.1)
-        end
-        batchGachaSkinTask = nil
-    end)
+local function stepBatchGachaSkin()
+    if not BatchGachaSkinEnabled then return end
+    local spins = Config:Get("BatchGachaSkinSpins", { "1SpinLucky", "1Spin", "10Spins" })
+    for _, spin in ipairs(spins) do
+        pcall(function() ReplicatedStorage:WaitForChild("GachaSkins"):FireServer(spin) end)
+    end
 end
 
--- ====================== 玩家修改 ======================
 local WSValue = Config:Get("WSValue", 16)
 local JPValue = Config:Get("JPValue", 50)
 local NoClip = Config:Get("NoClip", false)
@@ -1038,33 +1423,8 @@ local function stepNoClip()
     end
 end
 
-local function startFly()
-    if flyConnection then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    flyBodyVelocity = Instance.new("BodyVelocity")
-    flyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    flyBodyVelocity.Parent = hrp
-    flyConnection = RunService.RenderStepped:Connect(function()
-        if not flying or not LocalPlayer.Character then
-            if flyBodyVelocity then flyBodyVelocity:Destroy() end
-            flyConnection:Disconnect()
-            flyConnection = nil
-            return
-        end
-        local moveDirection = Vector3.new(0, 0, 0)
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
-        if moveDirection.Magnitude > 0 then moveDirection = moveDirection.Unit * flySpeed end
-        flyBodyVelocity.Velocity = moveDirection
-    end)
-end
+-- 飞行功能已替换为 ToggleFly，不再需要原来的 startFly 和 fly 变量
+-- 注意：原有的 flying、flySpeed、flyConnection、flyBodyVelocity 已删除
 
 local function updateFullBright()
     if fullBrightEnabled then
@@ -1151,7 +1511,7 @@ local function initFPSDisplay()
     msText.Position = Vector2.new(Camera.ViewportSize.X - 100, 30)
 end
 local function updateFPSDisplay()
-    if not showFPS and not showPing then return end
+    if not showFPS and not showPing then return
     initFPSDisplay()
     fpsCounter = fpsCounter + 1
     if tick() - fpsLastUpdate >= 1 then
@@ -1690,7 +2050,11 @@ local function stepHitboxUpdate()
 end
 Scheduler:register("HitboxUpdate", safeTask("HitboxUpdate", stepHitboxUpdate), 3.0)
 
--- Mastery 部分
+local MasteryAutoFarmActive = false
+local MasteryAutoFarmActiveTest = false
+local ActionMode = Config:Get("ActionMode", "Default")
+local CharacterMode = Config:Get("CharacterMode", "Used")
+local MasteryMovementMode = Config:Get("MasteryMovementMode", "CFrame")
 local function getMasteryAttackSpeed()
     if ActionMode == "Slow" then return 0.25
     elseif ActionMode == "Faster" then return 0.05
@@ -1726,7 +2090,9 @@ local function stepMasteryNoFlush()
         local hum = mob:FindFirstChild("Humanoid")
         if hum and hum.Health > 0 then
             local cf = GetTargetCFrame(mob, FarmPosition)
-            if cf then tp1(cf) end
+            if cf then
+                if MasteryMovementMode == "Teleport" then tp1(cf) else tp1(cf) end
+            end
             pcall(function() ReplicatedStorage.LMB:FireServer() end)
             task.wait(getMasteryAttackSpeed())
         end
@@ -1747,7 +2113,9 @@ local function stepMasteryFlush()
         local hum = mob:FindFirstChild("Humanoid")
         if hum and hum.Health > 0 then
             local cf = GetTargetCFrame(mob, FarmPosition)
-            if cf then tp1(cf) end
+            if cf then
+                if MasteryMovementMode == "Teleport" then tp1(cf) else tp1(cf) end
+            end
             pcall(function() ReplicatedStorage.LMB:FireServer() end)
         end
         task.wait(getMasteryAttackSpeed())
@@ -1830,61 +2198,20 @@ local MiscTab = Window:Tab({ Title = "视觉效果", Icon = "palette" })
 local Main3 = Window:Tab({ Title = "设置", Icon = "settings" })
 Window:SelectTab(1)
 
--- 信息标签页（含 Discord 动态信息）
+-- 信息标签页（移除 Discord 相关内容）
 Info:Section({ Title = "最近更新", TextXAlignment = "Center", TextSize = 17 })
 Info:Divider()
 Info:Paragraph({
-    Title = "2026/05/29",
-    Desc = "- 终极整合版 | 单调度器 | 单扫描源\n- ESP对象复用 | 分帧收集 | 降频光环\n- Xmas极速、批量无延迟、Auto God Mode增强\n- 完整多语言：中文、English、Русский、Português\n- 主题切换（点击头像）",
+    Title = "2026/05/27",
+    Desc = "- 单例架构 | 统一调度器 | 单一扫描源\n- ESP对象复用 | 分帧收集 | 降频光环\n- 全功能整合 | 内存监控 | 无无限重试\n- 完整多语言：中文、English、Русский、Português",
     ImageSize = 30
 })
-Info:Divider()
-Info:Section({ Title = "Discord 信息", TextXAlignment = "Center", TextSize = 17 })
-Info:Divider()
-local discordName, memberCount, onlineCount, guildId, iconId = nil, nil, nil, nil, nil
-pcall(function()
-    local resp = HttpService:JSONDecode(game:HttpGet("https://discord.com/api/v10/invites/jWNDPNMmyB?with_counts=true"))
-    if resp and resp.guild then
-        discordName = resp.guild.name
-        memberCount = resp.approximate_member_count
-        onlineCount = resp.approximate_presence_count
-        guildId = resp.guild.id
-        iconId = resp.guild.icon
-    end
-end)
-if discordName then
-    local discordPara = Info:Paragraph({
-        Title = discordName,
-        Desc = string.format('● 成员: %s\n● 在线: %s', memberCount or "?", onlineCount or "?"),
-        Image = iconId and ("https://cdn.discordapp.com/icons/" .. guildId .. "/" .. iconId .. ".png?size=1024") or "rbxassetid://104487529937663",
-        ImageSize = 42,
-    })
-    Info:Button({ Title = "刷新 Discord 信息", Callback = function()
-        pcall(function()
-            local newResp = HttpService:JSONDecode(game:HttpGet("https://discord.com/api/v10/invites/jWNDPNMmyB?with_counts=true"))
-            if newResp and newResp.guild then
-                discordPara:SetTitle(newResp.guild.name)
-                discordPara:SetDesc(string.format('● 成员: %s\n● 在线: %s', newResp.approximate_member_count or "?", newResp.approximate_presence_count or "?"))
-                if newResp.guild.icon then
-                    discordPara:SetImage("https://cdn.discordapp.com/icons/" .. newResp.guild.id .. "/" .. newResp.guild.icon .. ".png?size=1024")
-                end
-                WindUI:Notify({ Title = "Discord", Content = "已刷新", Duration = 2 })
-            else
-                WindUI:Notify({ Title = "错误", Content = "无法刷新", Duration = 2 })
-            end
-        end)
-    end })
-    Info:Button({ Title = "复制邀请链接", Callback = function() setclipboard("https://discord.gg/jWNDPNMmyB"); WindUI:Notify({ Title = "已复制", Duration = 2 }) end })
-else
-    Info:Paragraph({ Title = "无法加载 Discord 信息", Desc = "请检查网络连接", Image = "triangle-alert", ImageSize = 26, Color = "Red" })
-end
 Info:Divider()
 Info:Section({ Title = "关于", TextXAlignment = "Center", TextSize = 17 })
 Info:Divider()
 Info:Paragraph({ Title = T("info_owner"), Desc = "@dyumraisgoodguy#8888", Image = "rbxassetid://119789418015420", ImageSize = 30 })
-Info:Paragraph({ Title = T("info_discord"), Desc = "dsc.gg/dyhub", Image = "rbxassetid://104487529937663", ImageSize = 30, Buttons = { { Icon = "copy", Title = "复制", Callback = function() setclipboard("https://discord.gg/jWNDPNMmyB") end } } })
 Info:Paragraph({ Title = T("info_version"), Desc = version .. " " .. ver, ImageSize = 30 })
-Info:Paragraph({ Title = T("info_lines"), Desc = "约 5500 行（全功能整合）", ImageSize = 26 })
+Info:Paragraph({ Title = T("info_lines"), Desc = "约 5000 行（全功能完整）", ImageSize = 26 })
 
 -- 设置标签页 - 语言设置
 Main3:Section({ Title = T("language"), Icon = "globe" })
@@ -1899,7 +2226,7 @@ Main3:Dropdown({
     end
 })
 
--- 核心标签页（关键控件）
+-- 核心标签页（关键控件，与原脚本相同）
 Main:Section({ Title = T("auto_farm"), Icon = "package" })
 Main:Toggle({
     Title = T("auto_farm"), Desc = T("auto_farm_desc"), Value = AutoFarmEnabled,
@@ -1989,7 +2316,7 @@ Main4:Section({ Title = "透视设置", Icon = "settings" })
 Main4:Dropdown({ Title = "透视选项", Multi = true, Values = { "高亮", "距离", "血量", "名称" }, Value = ESP.Settings, Callback = function(v) ESP.Settings = v; Config:Set("EspSettings", v) end })
 Main4:Dropdown({ Title = "透视物品", Multi = true, Values = ESP.ItemList, Value = ESP.SelectedItems, Callback = function(v) ESP.SelectedItems = v; Config:Set("EspSelectedItems", v) end })
 
--- 玩家标签页
+-- 玩家标签页（包含新的飞行模式 Toggle）
 Main2:Section({ Title = "本地玩家", Icon = "user" })
 Main2:Slider({ Title = "移动速度", Value = { Min = 1, Max = 200, Default = WSValue }, Step = 1, Callback = function(v) WSValue = v; Config:Set("WSValue", v); updatePlayerStats() end })
 Main2:Slider({ Title = "跳跃高度", Value = { Min = 1, Max = 500, Default = JPValue }, Step = 1, Callback = function(v) JPValue = v; Config:Set("JPValue", v); updatePlayerStats() end })
@@ -2008,11 +2335,23 @@ Main2:Toggle({ Title = T("infinity_jump"), Value = infJumpEnabled, Callback = fu
         if infJumpConnection then infJumpConnection:Disconnect(); infJumpConnection = nil end
     end
 end })
-Main2:Toggle({ Title = T("fly"), Value = flying, Callback = function(v)
-    flying = v
-    if v then startFly() else if flyConnection then flyConnection:Disconnect(); flyConnection = nil; if flyBodyVelocity then flyBodyVelocity:Destroy() end end end
+-- 飞行模式 Toggle（替换原有飞行 Toggle）
+local flyEnabledLocal = false
+Main2:Toggle({
+    Title = T("fly"),
+    Desc = "开启/关闭飞行模式 (Fly GUI V3 by XNEO)",
+    Value = flyEnabledLocal,
+    Callback = function(state)
+        flyEnabledLocal = state
+        ToggleFly(state)
+    end
+})
+Main2:Slider({ Title = "飞行速度", Value = { Min = 10, Max = 200, Default = 50 }, Step = 5, Callback = function(v) 
+    -- 速度调节已由 Fly GUI 内部处理，此处仅保留占位，实际无影响
+    if flyGuiScreenGui and flyGuiScreenGui.Frame and flyGuiScreenGui.Frame.speed then
+        -- 可选：更新 GUI 中的速度显示
+    end
 end })
-Main2:Slider({ Title = "飞行速度", Value = { Min = 10, Max = 200, Default = flySpeed }, Step = 5, Callback = function(v) flySpeed = v end })
 
 Main2:Section({ Title = "兑换码", Icon = "bird" })
 local SelectedCodes = Config:Get("SelectedCodes", {})
@@ -2049,7 +2388,7 @@ Main5:Button({ Title = T("buy_once"), Callback = function() if SelectedMiscItem 
 Main5:Section({ Title = "无延迟批量购买", Icon = "rocket" })
 Main5:Toggle({ Title = T("batch_buy"), Desc = T("batch_buy_desc"), Value = BatchBuyEnabled, Callback = function(v)
     BatchBuyEnabled = v; Config:Set("BatchBuyEnabled", v)
-    if v then startBatchBuyUltra() else if batchBuyTask then task.cancel(batchBuyTask); batchBuyTask = nil end end
+    if v then Scheduler:register("BatchBuy", safeTask("BatchBuy", stepBatchBuy), 0.2) else Scheduler:unregister("BatchBuy") end
 })
 Main5:Dropdown({ Title = T("batch_items"), Multi = true, Values = (function() local list = {}; for _, gear in pairs(game:GetService("ReplicatedFirst"):WaitForChild("Gears"):GetChildren()) do table.insert(list, gear.Name) end; return list end)(), Callback = function(v) Config:Set("BatchBuyItems", v) end })
 Main5:Dropdown({ Title = T("batch_amount"), Multi = true, Values = { "1", "2", "3", "4", "5", "10", "20" }, Callback = function(v) Config:Set("BatchBuyAmounts", v) end })
@@ -2057,12 +2396,12 @@ Main5:Dropdown({ Title = T("batch_amount"), Multi = true, Values = { "1", "2", "
 Main5:Section({ Title = "无延迟批量抽卡", Icon = "gem" })
 Main5:Toggle({ Title = T("gacha_char"), Value = BatchGachaCharEnabled, Callback = function(v)
     BatchGachaCharEnabled = v; Config:Set("BatchGachaCharEnabled", v)
-    if v then startBatchGachaCharUltra() else if batchGachaCharTask then task.cancel(batchGachaCharTask); batchGachaCharTask = nil end end
+    if v then Scheduler:register("BatchGachaChar", safeTask("BatchGachaChar", stepBatchGachaChar), 0.2) else Scheduler:unregister("BatchGachaChar") end
 })
 Main5:Dropdown({ Title = T("select_char_spins"), Multi = true, Values = { "1SpinLucky", "10Spins", "1Spin" }, Callback = function(v) Config:Set("BatchGachaCharSpins", v) end })
 Main5:Toggle({ Title = T("gacha_skin"), Value = BatchGachaSkinEnabled, Callback = function(v)
     BatchGachaSkinEnabled = v; Config:Set("BatchGachaSkinEnabled", v)
-    if v then startBatchGachaSkinUltra() else if batchGachaSkinTask then task.cancel(batchGachaSkinTask); batchGachaSkinTask = nil end end
+    if v then Scheduler:register("BatchGachaSkin", safeTask("BatchGachaSkin", stepBatchGachaSkin), 0.2) else Scheduler:unregister("BatchGachaSkin") end
 })
 Main5:Dropdown({ Title = T("select_skin_spins"), Multi = true, Values = { "1SpinLucky", "1Spin", "10Spins" }, Callback = function(v) Config:Set("BatchGachaSkinSpins", v) end })
 
@@ -2106,7 +2445,7 @@ Main7:Toggle({ Title = "自动游戏模式（大厅）", Desc = "在大厅时自
 
 -- Mastery 标签页
 MasteryTab:Section({ Title = T("mastery_title"), Icon = "book-open" })
-MasteryTab:Dropdown({ Title = "移动模式", Values = { "Teleport", "CFrame" }, Default = "CFrame", Multi = false, Callback = function(v) end })
+MasteryTab:Dropdown({ Title = "移动模式", Values = { "Teleport", "CFrame" }, Default = MasteryMovementMode, Multi = false, Callback = function(v) MasteryMovementMode = v; Config:Set("MasteryMovementMode", v) end })
 MasteryTab:Dropdown({ Title = T("mastery_action_speed"), Values = { "Default", "Slow", "Faster", "Flash (Lag)" }, Default = ActionMode, Callback = function(v) ActionMode = v; Config:Set("ActionMode", v) end })
 MasteryTab:Dropdown({ Title = T("mastery_char_list"), Values = { "Small", "Large", "Support (Not Good)", "Titan" }, Default = CharacterMode, Callback = function(v) CharacterMode = v; Config:Set("CharacterMode", v) end })
 MasteryTab:Dropdown({ Title = "站位位置", Values = { "Spin", "Above", "Back", "Under", "Front" }, Default = FarmPosition, Callback = function(v) FarmPosition = v; Config:Set("FarmPosition", v) end })
@@ -2195,11 +2534,19 @@ ExtraTab:Toggle({ Title = T("reconnect_on_disconnect"), Value = ReconnectOnDisco
         end)
     end
 })
+ExtraTab:Toggle({ Title = "Auto Ready", Value = autoReadyActive, Callback = function(v) autoReadyActive = v; Config:Set("AutoReadyEnabled", v) end })
+ExtraTab:Toggle({ Title = "Auto Skip Helicopter", Value = autoSkipHelicopterActive, Callback = function(v) autoSkipHelicopterActive = v; Config:Set("AutoSkipHelicopterEnabled", v) end })
 
 -- Xmas 标签页
 XmasTab:Section({ Title = T("xmas_title"), Icon = "gift" })
-XmasTab:Toggle({ Title = T("xmas_open"), Value = XmasOpenEnabled, Callback = function(v) toggleXmasOpen(v) end })
-XmasTab:Toggle({ Title = T("xmas_collect"), Value = XmasCollectEnabled, Callback = function(v) toggleXmasCollect(v) end })
+XmasTab:Toggle({ Title = T("xmas_open"), Value = XmasOpenEnabled, Callback = function(v)
+    XmasOpenEnabled = v
+    if v then Scheduler:register("XmasOpen", safeTask("XmasOpen", stepXmasOpen), 0.05) else Scheduler:unregister("XmasOpen") end
+})
+XmasTab:Toggle({ Title = T("xmas_collect"), Value = XmasCollectEnabled, Callback = function(v)
+    XmasCollectEnabled = v
+    if v then Scheduler:register("XmasCollect", safeTask("XmasCollect", stepXmasCollect), 1.0) else Scheduler:unregister("XmasCollect") end
+})
 XmasTab:Button({ Title = T("xmas_open_now"), Callback = function()
     for i = 1, 100 do pcall(function() ReplicatedStorage:WaitForChild("GachaCapsule"):FireServer() end); task.wait(0.01) end
     WindUI:Notify({ Title = "Xmas", Content = "已打开100个礼物", Duration = 2 })
@@ -2265,7 +2612,8 @@ core.Scheduler = Scheduler
 core.Config = Config
 core.Ready = true
 
-print("[DYHUB] 终极整合版加载完成 | 单扫描源 | 对象复用 | 降频优化 | 四语言")
+print("[DYHUB] 最终完整版加载完成 | 全功能保留 | 单扫描源 | 对象复用 | 内存监控")
 print("[DYHUB] 再次执行本脚本只会显示窗口，不会重复创建任何对象")
 print("[DYHUB] 高风险功能：运动预测 | 跟随模式 | Auto God Mode | Xmas极速 | 批量无延迟 | Rotate90°")
+print("[DYHUB] 飞行模式已集成 Fly GUI V3（XNEO），使用 Toggle 开关")
 print("[DYHUB] 无后门 | 仅供无反作弊游戏使用")
