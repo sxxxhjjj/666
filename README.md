@@ -1,1767 +1,2430 @@
--- ============================================================================
--- DYHUB 完整稳定版 | 全功能 | 单调度器 | 内存安全 | 无后门纯净版
--- 版本: v044.0-FINAL-CLEAN-FLY
--- 包含: 自动挂机、ESP、Mastery、Hitbox、Quest、Xmas、批量、天文模式、多语言等
--- 修复: T()全局化、无无限重试、内存监控、连接管理
--- 飞行: 集成 Fly GUI V3（XNEO），通过 Toggle 控制开/关
--- 移除: Discord 链接、版本验证、Infinity Yield、所有外部后门
--- ============================================================================
+-- v085 汉化无后门完整版 | 基于原版 stbb.lua 完整修改
+-- 修改：UI 全中文，内部存储/通信使用英文
+local version = "Rework"
+local ver = "v023.4-纯净版"
 
-if getgenv().DYHUB and getgenv().DYHUB.Window then
-    getgenv().DYHUB.Window:SetVisible(true)
-    getgenv().DYHUB.Window:SelectTab(1)
-    return
-end
-if not getgenv().DYHUB then getgenv().DYHUB = {} end
-local core = getgenv().DYHUB
+-- ====================== LOAD UI ======================
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-setfpscap(60)
-local version = "Final Clean Fly"
-local ver = "v044.0-FINAL-CLEAN-FLY"
-local currentLanguage = "Chinese"
-pcall(function() delfolder("DYHUB_FINAL") end)
-
-fireproximityprompt = fireproximityprompt or function(prompt)
-    prompt:InputHoldBegin()
-    task.wait(0.05)
-    prompt:InputHoldEnd()
-end
-
--- ====================== 完整多语言表（中英俄葡） ======================
-local translations = {
-    Chinese = {
-        loading = "游戏加载中...", loaded = "加载完成，3秒后启动",
-        auto_farm = "自动挂机", auto_farm_desc = "根据优先级自动刷怪", farm_enabled = "已开启", farm_disabled = "已关闭",
-        sync_mode = "同步挂机模式", sync_mode_desc = "辅助功能需自动挂机开启", sync_on = "需自动挂机", sync_off = "辅助功能独立",
-        position_above = "上方", position_under = "下方",
-        auto_attack = "自动攻击", auto_skill = "自动技能", auto_ready = "自动开局", auto_skip_heli = "自动跳过直升机",
-        auto_heal = "自动补血", safe_mode = "安全模式", god_mode = "上帝模式", delete_map = "删除地图",
-        flush_aura = "冲水光环", flush_range = "冲水范围", attack_speed = "攻击速度", skill_delay = "技能延迟",
-        height_offset = "挂机高度偏移", safe_threshold = "安全模式血量", god_threshold = "上帝模式血量", high_hp_threshold = "高血量阈值",
-        esp_enable = "启用透视", esp_mob = "怪物透视", esp_player = "玩家透视", esp_item = "物品透视",
-        esp_highlight = "高亮", esp_distance = "距离", esp_health = "血量", esp_name = "名称",
-        vote_normal = "普通模式", vote_hard = "困难", vote_veryhard = "非常困难", vote_insane = "疯狂",
-        vote_nightmare = "噩梦", vote_bossrush = "首领连战", vote_darkdim = "暗黑维度", vote_hell = "地狱",
-        vote_thunder = "雷暴", vote_christmas = "圣诞", vote_zombie = "僵尸", vote_astro = "天文模式",
-        auto_collect = "自动收集", collect_mode_clean = "清理模式", collect_mode_idgf = "即时模式",
-        mastery_title = "熟练度自动刷", mastery_no_flush = "无冲水", mastery_flush = "冲水模式",
-        hitbox_title = "碰撞箱", hitbox_scan = "扫描", hitbox_size = "大小", hitbox_enable = "启用", hitbox_show = "显示",
-        quest_title = "任务辅助", quest_open_clock = "打开时钟人菜单", quest_open_quest = "打开任务菜单",
-        quest_auto_collect = "自动收集任务物品", quest_auto_skip = "自动跳过任务",
-        auto_rebirth = "自动重生", auto_daily = "自动每日奖励", auto_chest = "自动开宝箱",
-        motion_prediction = "运动预测", motion_prediction_desc = "预判怪物位置并瞬移（高危）",
-        follow_mode = "跟随模式", follow_mode_desc = "每帧黏住怪物（极高危）",
-        auto_god_mode = "自动无敌重生", auto_god_mode_desc = "血量低于阈值自动重生", god_respawn_threshold = "重生触发血量",
-        xmas_title = "Xmas极速系统", xmas_open = "自动开礼物（极速）", xmas_collect = "自动收集The Present（极速）", xmas_open_now = "立即开100个礼物",
-        batch_buy = "无延迟批量购买", batch_buy_desc = "超快速度购买商店物品",
-        batch_gacha = "无延迟批量抽卡", batch_gacha_char = "批量抽角色", batch_gacha_skin = "批量抽皮肤",
-        rotate_90 = "旋转90°模式", rotate_90_desc = "站立时旋转90度",
-        fullbright = "全亮", nofog = "去雾", vibrant = "鲜艳色彩", show_fps = "显示FPS", show_ping = "显示Ping",
-        fly = "飞行模式", infinity_jump = "无限跳跃", no_clip = "穿墙",
-        server_hop = "更换服务器", rejoin = "重新加入", save_config = "保存配置", anti_afk = "防挂机检测",
-        bypass_barrier = "绕过边界（已失效）", fps_boost = "FPS极限优化", theme = "主题", language = "语言",
-    },
-    English = {
-        loading = "Loading game...", loaded = "Loaded, starting in 3s",
-        auto_farm = "Auto Farm", auto_farm_desc = "Priority-based auto farm", farm_enabled = "Enabled", farm_disabled = "Disabled",
-        sync_mode = "Sync Farm Mode", sync_mode_desc = "Aux functions need auto farm", sync_on = "Need auto farm", sync_off = "Aux functions independent",
-        position_above = "Above", position_under = "Under",
-        auto_attack = "Auto Attack", auto_skill = "Auto Skill", auto_ready = "Auto Start", auto_skip_heli = "Auto Skip Heli",
-        auto_heal = "Auto Heal", safe_mode = "Safe Mode", god_mode = "God Mode", delete_map = "Delete Map",
-        flush_aura = "Flush Aura", flush_range = "Flush Range", attack_speed = "Attack Speed", skill_delay = "Skill Delay",
-        height_offset = "Height Offset", safe_threshold = "Safe HP", god_threshold = "God HP", high_hp_threshold = "High HP Threshold",
-        esp_enable = "Enable ESP", esp_mob = "Mob ESP", esp_player = "Player ESP", esp_item = "Item ESP",
-        esp_highlight = "Highlight", esp_distance = "Distance", esp_health = "Health", esp_name = "Name",
-        vote_normal = "Normal", vote_hard = "Hard", vote_veryhard = "Very Hard", vote_insane = "Insane",
-        vote_nightmare = "Nightmare", vote_bossrush = "Boss Rush", vote_darkdim = "Dark Dimension", vote_hell = "Hell",
-        vote_thunder = "Thunder Storm", vote_christmas = "Christmas", vote_zombie = "Zombie", vote_astro = "Astro",
-        auto_collect = "Auto Collect", collect_mode_clean = "Clean", collect_mode_idgf = "IDGF",
-        mastery_title = "Auto Mastery", mastery_no_flush = "No Flush", mastery_flush = "Flush Mode",
-        hitbox_title = "Hitbox", hitbox_scan = "Scan", hitbox_size = "Size", hitbox_enable = "Enable", hitbox_show = "Show",
-        quest_title = "Quest Helper", quest_open_clock = "Clock-Man Menu", quest_open_quest = "Quest Menu",
-        quest_auto_collect = "Auto Collect", quest_auto_skip = "Auto Skip",
-        auto_rebirth = "Auto Rebirth", auto_daily = "Auto Daily", auto_chest = "Auto Chest",
-        motion_prediction = "Motion Prediction", motion_prediction_desc = "Predict NPC position & teleport (high risk)",
-        follow_mode = "Follow Mode", follow_mode_desc = "Stick to NPC every frame (extremely high risk)",
-        auto_god_mode = "Auto God Mode", auto_god_mode_desc = "Auto respawn when HP low", god_respawn_threshold = "Respawn HP threshold",
-        xmas_title = "Xmas Ultra Fast", xmas_open = "Auto Open Gifts (Ultra Fast)", xmas_collect = "Auto Collect The Present (Ultra Fast)", xmas_open_now = "Open 100 Gifts Now",
-        batch_buy = "Batch Buy (No Delay)", batch_buy_desc = "Ultra fast shop buying",
-        batch_gacha = "Batch Gacha (No Delay)", batch_gacha_char = "Batch Pull Characters", batch_gacha_skin = "Batch Pull Skins",
-        rotate_90 = "Rotate 90° Mode", rotate_90_desc = "Rotate character 90 degrees",
-        fullbright = "Full Bright", nofog = "No Fog", vibrant = "Vibrant Colors", show_fps = "Show FPS", show_ping = "Show Ping",
-        fly = "Fly Mode", infinity_jump = "Infinity Jump", no_clip = "No Clip",
-        server_hop = "Server Hop", rejoin = "Rejoin", save_config = "Save Config", anti_afk = "Anti AFK",
-        bypass_barrier = "Bypass Barrier (Patched)", fps_boost = "FPS Boost", theme = "Theme", language = "Language",
-    },
-    Russian = {
-        loading = "Загрузка...", loaded = "Загружено, старт через 3с",
-        auto_farm = "Авто ферма", auto_farm_desc = "Приоритетная ферма", farm_enabled = "Вкл", farm_disabled = "Выкл",
-        sync_mode = "Синхронный режим", sync_mode_desc = "Вспом. функции требуют ферму", sync_on = "Нужна ферма", sync_off = "Независимы",
-        position_above = "Сверху", position_under = "Снизу",
-        auto_attack = "Авто атака", auto_skill = "Авто умение", auto_ready = "Авто старт", auto_skip_heli = "Пропустить вертолёт",
-        auto_heal = "Авто лечение", safe_mode = "Безопасный режим", god_mode = "Режим бога", delete_map = "Удалить карту",
-        flush_aura = "Аура слива", flush_range = "Радиус", attack_speed = "Скорость атаки", skill_delay = "Задержка умений",
-        height_offset = "Смещение высоты", safe_threshold = "Порог ХП", god_threshold = "Порог бога", high_hp_threshold = "Порог высокого ХП",
-        esp_enable = "Включить ESP", esp_mob = "ESP мобов", esp_player = "ESP игроков", esp_item = "ESP предметов",
-        esp_highlight = "Подсветка", esp_distance = "Дистанция", esp_health = "Здоровье", esp_name = "Имя",
-        vote_normal = "Нормальный", vote_hard = "Сложный", vote_veryhard = "Очень сложный", vote_insane = "Безумный",
-        vote_nightmare = "Кошмар", vote_bossrush = "Босс раш", vote_darkdim = "Тёмное измерение", vote_hell = "Ад",
-        vote_thunder = "Гроза", vote_christmas = "Рождество", vote_zombie = "Зомби", vote_astro = "Астро",
-        auto_collect = "Авто сбор", collect_mode_clean = "После волны", collect_mode_idgf = "Мгновенно",
-        mastery_title = "Авто мастерство", mastery_no_flush = "Без слива", mastery_flush = "Режим слива",
-        hitbox_title = "Хитбокс", hitbox_scan = "Сканировать", hitbox_size = "Размер", hitbox_enable = "Включить", hitbox_show = "Показать",
-        quest_title = "Помощник заданий", quest_open_clock = "Меню часового", quest_open_quest = "Меню заданий",
-        quest_auto_collect = "Авто сбор", quest_auto_skip = "Авто пропуск",
-        auto_rebirth = "Авто возрождение", auto_daily = "Ежедневные", auto_chest = "Сундуки",
-        motion_prediction = "Предсказание движения", motion_prediction_desc = "Предугадать позицию НПС и телепортироваться (опасно)",
-        follow_mode = "Режим следования", follow_mode_desc = "Прилипать к НПС каждый кадр (очень опасно)",
-        auto_god_mode = "Авто режим бога", auto_god_mode_desc = "Авто возрождение при низком ХП", god_respawn_threshold = "Порог возрождения",
-        xmas_title = "Xmas супер быстрый", xmas_open = "Авто открытие подарков", xmas_collect = "Авто сбор The Present", xmas_open_now = "Открыть 100 подарков",
-        batch_buy = "Пакетная покупка", batch_buy_desc = "Очень быстрая покупка",
-        batch_gacha = "Пакетная гача", batch_gacha_char = "Пакетный抽 персонажей", batch_gacha_skin = "Пакетный抽 скинов",
-        rotate_90 = "Поворот на 90°", rotate_90_desc = "Повернуть персонажа на 90 градусов",
-        fullbright = "Полная яркость", nofog = "Без тумана", vibrant = "Яркие цвета", show_fps = "Показать FPS", show_ping = "Показать пинг",
-        fly = "Режим полёта", infinity_jump = "Бесконечный прыжок", no_clip = "Нет столкновений",
-        server_hop = "Смена сервера", rejoin = "Перезайти", save_config = "Сохранить конфиг", anti_afk = "Анти-AFK",
-        bypass_barrier = "Обход границ (не работает)", fps_boost = "FPS буст", theme = "Тема", language = "Язык",
-    },
-    Portuguese = {
-        loading = "Carregando...", loaded = "Carregado, iniciando em 3s",
-        auto_farm = "Auto Farm", auto_farm_desc = "Farm por prioridade", farm_enabled = "Ativado", farm_disabled = "Desativado",
-        sync_mode = "Modo Sincronizado", sync_mode_desc = "Funções auxiliares precisam do auto farm", sync_on = "Precisa auto farm", sync_off = "Independentes",
-        position_above = "Acima", position_under = "Abaixo",
-        auto_attack = "Auto Ataque", auto_skill = "Auto Habilidade", auto_ready = "Auto Início", auto_skip_heli = "Auto Pular Heli",
-        auto_heal = "Auto Cura", safe_mode = "Modo Seguro", god_mode = "Modo Deus", delete_map = "Deletar Mapa",
-        flush_aura = "Aura Descarga", flush_range = "Alcance", attack_speed = "Velocidade Ataque", skill_delay = "Atraso Habilidade",
-        height_offset = "Deslocamento Altura", safe_threshold = "Limite HP Seguro", god_threshold = "Limite HP Deus", high_hp_threshold = "Limite HP Alto",
-        esp_enable = "Ativar ESP", esp_mob = "ESP Monstros", esp_player = "ESP Jogadores", esp_item = "ESP Itens",
-        esp_highlight = "Destaque", esp_distance = "Distância", esp_health = "Vida", esp_name = "Nome",
-        vote_normal = "Normal", vote_hard = "Difícil", vote_veryhard = "Muito Difícil", vote_insane = "Insano",
-        vote_nightmare = "Pesadelo", vote_bossrush = "Boss Rush", vote_darkdim = "Dimensão Sombria", vote_hell = "Inferno",
-        vote_thunder = "Tempestade", vote_christmas = "Natal", vote_zombie = "Zumbi", vote_astro = "Astro",
-        auto_collect = "Auto Coleta", collect_mode_clean = "Limpo", collect_mode_idgf = "IDGF",
-        mastery_title = "Auto Maestria", mastery_no_flush = "Sem Descarga", mastery_flush = "Modo Descarga",
-        hitbox_title = "Hitbox", hitbox_scan = "Escanear", hitbox_size = "Tamanho", hitbox_enable = "Ativar", hitbox_show = "Mostrar",
-        quest_title = "Ajudante de Missões", quest_open_clock = "Menu Relógio", quest_open_quest = "Menu Missões",
-        quest_auto_collect = "Auto Coletar", quest_auto_skip = "Auto Pular",
-        auto_rebirth = "Auto Renascimento", auto_daily = "Recompensas Diárias", auto_chest = "Baús",
-        motion_prediction = "Predição de Movimento", motion_prediction_desc = "Prever posição do NPC e teletransportar (risco)",
-        follow_mode = "Modo Seguir", follow_mode_desc = "Grudar no NPC a cada quadro (altíssimo risco)",
-        auto_god_mode = "Auto Modo Deus", auto_god_mode_desc = "Auto renascer quando HP baixo", god_respawn_threshold = "Limite renascimento",
-        xmas_title = "Xmas Ultra Rápido", xmas_open = "Auto Abrir Presentes", xmas_collect = "Auto Coletar The Present", xmas_open_now = "Abrir 100 Presentes",
-        batch_buy = "Compra em Lote", batch_buy_desc = "Compra super rápida",
-        batch_gacha = "Gacha em Lote", batch_gacha_char = "Puxar Personagens", batch_gacha_skin = "Puxar Skins",
-        rotate_90 = "Rotação 90°", rotate_90_desc = "Rotacionar personagem 90 graus",
-        fullbright = "Brilho Total", nofog = "Sem Névoa", vibrant = "Cores Vibrantes", show_fps = "Mostrar FPS", show_ping = "Mostrar Ping",
-        fly = "Modo de Voo", infinity_jump = "Pulo Infinito", no_clip = "Sem Colisão",
-        server_hop = "Trocar Servidor", rejoin = "Reentrar", save_config = "Salvar Config", anti_afk = "Anti AFK",
-        bypass_barrier = "Ignorar Barreira (Quebrado)", fps_boost = "Otimizar FPS", theme = "Tema", language = "Idioma",
-    },
-}
-getgenv().DYHUB_T = function(key) return (translations[currentLanguage] and translations[currentLanguage][key]) or key end
-local function T(key) return getgenv().DYHUB_T(key) end
-
--- ====================== 加载 WindUI（原版方式） ======================
-local function LoadWindUI()
-    if core.WindUI then return core.WindUI end
-    local url = "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
-    local success, res = pcall(function() return loadstring(game:HttpGet(url))() end)
-    if success and res then
-        core.WindUI = res
-        return res
-    end
-    error("WindUI 加载失败")
-end
-local WindUI = LoadWindUI()
-
+-- ====================== GameLoad ======================
 repeat task.wait() until game:IsLoaded()
-local LocalPlayer = game:GetService("Players").LocalPlayer
-local pg = LocalPlayer:WaitForChild("PlayerGui")
-WindUI:Notify({ Title = "DYHUB", Content = T("loaded"), Duration = 3 })
+
+-- ====================== LoadingGui ======================
+local p = game:GetService("Players").LocalPlayer
+local pg = p:WaitForChild("PlayerGui")
+
+local function waitLoadingGone()
+    local gui = pg:FindFirstChild("LoadingGui")
+    if gui then
+        WindUI:Notify({ Title = "初始化", Content = "游戏加载中，请稍候...", Duration = 3, Icon = "download" })
+        gui.AncestryChanged:Wait()
+    end
+end
+
+waitLoadingGone()
+
+WindUI:Notify({ Title = "初始化", Content = "加载完成，3秒后启动", Duration = 3, Icon = "shield-check" })
 task.wait(3)
 
--- 添加6种安全主题
-WindUI:AddTheme({ Name = "Dark", Accent = "#18181b", Dialog = "#18181b", Outline = "#FFFFFF", Text = "#FFFFFF", Placeholder = "#999999", Background = "#0e0e10", Button = "#52525b", Icon = "#a1a1aa" })
-WindUI:AddTheme({ Name = "Light", Accent = "#f4f4f5", Dialog = "#f4f4f5", Outline = "#000000", Text = "#000000", Placeholder = "#666666", Background = "#ffffff", Button = "#e4e4e7", Icon = "#52525b" })
-WindUI:AddTheme({ Name = "Gray", Accent = "#374151", Dialog = "#374151", Outline = "#d1d5db", Text = "#f9fafb", Placeholder = "#9ca3af", Background = "#1f2937", Button = "#4b5563", Icon = "#d1d5db" })
-WindUI:AddTheme({ Name = "Blue", Accent = "#1e40af", Dialog = "#1e3a8a", Outline = "#93c5fd", Text = "#f0f9ff", Placeholder = "#60a5fa", Background = "#1e293b", Button = "#3b82f6", Icon = "#93c5fd" })
-WindUI:AddTheme({ Name = "Green", Accent = "#059669", Dialog = "#047857", Outline = "#6ee7b7", Text = "#ecfdf5", Placeholder = "#34d399", Background = "#064e3b", Button = "#10b981", Icon = "#6ee7b7" })
-WindUI:AddTheme({ Name = "Purple", Accent = "#7c3aed", Dialog = "#6d28d9", Outline = "#c4b5fd", Text = "#faf5ff", Placeholder = "#a78bfa", Background = "#581c87", Button = "#8b5cf6", Icon = "#c4b5fd" })
+-- ====================== FPS UNLOCK ======================
+local part = Instance.new("Part")
+part.Size = Vector3.new(10, 1, 10)
+part.Position = Vector3.new(-23.3435822, 61, 0.341766357)
+part.Transparency = 1
+part.Anchored = true
+part.CanCollide = true
+part.Material = Enum.Material.Neon
+part.BrickColor = BrickColor.new("Bright blue")
+part.Name = "DYHUB_WAITING_PART"
+part.Parent = workspace
 
--- ====================== 配置系统 ======================
+if setfpscap then
+    setfpscap(1000000)
+    WindUI:Notify({ Title = "服务", Content = "FPS 已解锁 | " .. ver, Duration = 3, Icon = "cpu" })
+    warn("FPS Unlocked!")
+else
+    WindUI:Notify({ Title = "不支持", Content = "您的执行器不支持 setfpscap.", Duration = 3, Icon = "ban" })
+end
+
+-- ====================== CUSTOM CONFIG SYSTEM ======================
 local HttpService = game:GetService("HttpService")
-local ConfigFolder = "DYHUB_FINAL"
+local ConfigFolder = "DYHUB_STBB_V0234"
+
 local CustomConfig = {}
 CustomConfig.__index = CustomConfig
+
 function CustomConfig.new()
     local self = setmetatable({}, CustomConfig)
     self.ConfigData = {}
-    self.ConfigPath = ConfigFolder.."/config.json"
+    self.ConfigPath = ConfigFolder .. "/config.json"
     if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
     self:Load()
     return self
 end
-function CustomConfig:Set(k,v) self.ConfigData[k]=v end
-function CustomConfig:Get(k,def) return self.ConfigData[k]~=nil and self.ConfigData[k] or def end
-function CustomConfig:Save() pcall(function() writefile(self.ConfigPath, HttpService:JSONEncode(self.ConfigData)) end) end
-function CustomConfig:Load()
-    if isfile(self.ConfigPath) then pcall(function() self.ConfigData=HttpService:JSONDecode(readfile(self.ConfigPath)) end) end
+
+function CustomConfig:Set(key, value) self.ConfigData[key] = value end
+
+function CustomConfig:Get(key, default)
+    if self.ConfigData[key] ~= nil then return self.ConfigData[key] end
+    return default
 end
-core.Config = CustomConfig.new()
-local Config = core.Config
-task.spawn(function() while true do task.wait(15); Config:Save() end end)
 
--- ====================== 内存监控 ======================
-task.spawn(function()
-    while true do
-        task.wait(30)
-        local mem = collectgarbage("count")
-        if mem > 800000 then
-            collectgarbage()
-            if mem > 1200000 then
-                if Scanner then Scanner.Cache = { mobs = {}, items = {}, flushPrompts = {} } end
-                if KnownCollectItems then for k in pairs(KnownCollectItems) do KnownCollectItems[k] = nil end end
-                if MobHeightOverride then for k in pairs(MobHeightOverride) do MobHeightOverride[k] = nil end end
-                if MobConfirmedPadding then for k in pairs(MobConfirmedPadding) do MobConfirmedPadding[k] = nil end end
-                print("[DYHUB] 内存超限，已清理缓存")
-            end
+function CustomConfig:Save()
+    local success, err = pcall(function()
+        writefile(self.ConfigPath, HttpService:JSONEncode(self.ConfigData))
+    end)
+    if success then warn("[DYHUB] Config saved!") else warn("[DYHUB] Save failed:", err) end
+end
+
+function CustomConfig:Load()
+    if isfile(self.ConfigPath) then
+        local success, result = pcall(function()
+            return HttpService:JSONDecode(readfile(self.ConfigPath))
+        end)
+        if success and type(result) == "table" then
+            self.ConfigData = result
+            print("[DYHUB] Config loaded!")
+        else
+            warn("[DYHUB] Failed to load config, using defaults")
+            self.ConfigData = {}
         end
+    else
+        print("[DYHUB] No config found, creating new one")
+        self.ConfigData = {}
     end
-end)
+end
 
--- ====================== 全局服务与变量 ======================
+function CustomConfig:AutoSave(interval)
+    task.spawn(function()
+        while true do
+            task.wait(interval or 15)
+            self:Save()
+        end
+    end)
+end
+
+local Config = CustomConfig.new()
+Config:AutoSave(15)
+
+-- ====================== WINDOW 2 ======================
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
-local Lighting = game:GetService("Lighting")
-local TeleportService = game:GetService("TeleportService")
-local Stats = game:GetService("Stats")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-getgenv().ACTIVE_MODE = Config:Get("ActiveMode", "farm")
 
--- 全局表
+-- 已删除 Premium 验证代码，直接设置为免费版
+local userversion = "免费版"
+
+-- ====================== WINDOW ======================
+local Window = WindUI:CreateWindow({
+    Title = "DYHUB",
+    IconThemed = true,
+    Icon = "rbxassetid://93661445926652/",
+    Author = "STBB | " .. userversion,
+    Folder = "DYHUB",
+    Size = UDim2.fromOffset(550, 380),
+    Transparent = true,
+    Theme = "Dark",
+    BackgroundImageTransparency = 0.8,
+    HasOutline = false,
+    HideSearchBar = true,
+    ScrollBarEnabled = true,
+    User = { Enabled = true, Anonymous = false },
+})
+
+Window:Tag({ Title = version, Color = Color3.fromHex("#db7093") })
+
+Window:EditOpenButton({
+    Title = "DYHUB - 打开",
+    Icon = "monitor",
+    CornerRadius = UDim.new(0, 6),
+    StrokeThickness = 2,
+    Color = ColorSequence.new(Color3.fromRGB(30, 30, 30), Color3.fromRGB(255, 255, 255)),
+    Draggable = true
+})
+
+-- ====================== TABS ======================
+local Info   = Window:Tab({ Title = "信息", Icon = "info" })
+MainDivider  = Window:Divider()
+local Main   = Window:Tab({ Title = "核心", Icon = "rocket" })
+local Main4  = Window:Tab({ Title = "透视", Icon = "eye" })
+local Main2  = Window:Tab({ Title = "玩家", Icon = "user" })
+MainDivider1 = Window:Divider()
+local Main5  = Window:Tab({ Title = "商店", Icon = "shopping-cart" })
+local Main6  = Window:Tab({ Title = "收集", Icon = "hand" })
+local Main7  = Window:Tab({ Title = "模式", Icon = "gamepad-2" })
+MainDivider2 = Window:Divider()
+local Main3  = Window:Tab({ Title = "设置", Icon = "settings" })
+Window:SelectTab(1)
+
+-- ======================== INFO ========================
+Info:Section({ Title = "最近更新", TextXAlignment = "Center", TextSize = 17 })
+Info:Divider()
+Info:Paragraph({
+    Title = "更新: 2026/05/16",
+    Desc = "- [新增] 优先级系统\n- [新增] 恢复投票系统\n- [新增] 上帝模式\n- [新增] 解锁通行证\n- [修复] 怪物高度覆写\n- [修复] 透视核心\n- [优化] 删除地图",
+    Image = "rbxassetid://104487529937663",
+    ImageSize = 30,
+})
+Info:Divider()
+Info:Section({ Title = "DYHUB 信息", TextXAlignment = "Center", TextSize = 17 })
+Info:Divider()
+Info:Paragraph({ Title = "纯净版", Desc = "无后门 | 中文界面 | 完整功能", Image = "rbxassetid://104487529937663", ImageSize = 30 })
+
+-- ====================== SERVICES ======================
+local TweenService       = game:GetService("TweenService")
+local ReplicatedStorage  = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService         = game:GetService("RunService")
+
+-- ====================== PLAYER ======================
+local LocalPlayer    = Players.LocalPlayer
+local Client         = LocalPlayer
+local Character      = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- ====================== GLOBAL TABLES ======================
 GlobalTables = {
-    redeemCodes = { "100MVisit2","100MVisit1","CamArmada","CCTVBase","ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad" },
-    ModeDisplay = { T("vote_normal"),T("vote_hard"),T("vote_veryhard"),T("vote_insane"),T("vote_nightmare"),T("vote_bossrush"),T("vote_darkdim"),T("vote_hell"),T("vote_thunder"),T("vote_christmas"),T("vote_zombie"),T("vote_astro") },
-    ModeInternal = { [T("vote_normal")]="Normal",[T("vote_hard")]="Hard",[T("vote_veryhard")]="VeryHard",[T("vote_insane")]="Insane",[T("vote_nightmare")]="Nightmare",[T("vote_bossrush")]="BossRush",[T("vote_darkdim")]="DarkDimension",[T("vote_hell")]="Hell",[T("vote_thunder")]="ThunderStorm",[T("vote_christmas")]="Christmas",[T("vote_zombie")]="Zombie",[T("vote_astro")]="Astro" },
-    Votes = { "Normal","Hard","VeryHard","Insane","Nightmare","BossRush","DarkDimension","Hell","ThunderStorm","Christmas","Zombie","Astro","AstroV2" },
-    WeaponDisplay = { "电击枪","火焰喷射器","鱼叉枪","霰弹枪","脉冲步枪","鱼叉霰弹枪","EPD","小型激光枪" },
-    WeaponInternal = { ["电击枪"]="Stungun",["火焰喷射器"]="Flamethrower",["鱼叉枪"]="Harpoon Gun",["霰弹枪"]="Shot Gun",["脉冲步枪"]="Pulse Rifle",["鱼叉霰弹枪"]="Shot Harpoon Gun",["EPD"]="EPD",["小型激光枪"]="Small Laser Gun" },
-    MiscDisplay = { "耳机","泰坦呼叫","特种泰坦呼叫","扬声器呼叫","手雷","喷气背包","透镜" },
-    MiscInternal = { ["耳机"]="HeadPhone",["泰坦呼叫"]="Titan-Request",["特种泰坦呼叫"]="SpecialTitan-Request",["扬声器呼叫"]="Speaker-Request",["手雷"]="Grenade",["喷气背包"]="Jetpack",["透镜"]="Lens" },
-    Gamepasst = { "全部","幸运加成","稀有幸运加成","传说幸运加成" },
+    redeemCodes = { "100MVisit2", "100MVisit1", "CamArmada", "CCTVBase", "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad" },
+    -- 模式名称（中文显示），内部存储用英文映射
+    ModeDisplay = { "普通模式", "模糊记忆", "极限模式", "困难模式", "疯狂模式", "噩梦模式", "首领连战", "暗黑维度", "地狱", "迷雾", "圣诞行动1", "僵尸行动1", "坚守模式", "入侵" },
+    ModeInternal = {
+        ["普通模式"] = "Normal Mode", ["模糊记忆"] = "Vague Memory", ["极限模式"] = "Extreme Mode",
+        ["困难模式"] = "Hard Mode", ["疯狂模式"] = "Insane Mode", ["噩梦模式"] = "Nightmare Mode",
+        ["首领连战"] = "Boss Rush", ["暗黑维度"] = "Dark Dimension", ["地狱"] = "Hell", ["迷雾"] = "Mist",
+        ["圣诞行动1"] = "Christmas Act 1", ["僵尸行动1"] = "Zombie Act 1", ["坚守模式"] = "Holdout", ["入侵"] = "Invasion"
+    },
+    Votes = {
+        "Normal","VeryHard","Hard","Insane","Nightmare","BossRush",
+        "DarkDimension","Hell","ThunderStorm","Christmas","Zombie",
+        "AstroV2","Astro","100MVisit"
+    },
+    -- 武器显示中文，内部存储英文
+    WeaponDisplay = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" },
+    WeaponInternal = {
+        ["电击枪"] = "Stungun", ["火焰喷射器"] = "Flamethrower", ["鱼叉枪"] = "Harpoon Gun",
+        ["霰弹枪"] = "Shot Gun", ["脉冲步枪"] = "Pulse Rifle", ["鱼叉霰弹枪"] = "Shot Harpoon Gun",
+        ["EPD"] = "EPD", ["小型激光枪"] = "Small Laser Gun"
+    },
+    -- 道具显示中文，内部存储英文
+    MiscDisplay = { "耳机", "泰坦呼叫", "特种泰坦呼叫", "扬声器呼叫", "手雷", "喷气背包", "透镜" },
+    MiscInternal = {
+        ["耳机"] = "HeadPhone", ["泰坦呼叫"] = "Titan-Request", ["特种泰坦呼叫"] = "SpecialTitan-Request",
+        ["扬声器呼叫"] = "Speaker-Request", ["手雷"] = "Grenade", ["喷气背包"] = "Jetpack", ["透镜"] = "Lens"
+    },
+    Gamepasst = { "全部", "幸运加成", "稀有幸运加成", "传说幸运加成" },
+    Gamepassts = {},
 }
 
--- 配置变量
-local skillList = { "Q","E","R","T","Y","G","H","Z","X","C","V","B","U" }
-local skillDropdownValues = { "全部","Q","E","R","T","Y","G","H","Z","X","C","V","B","U" }
-local AutoFarmEnabled = Config:Get("AutoFarmEnabled", false)
-local FarmPosition = Config:Get("FarmPosition", "Above")
-local FarmMode = Config:Get("FarmMode", "Tween")
-local MiscOptions = Config:Get("MiscOptions", {})
-local AutoAttackEnabled = false
-local AutoSkillEnabled = false
-local AutoSkipHeliEnabled = false
-local BoostFPS_Active = false
-local AutoStartEnabled = false
-local AutoFillUpEnabled = false
-local SelectedSkills = Config:Get("SelectedSkills", { "全部" })
-local SafeModeEnabled = false
-local SafeValue = Config:Get("SafeValue", 30)
-local GodModeEnabled = false
-local GodModeValue = Config:Get("GodModeValue", 30)
-local WaitingRespawn = false
-local IdlePosition = CFrame.new(-23.3435822, 67, 0.341766357) * CFrame.Angles(0,0,0)
-local SkillDelay = Config:Get("SkillDelay", 1)
-local TweenSpeed = 1
-local HeightValue = Config:Get("HeightValue", 3)
-local noBarrierActive = Config:Get("NoBarrier", false)
-local HighHPThreshold = Config:Get("HighHPThreshold", 200)
-local AutoBuyWeaponEnabled = Config:Get("AutoBuyWeaponEnabled", false)
-local AutoBuyMiscEnabled = Config:Get("AutoBuyMiscEnabled", false)
+-- ====================== CONFIG VARIABLES ======================
+local skillList          = { "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
+local skillDropdownValues = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
+
+-- ====================== STATE VARIABLES ======================
+local AutoFarmEnabled        = Config:Get("AutoFarmEnabled", false)
+local FarmPosition           = Config:Get("FarmPosition", "Above")
+local FarmMode               = Config:Get("FarmMode", "Tween")
+local MiscOptions            = Config:Get("MiscOptions", {})
+local AutoAttackEnabled      = false
+local AutoSkillEnabled       = false
+local AutoSkipHeliEnabled    = false
+local BoostFPS_Active_dummy  = false
+local AutoStartEnabled       = false
+local AutoFillUpEnabled      = false
+local SelectedSkills         = Config:Get("SelectedSkills", { "全部" })
+local SafeModeEnabled        = false
+local SafeValue              = Config:Get("SafeValue", 30)
+local GodModeEnabled         = false
+local GodModeValue           = Config:Get("GodModeValue", 30)
+local GodModeTriggered       = false
+local WaitingRespawn         = false
+local IdlePosition           = CFrame.new(-23.3435822, 67, 0.341766357) * CFrame.Angles(math.rad(0), 0, 0)
+local SkillDelay             = Config:Get("SkillDelay", 1)
+local LoopDelay              = 0.5
+local TweenSpeed             = 1
+local HeightValue            = Config:Get("HeightValue", 3)
+local NeedNoClip             = false
+local LockActive             = false
+local AutoStartConnection    = nil
+local noBarrierConnection    = nil
+local noBarrierActive        = Config:Get("NoBarrier", false)
+
+-- ====================== NEW PRIORITY SYSTEM CONFIG ======================
+local HighHPThreshold        = Config:Get("HighHPThreshold", 200)
+local _currentTargetPriority = 0
+local _interruptSignal       = false
+
+local VirtualUser = game:GetService("VirtualUser")
+local AntiAFK = Config:Get("AntiAfk", true)
+
+-- 自动购买配置（存储英文名）
+local AutoBuyWeaponEnabled   = Config:Get("AutoBuyWeaponEnabled", false)
+local AutoBuyMiscEnabled     = Config:Get("AutoBuyMiscEnabled", false)
+-- 兼容旧配置：若配置中是中文则转为英文
 local rawWeapon = Config:Get("SelectedWeapon", "电击枪")
 local rawMisc = Config:Get("SelectedMiscItem", "耳机")
 local SelectedWeapon = GlobalTables.WeaponInternal[rawWeapon] or rawWeapon
 local SelectedMiscItem = GlobalTables.MiscInternal[rawMisc] or rawMisc
-Config:Set("SelectedWeapon", SelectedWeapon); Config:Set("SelectedMiscItem", SelectedMiscItem)
-local rawMode = Config:Get("AutoGameValue", T("vote_normal"))
+-- 重新保存英文值
+Config:Set("SelectedWeapon", SelectedWeapon)
+Config:Set("SelectedMiscItem", SelectedMiscItem)
+
+-- 自动模式配置（存储英文模式名）
+local rawMode = Config:Get("AutoGameValue", "普通模式")
 local AutoGameValue = GlobalTables.ModeInternal[rawMode] or rawMode
 Config:Set("AutoGameValue", AutoGameValue)
-local AutoVoteEnabled = Config:Get("AutoVoteEnabled", false)
-local AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
-local AutoVoteValue = Config:Get("AutoVoteValue", "Normal")
-local AntiAFK = Config:Get("AntiAfk", true)
 
-local AutoRebirthEnabled = Config:Get("AutoRebirthEnabled", false)
-local AutoDailyEnabled = Config:Get("AutoDailyEnabled", false)
-local AutoChestEnabled = Config:Get("AutoChestEnabled", false)
-local ReconnectOnDisconnect = Config:Get("ReconnectOnDisconnect", true)
-local ShowCPU = Config:Get("ShowCPU", false)
+-- ====================== FILL UP PART CONFIG ======================
+local FILLUP_PART_PATH   = { "HelicopterShop", "ShopXDD", "PartForShop" }
+local FILLUP_TARGET_POS  = Vector3.new(44.2756729, 26.3595276, -32.7318268)
+local FILLUP_POS_THRESHOLD = 0.5
+local FillUpRunning = false
 
-local MasteryAutoFarmActive = false
-local MasteryAutoFarmActiveTest = false
-local ActionMode = Config:Get("ActionMode", "Default")
-local CharacterMode = Config:Get("CharacterMode", "Used")
-getgenv().HitboxEnabled = Config:Get("HitboxEnabled", false)
-getgenv().HitboxSize = Config:Get("HitboxSize", 20)
-getgenv().HitboxShow = Config:Get("HitboxShow", false)
-local autoQuestCollectActive = false
-local autoQuestSkipActive = false
+local function GetFillUpPart()
+    local obj = workspace
+    for _, key in ipairs(FILLUP_PART_PATH) do
+        obj = obj:FindFirstChild(key)
+        if not obj then return nil end
+    end
+    return obj
+end
 
-local MotionPredictionEnabled = Config:Get("MotionPredictionEnabled", false)
-local FollowModeEnabled = Config:Get("FollowModeEnabled", false)
-local AutoGodModeEnabled = Config:Get("AutoGodModeEnabled", false)
-local GodRespawnThreshold = Config:Get("GodRespawnThreshold", 10)
-local XmasOpenEnabled = Config:Get("XmasOpenEnabled", false)
-local XmasCollectEnabled = Config:Get("XmasCollectEnabled", false)
-local BatchBuyEnabled = Config:Get("BatchBuyEnabled", false)
-local BatchGachaCharEnabled = Config:Get("BatchGachaCharEnabled", false)
-local BatchGachaSkinEnabled = Config:Get("BatchGachaSkinEnabled", false)
-local Rotate90Enabled = Config:Get("Rotate90Enabled", false)
+local function IsFillUpPartReady()
+    local p = GetFillUpPart()
+    if not p then return false end
+    return (p.CFrame.Position - FILLUP_TARGET_POS).Magnitude < FILLUP_POS_THRESHOLD
+end
 
-local AstroGameDuration = Config:Get("AstroGameDuration", 960)
-local AstroFlyRadius = Config:Get("AstroFlyRadius", 300)
-local AstroFlySpeed = Config:Get("AstroFlySpeed", 2)
+-- ====================== ALLY SYSTEM ======================
+local AllyNames = {
+    ["Heavy Soldier Toilet V2"]  = true,
+    ["Quad Laser Toilet"]        = true,
+    ["Strider Rocket Laser"]     = true,
+    ["Helicopter Camera"]        = true,
+    ["Heavy Soldier Toilet V1"]  = true,
+    ["Rocket Heli v2"]           = true,
+    ["Gunner Camera man"]        = true,
+    ["Attack Helicopter"]        = true,
+    ["Swat Mutant"]              = true,
+    ["Huge DJ Toilet"]           = true,
+}
 
--- 视觉效果变量
-local fullBrightEnabled = false
-local noFogEnabled = false
-local vibrantEnabled = false
-local showFPS = true
-local showPing = true
-local fpsText, msText = nil, nil
-local fpsCounter, fpsLastUpdate = 0, tick()
-local fullBrightConnection = nil
-local noFogConnection = nil
-local vibrantEffect = nil
-local noclipConnection = nil
-local infJumpConnection = nil
+local function IsAlly(mob)
+    return AllyNames[mob.Name] ~= nil
+end
 
--- 飞行相关变量（使用 Fly GUI V3）
-local flyGuiInstance = nil          -- 存储飞行 GUI 主对象
-local flyGuiCreated = false
-local flyToggleState = false        -- 用户通过 Toggle 控制的状态
-local flyGuiScreenGui = nil
+-- ====================== TP SYSTEM ======================
+function tp(pu79)
+    pcall(function()
+        local v80 = Client
+        if v80 then v80 = Client.Character end
+        if v80:FindFirstChild("Humanoid") and v80.Humanoid.Sit == true then v80.Humanoid.Sit = false end
+        NeedNoClip = true
+        local v81 = { Target = pu79.Target or print("目标错误"), Mod = pu79.Mod or CFrame.new(0, 0, 0) }
+        v80:FindFirstChild("HumanoidRootPart").CFrame = v81.Target * v81.Mod
+    end)
+end
 
--- 定义开关飞行函数（创建或销毁飞行 GUI，并自动点击其 fly 按钮）
-local function ToggleFly(enable)
-    if enable then
-        -- 如果尚未创建飞行 GUI，则创建
-        if not flyGuiCreated then
-            -- 创建 Fly GUI V3
-            local flyScript = [[
-                local main = Instance.new("ScreenGui")
-                local Frame = Instance.new("Frame")
-                local up = Instance.new("TextButton")
-                local down = Instance.new("TextButton")
-                local onof = Instance.new("TextButton")
-                local TextLabel = Instance.new("TextLabel")
-                local plus = Instance.new("TextButton")
-                local speed = Instance.new("TextLabel")
-                local mine = Instance.new("TextButton")
-                local closebutton = Instance.new("TextButton")
-                local mini = Instance.new("TextButton")
-                local mini2 = Instance.new("TextButton")
-                
-                main.Name = "main"
-                main.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-                main.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-                main.ResetOnSpawn = false
-                
-                Frame.Parent = main
-                Frame.BackgroundColor3 = Color3.fromRGB(163, 255, 137)
-                Frame.BorderColor3 = Color3.fromRGB(103, 221, 213)
-                Frame.Position = UDim2.new(0.100320168, 0, 0.379746825, 0)
-                Frame.Size = UDim2.new(0, 190, 0, 57)
-                
-                up.Name = "up"
-                up.Parent = Frame
-                up.BackgroundColor3 = Color3.fromRGB(79, 255, 152)
-                up.Size = UDim2.new(0, 44, 0, 28)
-                up.Font = Enum.Font.SourceSans
-                up.Text = "UP"
-                up.TextColor3 = Color3.fromRGB(0, 0, 0)
-                up.TextSize = 14.000
-                
-                down.Name = "down"
-                down.Parent = Frame
-                down.BackgroundColor3 = Color3.fromRGB(215, 255, 121)
-                down.Position = UDim2.new(0, 0, 0.491228074, 0)
-                down.Size = UDim2.new(0, 44, 0, 28)
-                down.Font = Enum.Font.SourceSans
-                down.Text = "DOWN"
-                down.TextColor3 = Color3.fromRGB(0, 0, 0)
-                down.TextSize = 14.000
-                
-                onof.Name = "onof"
-                onof.Parent = Frame
-                onof.BackgroundColor3 = Color3.fromRGB(255, 249, 74)
-                onof.Position = UDim2.new(0.702823281, 0, 0.491228074, 0)
-                onof.Size = UDim2.new(0, 56, 0, 28)
-                onof.Font = Enum.Font.SourceSans
-                onof.Text = "fly"
-                onof.TextColor3 = Color3.fromRGB(0, 0, 0)
-                onof.TextSize = 14.000
-                
-                TextLabel.Parent = Frame
-                TextLabel.BackgroundColor3 = Color3.fromRGB(242, 60, 255)
-                TextLabel.Position = UDim2.new(0.469327301, 0, 0, 0)
-                TextLabel.Size = UDim2.new(0, 100, 0, 28)
-                TextLabel.Font = Enum.Font.SourceSans
-                TextLabel.Text = "FLY GUI V3"
-                TextLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-                TextLabel.TextScaled = true
-                TextLabel.TextSize = 14.000
-                TextLabel.TextWrapped = true
-                
-                plus.Name = "plus"
-                plus.Parent = Frame
-                plus.BackgroundColor3 = Color3.fromRGB(133, 145, 255)
-                plus.Position = UDim2.new(0.231578946, 0, 0, 0)
-                plus.Size = UDim2.new(0, 45, 0, 28)
-                plus.Font = Enum.Font.SourceSans
-                plus.Text = "+"
-                plus.TextColor3 = Color3.fromRGB(0, 0, 0)
-                plus.TextScaled = true
-                plus.TextSize = 14.000
-                plus.TextWrapped = true
-                
-                speed.Name = "speed"
-                speed.Parent = Frame
-                speed.BackgroundColor3 = Color3.fromRGB(255, 85, 0)
-                speed.Position = UDim2.new(0.468421042, 0, 0.491228074, 0)
-                speed.Size = UDim2.new(0, 44, 0, 28)
-                speed.Font = Enum.Font.SourceSans
-                speed.Text = "1"
-                speed.TextColor3 = Color3.fromRGB(0, 0, 0)
-                speed.TextScaled = true
-                speed.TextSize = 14.000
-                speed.TextWrapped = true
-                
-                mine.Name = "mine"
-                mine.Parent = Frame
-                mine.BackgroundColor3 = Color3.fromRGB(123, 255, 247)
-                mine.Position = UDim2.new(0.231578946, 0, 0.491228074, 0)
-                mine.Size = UDim2.new(0, 45, 0, 29)
-                mine.Font = Enum.Font.SourceSans
-                mine.Text = "-"
-                mine.TextColor3 = Color3.fromRGB(0, 0, 0)
-                mine.TextScaled = true
-                mine.TextSize = 14.000
-                mine.TextWrapped = true
-                
-                closebutton.Name = "Close"
-                closebutton.Parent = main.Frame
-                closebutton.BackgroundColor3 = Color3.fromRGB(225, 25, 0)
-                closebutton.Font = "SourceSans"
-                closebutton.Size = UDim2.new(0, 45, 0, 28)
-                closebutton.Text = "X"
-                closebutton.TextSize = 30
-                closebutton.Position = UDim2.new(0, 0, -1, 27)
-                
-                mini.Name = "minimize"
-                mini.Parent = main.Frame
-                mini.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
-                mini.Font = "SourceSans"
-                mini.Size = UDim2.new(0, 45, 0, 28)
-                mini.Text = "-"
-                mini.TextSize = 40
-                mini.Position = UDim2.new(0, 44, -1, 27)
-                
-                mini2.Name = "minimize2"
-                mini2.Parent = main.Frame
-                mini2.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
-                mini2.Font = "SourceSans"
-                mini2.Size = UDim2.new(0, 45, 0, 28)
-                mini2.Text = "+"
-                mini2.TextSize = 40
-                mini2.Position = UDim2.new(0, 44, -1, 57)
-                mini2.Visible = false
-                
-                local speeds = 1
-                local speaker = game:GetService("Players").LocalPlayer
-                local chr = game.Players.LocalPlayer.Character
-                local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-                local nowe = false
-                
-                game:GetService("StarterGui"):SetCore("SendNotification", { 
-                    Title = "FLY GUI V3";
-                    Text = "BY XNEO";
-                    Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"
-                })
-                
-                Frame.Active = true
-                Frame.Draggable = true
-                
-                -- 飞行核心逻辑
-                local function startFlying()
-                    if nowe then return end
-                    nowe = true
-                    for i = 1, speeds do
-                        spawn(function()
-                            local hb = game:GetService("RunService").Heartbeat
-                            local tpwalking = true
-                            local chr = game.Players.LocalPlayer.Character
-                            local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-                            while tpwalking and hb:Wait() and chr and hum and hum.Parent do
-                                if hum.MoveDirection.Magnitude > 0 then
-                                    chr:TranslateBy(hum.MoveDirection)
-                                end
-                            end
-                        end)
-                    end
-                    game.Players.LocalPlayer.Character.Animate.Disabled = true
-                    local Char = game.Players.LocalPlayer.Character
-                    local Hum = Char:FindFirstChildOfClass("Humanoid") or Char:FindFirstChildOfClass("AnimationController")
-                    for i,v in next, Hum:GetPlayingAnimationTracks() do
-                        v:AdjustSpeed(0)
-                    end
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,false)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,false)
-                    speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-                    
-                    -- R6/R8 物理飞行
-                    if game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R6 then
-                        local plr = game.Players.LocalPlayer
-                        local torso = plr.Character.Torso
-                        local flying = true
-                        local deb = true
-                        local ctrl = {f = 0, b = 0, l = 0, r = 0}
-                        local lastctrl = {f = 0, b = 0, l = 0, r = 0}
-                        local maxspeed = 50
-                        local speed = 0
-                        local bg = Instance.new("BodyGyro", torso)
-                        bg.P = 9e4
-                        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-                        bg.cframe = torso.CFrame
-                        local bv = Instance.new("BodyVelocity", torso)
-                        bv.velocity = Vector3.new(0,0.1,0)
-                        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-                        plr.Character.Humanoid.PlatformStand = true
-                        local flyLoop = game:GetService("RunService").RenderStepped:Connect(function()
-                            if not nowe or game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 then
-                                flyLoop:Disconnect()
-                                return
-                            end
-                            if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
-                                speed = speed+.5+(speed/maxspeed)
-                                if speed > maxspeed then speed = maxspeed end
-                            elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and speed ~= 0 then
-                                speed = speed-1
-                                if speed < 0 then speed = 0 end
-                            end
-                            if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
-                                bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*speed
-                                lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
-                            elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and speed ~= 0 then
-                                bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*speed
-                            else
-                                bv.velocity = Vector3.new(0,0,0)
-                            end
-                            bg.cframe = game.Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed/maxspeed),0,0)
-                        end)
-                        local cleanup
-                        cleanup = game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
-                            flyLoop:Disconnect()
-                            cleanup:Disconnect()
-                        end)
-                        -- 保存资源以便停止时销毁
-                        rawset(_G, "__flyR6_BG", bg)
-                        rawset(_G, "__flyR6_BV", bv)
-                        rawset(_G, "__flyR6_Loop", flyLoop)
-                    else
-                        local plr = game.Players.LocalPlayer
-                        local UpperTorso = plr.Character.UpperTorso
-                        local ctrl = {f = 0, b = 0, l = 0, r = 0}
-                        local lastctrl = {f = 0, b = 0, l = 0, r = 0}
-                        local maxspeed = 50
-                        local speed = 0
-                        local bg = Instance.new("BodyGyro", UpperTorso)
-                        bg.P = 9e4
-                        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-                        bg.cframe = UpperTorso.CFrame
-                        local bv = Instance.new("BodyVelocity", UpperTorso)
-                        bv.velocity = Vector3.new(0,0.1,0)
-                        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-                        plr.Character.Humanoid.PlatformStand = true
-                        local flyLoop = game:GetService("RunService").Heartbeat:Connect(function()
-                            if not nowe or game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 then
-                                flyLoop:Disconnect()
-                                return
-                            end
-                            if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
-                                speed = speed+.5+(speed/maxspeed)
-                                if speed > maxspeed then speed = maxspeed end
-                            elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and speed ~= 0 then
-                                speed = speed-1
-                                if speed < 0 then speed = 0 end
-                            end
-                            if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
-                                bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*speed
-                                lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
-                            elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and speed ~= 0 then
-                                bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*speed
-                            else
-                                bv.velocity = Vector3.new(0,0,0)
-                            end
-                            bg.cframe = game.Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed/maxspeed),0,0)
-                        end)
-                        local cleanup
-                        cleanup = game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
-                            flyLoop:Disconnect()
-                            cleanup:Disconnect()
-                        end)
-                        rawset(_G, "__flyR15_BG", bg)
-                        rawset(_G, "__flyR15_BV", bv)
-                        rawset(_G, "__flyR15_Loop", flyLoop)
-                    end
-                end
-                
-                local function stopFlying()
-                    if not nowe then return end
-                    nowe = false
-                    -- 恢复动画和状态
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,true)
-                    speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,true)
-                    speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-                    game.Players.LocalPlayer.Character.Animate.Disabled = false
-                    -- 清理 BodyGyro/BodyVelocity
-                    if _G.__flyR6_BG then _G.__flyR6_BG:Destroy(); _G.__flyR6_BG = nil end
-                    if _G.__flyR6_BV then _G.__flyR6_BV:Destroy(); _G.__flyR6_BV = nil end
-                    if _G.__flyR6_Loop then _G.__flyR6_Loop:Disconnect(); _G.__flyR6_Loop = nil end
-                    if _G.__flyR15_BG then _G.__flyR15_BG:Destroy(); _G.__flyR15_BG = nil end
-                    if _G.__flyR15_BV then _G.__flyR15_BV:Destroy(); _G.__flyR15_BV = nil end
-                    if _G.__flyR15_Loop then _G.__flyR15_Loop:Disconnect(); _G.__flyR15_Loop = nil end
-                    speaker.Character.Humanoid.PlatformStand = false
-                end
-                
-                -- 按钮事件
-                onof.MouseButton1Down:connect(function()
-                    if nowe then stopFlying() else startFlying() end
-                end)
-                
-                local tis, dis
-                up.MouseButton1Down:connect(function()
-                    tis = up.MouseEnter:connect(function()
-                        while tis do
-                            wait()
-                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,1,0)
-                        end
-                    end)
-                end)
-                up.MouseLeave:connect(function()
-                    if tis then tis:Disconnect(); tis = nil end
-                end)
-                down.MouseButton1Down:connect(function()
-                    dis = down.MouseEnter:connect(function()
-                        while dis do
-                            wait()
-                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,-1,0)
-                        end
-                    end)
-                end)
-                down.MouseLeave:connect(function()
-                    if dis then dis:Disconnect(); dis = nil end
-                end)
-                
-                game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function(char)
-                    wait(0.7)
-                    game.Players.LocalPlayer.Character.Humanoid.PlatformStand = false
-                    game.Players.LocalPlayer.Character.Animate.Disabled = false
-                    if nowe then
-                        -- 如果飞行状态在重生后仍然为 true，重新激活飞行
-                        task.wait(0.5)
-                        startFlying()
-                    end
-                end)
-                
-                plus.MouseButton1Down:connect(function()
-                    speeds = speeds + 1
-                    speed.Text = speeds
-                    if nowe then
-                        -- 重启飞行以应用新速度
-                        stopFlying()
-                        task.wait(0.1)
-                        startFlying()
-                    end
-                end)
-                mine.MouseButton1Down:connect(function()
-                    if speeds == 1 then
-                        speed.Text = 'cannot be less than 1'
-                        wait(1)
-                        speed.Text = speeds
-                    else
-                        speeds = speeds - 1
-                        speed.Text = speeds
-                        if nowe then
-                            stopFlying()
-                            task.wait(0.1)
-                            startFlying()
-                        end
-                    end
-                end)
-                closebutton.MouseButton1Click:Connect(function()
-                    stopFlying()
-                    main:Destroy()
-                end)
-                mini.MouseButton1Click:Connect(function()
-                    up.Visible = false
-                    down.Visible = false
-                    onof.Visible = false
-                    plus.Visible = false
-                    speed.Visible = false
-                    mine.Visible = false
-                    mini.Visible = false
-                    mini2.Visible = true
-                    main.Frame.BackgroundTransparency = 1
-                    closebutton.Position = UDim2.new(0, 0, -1, 57)
-                end)
-                mini2.MouseButton1Click:Connect(function()
-                    up.Visible = true
-                    down.Visible = true
-                    onof.Visible = true
-                    plus.Visible = true
-                    speed.Visible = true
-                    mine.Visible = true
-                    mini.Visible = true
-                    mini2.Visible = false
-                    main.Frame.BackgroundTransparency = 0
-                    closebutton.Position = UDim2.new(0, 0, -1, 27)
-                end)
-            ]]
-            local success, err = pcall(loadstring(flyScript))
-            if success then
-                flyGuiCreated = true
-                flyGuiScreenGui = LocalPlayer.PlayerGui:FindFirstChild("main")
-                -- 自动点击 fly 按钮激活飞行
-                if flyGuiScreenGui and flyGuiScreenGui.Frame and flyGuiScreenGui.Frame.onof then
-                    flyGuiScreenGui.Frame.onof:Activate()
-                    -- 模拟点击
-                    local click = flyGuiScreenGui.Frame.onof.MouseButton1Down:Connect(function() end)
-                    click:Disconnect()
-                end
-            else
-                warn("[DYHUB] 飞行 GUI 加载失败: " .. tostring(err))
-            end
-        else
-            -- 飞行 GUI 已存在，只需点击其 fly 按钮启动
-            if flyGuiScreenGui and flyGuiScreenGui.Frame and flyGuiScreenGui.Frame.onof then
-                flyGuiScreenGui.Frame.onof:Activate()
-            end
-        end
+function Tp(p82)
+    if Client.Character.Humanoid.Sit == true then Client.Character.Humanoid.Sit = false end
+    local v83, v84, v85 = pairs(Client.Character:GetDescendants())
+    while true do
+        local v86
+        v85, v86 = v83(v84, v85)
+        if v85 == nil then break end
+        if v86:IsA("BasePart") then v86.CanCollide = false end
+    end
+    if not Client.Character.HumanoidRootPart:FindFirstChild("BodyClip") then
+        local v87 = Instance.new("BodyVelocity")
+        v87.Parent = Client.Character.HumanoidRootPart
+        v87.Name = "BodyClip"
+        v87.Velocity = Vector3.new(0, 0, 0)
+        v87.MaxForce = Vector3.new(5, math.huge, 5)
+    end
+    Client.Character.HumanoidRootPart.CFrame = p82
+end
+
+function tp1(p89)
+    local v90 = game.Players.LocalPlayer
+    if v90 and v90.Character and v90.Character:FindFirstChild("HumanoidRootPart") then
+        v90.Character:FindFirstChild("HumanoidRootPart").CFrame = p89
     else
-        -- 关闭飞行：如果飞行 GUI 存在，点击其 fly 按钮关闭；并销毁 GUI
-        if flyGuiScreenGui and flyGuiScreenGui.Frame and flyGuiScreenGui.Frame.onof then
-            -- 检查当前飞行状态（通过全局变量 nowe 或简单模拟点击）
-            flyGuiScreenGui.Frame.onof:Activate()  -- 点击关闭
-        end
-        -- 销毁飞行 GUI
-        if flyGuiScreenGui then
-            flyGuiScreenGui:Destroy()
-            flyGuiScreenGui = nil
-            flyGuiCreated = false
-        end
-        -- 额外清理：强制停止飞行
-        pcall(function()
-            if _G.__flyR6_BG then _G.__flyR6_BG:Destroy(); _G.__flyR6_BG = nil end
-            if _G.__flyR6_BV then _G.__flyR6_BV:Destroy(); _G.__flyR6_BV = nil end
-            if _G.__flyR6_Loop then _G.__flyR6_Loop:Disconnect(); _G.__flyR6_Loop = nil end
-            if _G.__flyR15_BG then _G.__flyR15_BG:Destroy(); _G.__flyR15_BG = nil end
-            if _G.__flyR15_BV then _G.__flyR15_BV:Destroy(); _G.__flyR15_BV = nil end
-            if _G.__flyR15_Loop then _G.__flyR15_Loop:Disconnect(); _G.__flyR15_Loop = nil end
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.PlatformStand = false
-                char.Animate.Disabled = false
-            end
-        end)
+        warn("玩家角色或 HumanoidRootPart 未找到")
     end
 end
 
--- ====================== 辅助函数 ======================
-local FILLUP_PART_PATH = { "HelicopterShop","ShopXDD","PartForShop" }
-local FILLUP_TARGET_POS = Vector3.new(44.2756729, 26.3595276, -32.7318268)
-local function GetFillUpPart()
-    local obj = workspace
-    for _,k in ipairs(FILLUP_PART_PATH) do obj = obj:FindFirstChild(k) if not obj then return end end
-    return obj
-end
-local function IsFillUpPartReady() local p=GetFillUpPart() return p and (p.CFrame.Position-FILLUP_TARGET_POS).Magnitude<0.5 end
-
-local AllyNames = {
-    ["Heavy Soldier Toilet V2"]=true,["Quad Laser Toilet"]=true,["Strider Rocket Laser"]=true,
-    ["Helicopter Camera"]=true,["Heavy Soldier Toilet V1"]=true,["Rocket Heli v2"]=true,
-    ["Gunner Camera man"]=true,["Attack Helicopter"]=true,["Swat Mutant"]=true,["Huge DJ Toilet"]=true,
-}
-local function IsAlly(mob) return AllyNames[mob.Name] end
-
-function tp(t) pcall(function() local c=LocalPlayer.Character if c and c.Humanoid and c.Humanoid.Sit then c.Humanoid.Sit=false end c.HumanoidRootPart.CFrame=t.Target*(t.Mod or CFrame.new(0,0,0)) end) end
-function Tp(cf) local c=LocalPlayer.Character if c and c.Humanoid.Sit then c.Humanoid.Sit=false end for _,v in pairs(c:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide=false end end if not c.HumanoidRootPart:FindFirstChild("BodyClip") then local bv=Instance.new("BodyVelocity") bv.Parent=c.HumanoidRootPart bv.Name="BodyClip" bv.Velocity=Vector3.new(0,0,0) bv.MaxForce=Vector3.new(5,math.huge,5) end c.HumanoidRootPart.CFrame=cf end
-function tp1(cf) local c=LocalPlayer.Character if c and c:FindFirstChild("HumanoidRootPart") then c.HumanoidRootPart.CFrame=cf end end
-
+-- ====================== UTILITY FUNCTIONS ======================
 local function IsValidMob(obj)
     if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
         if Players:GetPlayerFromCharacter(obj) then return false end
         if IsAlly(obj) then return false end
-        local hum = obj:FindFirstChild("Humanoid")
-        if hum and hum.Health > 0 then return true end
+        local humanoid = obj:FindFirstChild("Humanoid")
+        if humanoid and humanoid.Health > 0 then return true end
     end
     return false
 end
-local function IsMobDead(mob) return not mob or not mob.Parent or not mob:FindFirstChild("Humanoid") or mob.Humanoid.Health<=0 end
-local function GetMobMaxHP(mob) local h=mob and mob:FindFirstChild("Humanoid") return h and h.MaxHealth or 0 end
 
--- ====================== 单一扫描源 ======================
-local Scanner = {
-    Cache = { mobs = {}, items = {}, flushPrompts = {} },
-    LastScan = 0,
-    ScanInterval = 2,
-}
-local CollectItemsList = {
-    "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
-    "Astro Samples", "Weird Prism", "Key Card", "Zombie Core", "Flash Drives", "Presents"
-}
-local CollectGroupMap = {
-    ["Astro Samples"] = { "Trooper Blast","Trooper Spinner","Specialist Blaster","Specialist Spinner",
-        "Specialist Sword Arm","Strider Leg","Interceptor Wing","Interceptor Goggles",
-        "Interceptor Spinner","Impactor Cannon","Impactor Laser","High Impactor Cannon",
-        "High Impactor Laser","Destructor Laser","Destructor Blaster","Destructor Core",
-        "Obliterator Blaster","Obliterator Spinner" },
-    ["Presents"] = { "Gacha Capsule" },
-}
-local SelectedCollectItems = Config:Get("SelectedCollectItems", {})
-local function IsCollectTarget(name)
-    for _, p in ipairs(SelectedCollectItems) do
-        if name:lower() == p:lower() then return true end
-        if CollectGroupMap[p] then
-            for _, g in ipairs(CollectGroupMap[p]) do
-                if name:lower() == g:lower() then return true end
+local function IsMobDead(mob)
+    if not mob or not mob.Parent then return true end
+    local humanoid = mob:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return true end
+    return false
+end
+
+local function GetMobMaxHP(mob)
+    local humanoid = mob and mob:FindFirstChild("Humanoid")
+    if not humanoid then return 0 end
+    return humanoid.MaxHealth or 0
+end
+
+-- ====================== MOB SELECTION ======================
+local function GetNearestMob()
+    local nearestMob, nearestDist = nil, math.huge
+    local livingFolder = workspace:FindFirstChild("Living")
+    if not livingFolder then return nil end
+    for _, mob in ipairs(livingFolder:GetChildren()) do
+        if IsValidMob(mob) then
+            local mobRoot = mob:FindFirstChild("HumanoidRootPart")
+            if mobRoot then
+                local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
+                if d < nearestDist then nearestDist = d; nearestMob = mob end
             end
         end
     end
-    return false
+    return nearestMob
 end
 
-local function ScanWorld()
-    local now = tick()
-    if now - Scanner.LastScan < Scanner.ScanInterval then return end
-    Scanner.LastScan = now
-    task.spawn(function()
-        pcall(function()
-            local mobs = {}; local items = {}; local flushPrompts = {}
-            local living = workspace:FindFirstChild("Living")
-            if living then
-                for _, m in ipairs(living:GetChildren()) do
-                    if m:IsA("Model") and m:FindFirstChild("Humanoid") and m:FindFirstChild("HumanoidRootPart") then
-                        if not Players:GetPlayerFromCharacter(m) and not IsAlly(m) then
-                            local hum = m:FindFirstChild("Humanoid")
-                            if hum and hum.Health > 0 then
-                                table.insert(mobs, m)
-                                for _, prompt in ipairs(m:GetDescendants()) do
-                                    if prompt:IsA("ProximityPrompt") and (prompt.ActionText == "Flush" or prompt.ActionText == "Dragon Flash") then
-                                        table.insert(flushPrompts, { mob = m, prompt = prompt })
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
+local function GetHighestMob()
+    local highestMob, highestY = nil, -math.huge
+    local livingFolder = workspace:FindFirstChild("Living")
+    if not livingFolder then return nil end
+    local myY = HumanoidRootPart and HumanoidRootPart.Position.Y or 0
+    for _, mob in ipairs(livingFolder:GetChildren()) do
+        if IsValidMob(mob) then
+            local mobRoot = mob:FindFirstChild("HumanoidRootPart")
+            if mobRoot then
+                local mobY = mobRoot.Position.Y
+                if mobY > myY and mobY > highestY then highestY = mobY; highestMob = mob end
             end
-            if Config:Get("AutoCollectEnabled", false) and #SelectedCollectItems > 0 then
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj and obj.Parent and (obj:IsA("Model") or obj:IsA("Part")) then
-                        if IsCollectTarget(obj.Name) then table.insert(items, obj) end
-                    end
-                end
-            end
-            Scanner.Cache.mobs = mobs
-            Scanner.Cache.items = items
-            Scanner.Cache.flushPrompts = flushPrompts
-        end)
-    end)
+        end
+    end
+    return highestMob
 end
 
--- 优先级系统
+-- ============================================================
+-- ====================== NEW PRIORITY SYSTEM =================
+-- ============================================================
+
 local function GetHelicopter()
-    if not Scanner.Cache.mobs then return nil end
-    for _, m in ipairs(Scanner.Cache.mobs) do if m.Name:lower():find("helicopter") then return m end end
+    local livingFolder = workspace:FindFirstChild("Living")
+    if not livingFolder then return nil end
+    for _, mob in ipairs(livingFolder:GetChildren()) do
+        if mob.Name:lower():find("helicopter") and IsValidMob(mob) then
+            return mob
+        end
+    end
     return nil
 end
+
 local function GetGiantSTToilet()
-    if not Scanner.Cache.mobs then return nil, nil end
-    for _, m in ipairs(Scanner.Cache.mobs) do
-        if m.Name == "Giant ST toilet" then
-            local lever = m:FindFirstChild("lever")
-            if lever then
-                local p = lever:FindFirstChildOfClass("ProximityPrompt")
-                if p then return m, p end
-            end
+    local livingFolder = workspace:FindFirstChild("Living")
+    if not livingFolder then return nil end
+    local giant = livingFolder:FindFirstChild("Giant ST toilet")
+    if giant and IsValidMob(giant) then
+        local lever = giant:FindFirstChild("lever")
+        if lever then
+            local prompt = lever:FindFirstChildOfClass("ProximityPrompt")
+            if prompt then return giant, prompt end
         end
     end
     return nil, nil
 end
+
 local function GetHighHPMob()
-    if not Scanner.Cache.mobs then return nil end
-    local best, bestHP = nil, HighHPThreshold
-    for _, m in ipairs(Scanner.Cache.mobs) do
-        local hp = GetMobMaxHP(m)
-        if hp > bestHP then bestHP = hp; best = m end
-    end
-    return best
-end
-local function GetNearestMob()
-    if not Scanner.Cache.mobs then return nil end
-    local nearest, dist = nil, math.huge
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        for _, m in ipairs(Scanner.Cache.mobs) do
-            local r = m:FindFirstChild("HumanoidRootPart")
-            if r then
-                local d = (hrp.Position - r.Position).Magnitude
-                if d < dist then dist = d; nearest = m end
+    local livingFolder = workspace:FindFirstChild("Living")
+    if not livingFolder then return nil end
+    local bestMob, bestHP = nil, HighHPThreshold
+    for _, mob in ipairs(livingFolder:GetChildren()) do
+        if IsValidMob(mob) then
+            local hp = GetMobMaxHP(mob)
+            if hp > bestHP then
+                bestHP = hp
+                bestMob = mob
             end
         end
     end
-    return nearest
+    return bestMob
 end
+
 local function GetPriorityMob()
-    local g,p = GetGiantSTToilet()
-    if g then return g, "GiantST", p, 4 end
-    local h = GetHelicopter()
-    if h then return h, "Helicopter", nil, 3 end
-    local hh = GetHighHPMob()
-    if hh then return hh, "HighHP", nil, 2 end
-    local n = GetNearestMob()
-    if n then return n, "NearestMob", nil, 1 end
+    local giant, prompt = GetGiantSTToilet()
+    if giant and prompt then return giant, "GiantST", prompt, 4 end
+    local heli = GetHelicopter()
+    if heli then return heli, "Helicopter", nil, 3 end
+    local highHPMob = GetHighHPMob()
+    if highHPMob then return highHPMob, "HighHP", nil, 2 end
+    local nearMob = GetNearestMob()
+    if nearMob then return nearMob, "NearestMob", nil, 1 end
     return nil, nil, nil, 0
 end
 
--- 高度覆写系统
-local PADDING_REDUCE_STEP=Config:Get("PaddingReduceStep",2)
-local PADDING_SAFE_MIN=Config:Get("PaddingSafeMin",-30)
-local DMG_THRESHOLD=Config:Get("DmgThreshold",40)
-local ANTI_CLIP_MARGIN=Config:Get("AntiClipMargin",3)
-local PLAYER_HALF_HEIGHT=3
-local MobHeightOverride,MobConfirmedPadding,MobLastHealth,MobCheckerCancelled={},{},{},{}
+local function CheckInterrupt(currentPriority)
+    if currentPriority < 4 then
+        local g, pr = GetGiantSTToilet()
+        if g and pr then return true, 4 end
+    end
+    if currentPriority < 3 then
+        if GetHelicopter() then return true, 3 end
+    end
+    if currentPriority < 2 then
+        if GetHighHPMob() then return true, 2 end
+    end
+    return false, currentPriority
+end
+
+-- ============================================================
+-- ====================== MOB VISUAL BOUNDS ===================
+-- ============================================================
+
 local function GetMobVisualBounds(mob)
-    local minY,maxY=math.huge,-math.huge
-    local cx,cz,cnt=0,0,0
-    for _,part in ipairs(mob:GetDescendants()) do
-        if part:IsA("BasePart") and part.Transparency<0.9 and part.Size.Y>0.1 then
-            local pos=part.Position; local hy=part.Size.Y*0.5
-            if pos.Y-hy<minY then minY=pos.Y-hy end
-            if pos.Y+hy>maxY then maxY=pos.Y+hy end
-            cx=cx+pos.X; cz=cz+pos.Z; cnt=cnt+1
+    local minY, maxY = math.huge, -math.huge
+    local centerX, centerZ, count = 0, 0, 0
+
+    for _, part in ipairs(mob:GetDescendants()) do
+        if part:IsA("BasePart") and part.Transparency < 0.9 and part.Size.Y > 0.1 then
+            local pos = part.Position
+            local hy  = part.Size.Y * 0.5
+            if pos.Y - hy < minY then minY = pos.Y - hy end
+            if pos.Y + hy > maxY then maxY = pos.Y + hy end
+            centerX = centerX + pos.X
+            centerZ = centerZ + pos.Z
+            count   = count + 1
         end
     end
-    if cnt==0 then local hrp=mob:FindFirstChild("HumanoidRootPart") if hrp then return hrp.Position, hrp.Position.Y-2, hrp.Position.Y+2 end return Vector3.new(0,0,0),0,4 end
-    return Vector3.new(cx/cnt,(minY+maxY)/2,cz/cnt),minY,maxY
+
+    if count == 0 then
+        local hrp = mob:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            return hrp.Position, hrp.Position.Y - 2, hrp.Position.Y + 2
+        end
+        return Vector3.new(0, 0, 0), 0, 4
+    end
+
+    local cx = centerX / count
+    local cz = centerZ / count
+    local cy = (minY + maxY) * 0.5
+    return Vector3.new(cx, cy, cz), minY, maxY
 end
-local function GetAntiClipFloor(mob) local _,minY,maxY=GetMobVisualBounds(mob) return -(maxY-minY)+PLAYER_HALF_HEIGHT+ANTI_CLIP_MARGIN end
-local function GetEffectivePadding(mob) return MobConfirmedPadding[mob] or MobHeightOverride[mob] or HeightValue end
-local function ClampPaddingToAntiClip(mob,pad) return math.max(math.max(pad,GetAntiClipFloor(mob)),PADDING_SAFE_MIN) end
+
+-- ============================================================
+-- ====================== MOB HEIGHT OVERRIDE =================
+-- ============================================================
+
+local PADDING_REDUCE_STEP    = Config:Get("PaddingReduceStep", 2)
+local PADDING_SAFE_MIN       = Config:Get("PaddingSafeMin", -30)
+local DMG_THRESHOLD          = Config:Get("DmgThreshold", 40)
+local ANTI_CLIP_MARGIN       = Config:Get("AntiClipMargin", 3)
+local PLAYER_HALF_HEIGHT     = 3
+
+local MobHeightOverride   = {}
+local MobConfirmedPadding = {}
+local MobLastHealth       = {}
+local MobCheckerCancelled = {}
+
+local function GetAntiClipFloor(mob, position)
+    local _, minY, maxY = GetMobVisualBounds(mob)
+    local visualHeight = maxY - minY
+    return -(visualHeight) + PLAYER_HALF_HEIGHT + ANTI_CLIP_MARGIN
+end
+
+local function GetEffectivePadding(mob)
+    if MobConfirmedPadding[mob] ~= nil then return MobConfirmedPadding[mob] end
+    if MobHeightOverride[mob] ~= nil then return MobHeightOverride[mob] end
+    return HeightValue
+end
+
+local function ClampPaddingToAntiClip(mob, padding)
+    local antiFloor = GetAntiClipFloor(mob, FarmPosition)
+    local clamped = math.max(padding, antiFloor)
+    clamped = math.max(clamped, PADDING_SAFE_MIN)
+    return clamped
+end
+
 local function StartDamageChecker(mob)
-    MobCheckerCancelled[mob]=false
+    MobCheckerCancelled[mob] = false
     task.spawn(function()
-        local hum=mob and mob:FindFirstChild("Humanoid")
-        if not hum then return end
-        if MobConfirmedPadding[mob] then return end
-        MobLastHealth[mob]=hum.Health
-        MobHeightOverride[mob]=ClampPaddingToAntiClip(mob, MobHeightOverride[mob] or HeightValue)
-        local lastHit=tick(); local noDmgTimer=0; local hitStreak=0; local lastWasHit=false; local reducedOnce=false
+        local humanoid = mob and mob:FindFirstChild("Humanoid")
+        if not humanoid then return end
+        if MobConfirmedPadding[mob] ~= nil then return end
+
+        MobLastHealth[mob]     = humanoid.Health
+        MobHeightOverride[mob] = ClampPaddingToAntiClip(mob, MobHeightOverride[mob] or HeightValue)
+
+        local lastDamageTime = tick()
+        local noDamageTimer  = 0
+        local hitStreak      = 0
+        local lastWasHit     = false
+        local reducedOnce    = false
+
         while mob and mob.Parent and not IsMobDead(mob) and AutoFarmEnabled do
             task.wait(0.3)
             if MobCheckerCancelled[mob] then break end
-            hum=mob:FindFirstChild("Humanoid"); if not hum then break end
-            local cur=hum.Health; local last=MobLastHealth[mob] or cur; local dmg=last-cur
-            if dmg>0 then
-                lastHit=tick(); noDmgTimer=0; reducedOnce=false
-                if lastWasHit then hitStreak=hitStreak+1 else hitStreak=1 end
-                lastWasHit=true
-                local curPad=GetEffectivePadding(mob)
-                if dmg>=DMG_THRESHOLD and not MobConfirmedPadding[mob] then MobConfirmedPadding[mob]=curPad; MobHeightOverride[mob]=curPad; break end
-                if hitStreak>=2 and not MobConfirmedPadding[mob] then MobConfirmedPadding[mob]=curPad; MobHeightOverride[mob]=curPad; break end
+            if not mob or not mob.Parent or IsMobDead(mob) then break end
+            humanoid = mob:FindFirstChild("Humanoid")
+            if not humanoid then break end
+
+            local currentHP = humanoid.Health
+            local lastHP    = MobLastHealth[mob] or currentHP
+            local dmgDealt  = lastHP - currentHP
+            local gotHit    = dmgDealt > 0
+
+            if gotHit then
+                lastDamageTime = tick()
+                noDamageTimer  = 0
+                reducedOnce    = false
+                if lastWasHit then hitStreak = hitStreak + 1 else hitStreak = 1 end
+                lastWasHit = true
+                local curPad = GetEffectivePadding(mob)
+                if dmgDealt >= DMG_THRESHOLD and MobConfirmedPadding[mob] == nil then
+                    if not MobCheckerCancelled[mob] then
+                        MobConfirmedPadding[mob] = curPad
+                        MobHeightOverride[mob]   = curPad
+                    end
+                    break
+                end
+                if hitStreak >= 2 and MobConfirmedPadding[mob] == nil then
+                    if not MobCheckerCancelled[mob] then
+                        MobConfirmedPadding[mob] = curPad
+                        MobHeightOverride[mob]   = curPad
+                    end
+                    break
+                end
             else
-                lastWasHit=false; hitStreak=0; noDmgTimer=tick()-lastHit
+                lastWasHit    = false
+                hitStreak     = 0
+                noDamageTimer = tick() - lastDamageTime
             end
-            if noDmgTimer>=3 and not reducedOnce then
-                reducedOnce=true
-                local curPad=GetEffectivePadding(mob)
-                local newPad=ClampPaddingToAntiClip(mob, curPad-PADDING_REDUCE_STEP)
-                if newPad~=curPad then MobHeightOverride[mob]=newPad end
+
+            if noDamageTimer >= 3 and not reducedOnce then
+                reducedOnce = true
+                local curPad = GetEffectivePadding(mob)
+                local newPad = ClampPaddingToAntiClip(mob, curPad - PADDING_REDUCE_STEP)
+                if newPad ~= curPad then MobHeightOverride[mob] = newPad end
             end
-            if noDmgTimer>=6 then
-                lastHit=tick(); reducedOnce=false
-                local curPad=GetEffectivePadding(mob)
-                local newPad=ClampPaddingToAntiClip(mob, curPad-PADDING_REDUCE_STEP)
-                if newPad~=curPad then MobHeightOverride[mob]=newPad end
+
+            if noDamageTimer >= 6 then
+                lastDamageTime = tick()
+                reducedOnce    = false
+                local curPad   = GetEffectivePadding(mob)
+                local newPad   = ClampPaddingToAntiClip(mob, curPad - PADDING_REDUCE_STEP)
+                if newPad ~= curPad then MobHeightOverride[mob] = newPad end
             end
-            MobLastHealth[mob]=cur
+
+            MobLastHealth[mob] = currentHP
         end
-        if not MobCheckerCancelled[mob] then MobHeightOverride[mob]=nil; MobLastHealth[mob]=nil end
+
+        if not MobCheckerCancelled[mob] then
+            MobHeightOverride[mob] = nil
+            MobLastHealth[mob]     = nil
+        end
     end)
 end
+
 local function ResetMobOverride(mob)
-    MobCheckerCancelled[mob]=true; MobHeightOverride[mob]=nil; MobConfirmedPadding[mob]=nil; MobLastHealth[mob]=nil
-    task.delay(0.5,function() MobCheckerCancelled[mob]=nil end)
+    MobCheckerCancelled[mob] = true
+    MobHeightOverride[mob]   = nil
+    MobConfirmedPadding[mob] = nil
+    MobLastHealth[mob]       = nil
+    task.delay(0.5, function()
+        MobCheckerCancelled[mob] = nil
+    end)
 end
 
-local function PredictNPCMovement(npc, timeAhead)
-    if not npc or not npc:FindFirstChild("HumanoidRootPart") then return Vector3.new() end
-    local hrp=npc.HumanoidRootPart
-    local humanoid=npc:FindFirstChildOfClass("Humanoid")
-    if humanoid and humanoid.MoveDirection and humanoid.MoveDirection.Magnitude>0.1 then
-        return hrp.Position+(humanoid.MoveDirection*humanoid.WalkSpeed*timeAhead)
+-- ============================================================
+-- ====================== TARGET CFRAME =======================
+-- ============================================================
+local function GetTargetCFrame(mob, position)
+    local mobRoot = mob:FindFirstChild("HumanoidRootPart")
+    if not mobRoot then return nil end
+
+    local padding = GetEffectivePadding(mob)
+    local center, minY, maxY = GetMobVisualBounds(mob)
+
+    if position == "Above" then
+        local safeTargetY = math.max(maxY + padding, maxY + 0.5)
+        local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
+        local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
+        local lookCF      = CFrame.new(targetPos, lookAtPos)
+        return lookCF * CFrame.Angles(math.rad(-10), 0, 0)
+
+    elseif position == "Under" then
+        local safeTargetY = math.min(minY - padding, minY - 0.5)
+        local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
+        local lookAtPos   = Vector3.new(center.X, minY, center.Z)
+        local lookCF      = CFrame.new(targetPos, lookAtPos)
+        return lookCF * CFrame.Angles(math.rad(10), 0, 0)
     end
-    return hrp.Position
 end
 
-local function GetTargetCFrame(mob,pos)
-    local r=mob:FindFirstChild("HumanoidRootPart")
-    if not r then return nil end
-    local pad=GetEffectivePadding(mob)
-    local center,minY,maxY=GetMobVisualBounds(mob)
-    local targetCenter=center
-    if MotionPredictionEnabled then targetCenter=PredictNPCMovement(mob,0.3) end
-    local targetPos
-    if pos=="Above" then
-        local y=math.max(maxY+pad, maxY+0.5)
-        targetPos=Vector3.new(targetCenter.X, y, targetCenter.Z)
-    elseif pos=="Under" then
-        local y=math.min(minY-pad, minY-0.5)
-        targetPos=Vector3.new(targetCenter.X, y, targetCenter.Z)
-    else
-        targetPos=targetCenter
+local function TeleportToMob(mob)
+    local cf = GetTargetCFrame(mob, FarmPosition)
+    if not cf then return end
+    if FarmMode == "Tween" then
+        local tweenInfo = TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(HumanoidRootPart, tweenInfo, { CFrame = cf })
+        tween:Play()
+        tween.Completed:Wait()
+    elseif FarmMode == "tp" then
+        tp({ Target = cf, Mod = CFrame.new(0, 0, 0) })
+    elseif FarmMode == "Tp" then
+        Tp(cf)
+    elseif FarmMode == "tp1" then
+        tp1(cf)
     end
-    local lookAt=Vector3.new(targetCenter.X, (pos=="Above" and maxY or minY), targetCenter.Z)
-    local cf=CFrame.new(targetPos,lookAt)
-    if pos=="Above" then cf=cf*CFrame.Angles(math.rad(-10),0,0)
-    elseif pos=="Under" then cf=cf*CFrame.Angles(math.rad(10),0,0) end
-    if Rotate90Enabled then cf=cf*CFrame.Angles(0,math.rad(90),0) end
-    return cf
 end
 
--- ====================== 调度器 ======================
-if not core.Scheduler then
-    core.Scheduler = { tasks={}, heartbeat=nil }
-    function core.Scheduler:register(name,step,interval) self.tasks[name]={step=step,interval=interval or 0,last=0} end
-    function core.Scheduler:unregister(name) self.tasks[name]=nil end
-    function core.Scheduler:start()
-        if self.heartbeat then return end
-        self.heartbeat=RunService.Heartbeat:Connect(function(dt)
-            local now=tick()
-            for _,t in pairs(self.tasks) do
-                if t.interval==0 then t.step(dt)
-                elseif now-t.last>=t.interval then t.last=now; t.step(dt) end
+local function LockToMob(mob)
+    LockActive = true
+    local connection
+    connection = RunService.RenderStepped:Connect(function()
+        if not AutoFarmEnabled or IsMobDead(mob) or not LockActive then
+            connection:Disconnect()
+            LockActive = false
+            return
+        end
+        if not Character or not HumanoidRootPart then return end
+        local cf = GetTargetCFrame(mob, FarmPosition)
+        if cf then
+            Character:PivotTo(cf)
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+end
+
+-- ====================== AUTO LOOPS ======================
+local function StartAutoAttack()
+    task.spawn(function()
+        while AutoAttackEnabled and AutoFarmEnabled do
+            local mob = GetPriorityMob()
+            if mob and not WaitingRespawn then
+                pcall(function() ReplicatedStorage.LMB:FireServer() end)
+            end
+            task.wait(0.05)
+        end
+    end)
+end
+
+local function StartAutoSkill()
+    task.spawn(function()
+        while AutoSkillEnabled and AutoFarmEnabled do
+            local mob = GetPriorityMob()
+            if mob and not WaitingRespawn then
+                local keysToPress = {}
+                if table.find(SelectedSkills, "全部") then
+                    keysToPress = skillList
+                else
+                    keysToPress = SelectedSkills
+                end
+                for _, key in ipairs(keysToPress) do
+                    if not AutoSkillEnabled or not AutoFarmEnabled then break end
+                    local keyCode = Enum.KeyCode[key]
+                    if keyCode then
+                        pcall(function()
+                            VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+                            task.wait(0.05)
+                            VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+                        end)
+                        task.wait(SkillDelay)
+                    end
+                end
+            end
+            task.wait(LoopDelay)
+        end
+    end)
+end
+
+local function TriggerAutoSkipHeli(state)
+    pcall(function() ReplicatedStorage.SetSettingAutoSkipWave:FireServer(state) end)
+end
+
+local function HasHumanoid(obj)
+    if obj:IsA("Model") then
+        return obj:FindFirstChildOfClass("Humanoid") ~= nil
+    end
+    return false
+end
+
+local function IsLivingDescendant(obj)
+    local current = obj
+    while current and current ~= workspace do
+        if current:IsA("Model") and current:FindFirstChildOfClass("Humanoid") then
+            return true
+        end
+        current = current.Parent
+    end
+    return false
+end
+
+-- ====================== Delete Map SYSTEM ======================
+local BoostFPS_OriginalData = {}
+local BoostFPS_Active = false
+local BoostFPS_RestoreConnection = nil
+local BoostFPS_LightingData = {}
+
+local function SaveAndBoostFPS()
+    if BoostFPS_Active then return end
+    BoostFPS_Active = true
+    BoostFPS_OriginalData = {}
+    BoostFPS_LightingData = {}
+
+    local Lighting = game:GetService("Lighting")
+    BoostFPS_LightingData = {
+        Brightness        = Lighting.Brightness,
+        GlobalShadows     = Lighting.GlobalShadows,
+        FogEnd            = Lighting.FogEnd,
+        FogStart          = Lighting.FogStart,
+    }
+    pcall(function()
+        Lighting.GlobalShadows = false
+        Lighting.Brightness    = 1
+        Lighting.FogEnd        = 100000
+        Lighting.FogStart      = 100000
+    end)
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        pcall(function()
+            if effect:IsA("Atmosphere") or effect:IsA("BloomEffect") or
+               effect:IsA("ColorCorrectionEffect") or effect:IsA("DepthOfFieldEffect") or
+               effect:IsA("SunRaysEffect") or effect:IsA("Sky") then
+                BoostFPS_LightingData["effect_" .. effect.Name] = { class = effect.ClassName, inst = effect }
+                effect.Parent = nil
             end
         end)
     end
-end
-local Scheduler = core.Scheduler
-local function safeTask(name,fn) return function(dt) pcall(fn,dt) end end
 
-Scheduler:register("ScannerService", safeTask("ScannerService", ScanWorld), 2.0)
+    pcall(function()
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if IsLivingDescendant(obj) then continue end
+            if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") or obj:IsA("SpecialMesh") then
+                if not IsLivingDescendant(obj) then
+                    if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+                        BoostFPS_OriginalData[obj] = {
+                            Transparency = obj.Transparency,
+                            CastShadow   = obj.CastShadow,
+                            Material     = obj.Material,
+                        }
+                        obj.Transparency = 1
+                        obj.CastShadow   = false
+                        pcall(function() obj.Material = Enum.Material.SmoothPlastic end)
+                    end
+                end
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                BoostFPS_OriginalData[obj] = { Transparency = obj.Transparency }
+                obj.Transparency = 1
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or
+                   obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") or obj:IsA("SelectionBox") then
+                BoostFPS_OriginalData[obj] = { Enabled = obj.Enabled }
+                pcall(function() obj.Enabled = false end)
+            elseif obj:IsA("SpecialMesh") then
+                BoostFPS_OriginalData[obj] = { TextureId = obj.TextureId }
+                obj.TextureId = ""
+            end
+        end
+    end)
 
--- ====================== 基础 Step 函数 ======================
-local attackCd = 0
-local function stepAutoAttack()
-    if not AutoFarmEnabled or not AutoAttackEnabled then return end
-    if getgenv().ACTIVE_MODE ~= "farm" then return end
-    if attackCd > 0 then attackCd = attackCd - 0.05; if attackCd > 0 then return end
-    local mob = GetPriorityMob()
-    if mob and not WaitingRespawn then
-        pcall(function() ReplicatedStorage.LMB:FireServer() end)
-        attackCd = 0.05
-    end
-end
-
-local skillCd = 0; local skillPressIdx = 1
-local function stepAutoSkill()
-    if not AutoFarmEnabled or not AutoSkillEnabled then return end
-    if getgenv().ACTIVE_MODE ~= "farm" then return end
-    if skillCd > 0 then skillCd = skillCd - 0.05; if skillCd > 0 then return end
-    local mob = GetPriorityMob()
-    if not mob or WaitingRespawn then return end
-    local keys = table.find(SelectedSkills, "全部") and skillList or SelectedSkills
-    if #keys == 0 then return end
-    if skillPressIdx > #keys then skillPressIdx = 1 end
-    local key = keys[skillPressIdx]
-    local kc = Enum.KeyCode[key]
-    if kc then
+    BoostFPS_RestoreConnection = workspace.DescendantAdded:Connect(function(obj)
+        if not BoostFPS_Active then return end
+        if IsLivingDescendant(obj) then return end
+        task.wait(0.05)
         pcall(function()
-            VirtualInputManager:SendKeyEvent(true, kc, false, game)
-            task.wait(0.05)
-            VirtualInputManager:SendKeyEvent(false, kc, false, game)
+            if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+                if not IsLivingDescendant(obj) then
+                    obj.Transparency = 1
+                    obj.CastShadow   = false
+                end
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                obj.Transparency = 1
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or
+                   obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+                pcall(function() obj.Enabled = false end)
+            end
         end)
-        skillPressIdx = skillPressIdx + 1
-        skillCd = SkillDelay
+    end)
+
+    print("[DYHUB] 删除地图: 开启")
+end
+
+local function RestoreBoostFPS()
+    if not BoostFPS_Active then return end
+    BoostFPS_Active = false
+
+    if BoostFPS_RestoreConnection then
+        BoostFPS_RestoreConnection:Disconnect()
+        BoostFPS_RestoreConnection = nil
     end
-end
 
-local fillUpCd = 0
-local function stepAutoFillUp()
-    if not AutoFarmEnabled or not AutoFillUpEnabled then return end
-    if getgenv().ACTIVE_MODE ~= "farm" then return end
-    if fillUpCd > 0 then fillUpCd = fillUpCd - 0.2; if fillUpCd > 0 then return end
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-    if not hum or hum.Health >= hum.MaxHealth then return end
-    if AutoSkipHeliEnabled then pcall(function() ReplicatedStorage.SetSettingAutoSkipWave:FireServer(false) end) end
-    local waited = 0
-    while not IsFillUpPartReady() and waited < 30 do task.wait(0.2); waited = waited + 0.2 end
-    if IsFillUpPartReady() then
-        for i = 1, 2 do
-            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", "FillHP") end)
-            if i < 2 then task.wait(0.3) end
-        end
-    end
-    if AutoSkipHeliEnabled then pcall(function() ReplicatedStorage.SetSettingAutoSkipWave:FireServer(true) end) end
-    fillUpCd = 10
-end
-
-local function stepAutoSkipHeli()
-    if not AutoFarmEnabled or not AutoSkipHeliEnabled then return end
-    if getgenv().ACTIVE_MODE ~= "farm" then return end
-    pcall(function() ReplicatedStorage.SetSettingAutoSkipWave:FireServer(true) end)
-end
-
-local godModeCd = 0
-local function stepGodMode()
-    if not GodModeEnabled then return end
-    if godModeCd > 0 then godModeCd = godModeCd - 0.1; if godModeCd > 0 then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChild("Humanoid")
-    if not hum or hum.MaxHealth <= 0 then return end
-    local percent = (hum.Health / hum.MaxHealth) * 100
-    if percent < GodModeValue then
-        local head = char:FindFirstChild("Head")
-        if head then head:Destroy() else hum.Health = 0 end
-    end
-    godModeCd = 0.1
-end
-
-local buyWeaponCd = 0
-local function stepAutoBuyWeapon()
-    if not AutoBuyWeaponEnabled or not SelectedWeapon then return end
-    if buyWeaponCd > 0 then buyWeaponCd = buyWeaponCd - 0.5; if buyWeaponCd > 0 then return end
-    pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedWeapon) end)
-    buyWeaponCd = 10
-end
-
-local buyMiscCd = 0
-local function stepAutoBuyMisc()
-    if not AutoBuyMiscEnabled or not SelectedMiscItem then return end
-    if buyMiscCd > 0 then buyMiscCd = buyMiscCd - 0.5; if buyMiscCd > 0 then return end
-    pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedMiscItem) end)
-    buyMiscCd = 10
-end
-
-local idleCd = 0
-local function stepIdlePosition()
-    if not AutoFarmEnabled then return end
-    if idleCd > 0 then idleCd = idleCd - 0.2; if idleCd > 0 then return end
-    if WaitingRespawn and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character:PivotTo(IdlePosition)
-        LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-        LocalPlayer.Character.HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-    end
-    idleCd = 0.2
-end
-
-local farmState = "IDLE"
-local currentMob, currentMobType, currentPrompt = nil, nil, nil
-local lockConn = nil
-local movingTween = nil
-local function StopLock()
-    if lockConn then lockConn:Disconnect(); lockConn = nil end
-end
-local function StartLock(mob, mType, prompt)
-    StopLock()
-    local lastLockTime = 0
-    lockConn = RunService.Heartbeat:Connect(function()
-        local now = tick()
-        if now - lastLockTime < 0.2 then return end
-        lastLockTime = now
-        if not AutoFarmEnabled or farmState ~= "LOCKING" or IsMobDead(mob) then return end
-        local cf = GetTargetCFrame(mob, FarmPosition)
-        if cf and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character:PivotTo(cf)
-            LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-            LocalPlayer.Character.HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-        end
-        if mType == "GiantST" and prompt then
+    local Lighting = game:GetService("Lighting")
+    pcall(function()
+        if BoostFPS_LightingData.Brightness        ~= nil then Lighting.Brightness        = BoostFPS_LightingData.Brightness end
+        if BoostFPS_LightingData.GlobalShadows     ~= nil then Lighting.GlobalShadows     = BoostFPS_LightingData.GlobalShadows end
+        if BoostFPS_LightingData.FogEnd            ~= nil then Lighting.FogEnd            = BoostFPS_LightingData.FogEnd end
+        if BoostFPS_LightingData.FogStart          ~= nil then Lighting.FogStart          = BoostFPS_LightingData.FogStart end
+    end)
+    for key, data in pairs(BoostFPS_LightingData) do
+        if type(key) == "string" and key:sub(1, 7) == "effect_" then
             pcall(function()
-                prompt.HoldDuration = 0; prompt.MaxActivationDistance = 50
-                if fireproximityprompt then fireproximityprompt(prompt)
-                else prompt:InputHoldBegin(); task.wait(0.05); prompt:InputHoldEnd() end
+                if data.inst then data.inst.Parent = Lighting end
+            end)
+        end
+    end
+
+    for obj, data in pairs(BoostFPS_OriginalData) do
+        pcall(function()
+            if not obj or not obj.Parent then return end
+            if data.Transparency ~= nil and (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") or obj:IsA("Decal") or obj:IsA("Texture")) then
+                obj.Transparency = data.Transparency
+            end
+            if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
+            if data.Material   ~= nil then pcall(function() obj.Material = data.Material end) end
+            if data.Enabled    ~= nil then pcall(function() obj.Enabled  = data.Enabled  end) end
+            if data.TextureId  ~= nil then obj.TextureId = data.TextureId end
+        end)
+    end
+
+    BoostFPS_OriginalData = {}
+    BoostFPS_LightingData = {}
+    print("[DYHUB] 删除地图: 关闭")
+end
+
+task.spawn(function()
+    while true do
+        task.wait(3)
+        if BoostFPS_Active then
+            pcall(function()
+                for _, obj in ipairs(workspace:GetDescendants()) do
+                    if IsLivingDescendant(obj) then continue end
+                    if (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then
+                        if not IsLivingDescendant(obj) then
+                            if obj.Transparency < 0.99 and not BoostFPS_OriginalData[obj] then
+                                obj.Transparency = 1
+                                obj.CastShadow   = false
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ====================== PLAYER HP HELPERS ======================
+local function GetPlayerHPInfo()
+    local humanoid = Character and Character:FindFirstChild("Humanoid")
+    if not humanoid then return 100, 100 end
+    return humanoid.Health, humanoid.MaxHealth
+end
+
+local function IsPlayerHPFull()
+    local hp, maxHp = GetPlayerHPInfo()
+    if maxHp <= 0 then return true end
+    return hp >= maxHp
+end
+
+local function GetPlayerHealthPercent()
+    local humanoid = Character and Character:FindFirstChild("Humanoid")
+    if not humanoid then return 100 end
+    if humanoid.MaxHealth <= 0 then return 100 end
+    return (humanoid.Health / humanoid.MaxHealth) * 100
+end
+
+-- ====================== GOD MODE LOOP ======================
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if GodModeEnabled then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+                local humanoid = char:FindFirstChild("Humanoid")
+                if not humanoid then return end
+                if humanoid.MaxHealth <= 0 then return end
+                local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
+                if hpPercent < GodModeValue then
+                    local head = char:FindFirstChild("Head")
+                    if head then
+                        head:Destroy()
+                    else
+                        humanoid.Health = 0
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ====================== AUTO FILL UP ======================
+local function DoFillUp()
+    for i = 1, 2 do
+        pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", "FillHP") end)
+        if i < 2 then task.wait(0.3) end
+    end
+end
+
+local function StartAutoFillUpLoop()
+    if FillUpRunning then return end
+    FillUpRunning = true
+    task.spawn(function()
+        while AutoFillUpEnabled and AutoFarmEnabled do
+            if not IsPlayerHPFull() then
+                if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
+                local waited = 0
+                while not IsFillUpPartReady() and AutoFillUpEnabled do
+                    waited = waited + 0.2
+                    if waited >= 30 then break end
+                    task.wait(0.2)
+                end
+                if IsFillUpPartReady() and AutoFillUpEnabled then DoFillUp(); task.wait(1) end
+                if AutoSkipHeliEnabled then TriggerAutoSkipHeli(true) end
+            end
+            task.wait(1)
+        end
+        FillUpRunning = false
+    end)
+end
+
+-- ====================== BARRIER BYPASS ======================
+local function startNoBarrier()
+    if noBarrierConnection then return end
+    noBarrierConnection = RunService.Heartbeat:Connect(function()
+        pcall(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local pos = hrp.Position
+            if math.abs(pos.X) > 1000 or math.abs(pos.Y) > 1000 or math.abs(pos.Z) > 1000 then
+                hrp.CFrame = CFrame.new(Vector3.new(0, 50, 0))
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid then humanoid.Health = humanoid.MaxHealth end
+            end
+        end)
+    end)
+end
+
+local function stopNoBarrier()
+    if noBarrierConnection then
+        noBarrierConnection:Disconnect()
+        noBarrierConnection = nil
+    end
+end
+
+-- ============================================================
+-- ====================== AUTO VOTE MODE ======================
+-- ============================================================
+
+local AutoVoteEnabled       = Config:Get("AutoVoteEnabled", false)
+-- AutoGameValue 已是英文
+local AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
+local AutoVoteValue         = Config:Get("AutoVoteValue", "Normal")
+
+local _voteRespawnConn   = nil
+local _voteIGRespawnConn = nil
+local _syncRespawnConn   = nil
+
+local function FireVote_Solo()
+    if not AutoGameValue then return end
+    pcall(function()
+        ReplicatedStorage.MainHandler:FireServer({ [1] = "StartSolo", [2] = AutoGameValue })
+    end)
+    print("[DYHUB] 自动投票已触发: " .. AutoGameValue)
+end
+
+local function FireGetReady()
+    task.wait(2.5)
+    pcall(function() ReplicatedStorage.GetReadyRemote:FireServer("1", true) end)
+end
+
+local function FireVote_InGame()
+    if not AutoVoteValue then return end
+    pcall(function() ReplicatedStorage.Vote:FireServer(AutoVoteValue) end)
+end
+
+local function SetupSyncVoteAndStart()
+    if _voteRespawnConn then _voteRespawnConn:Disconnect(); _voteRespawnConn = nil end
+    if _syncRespawnConn then _syncRespawnConn:Disconnect(); _syncRespawnConn = nil end
+    FireVote_Solo()
+    task.spawn(function()
+        task.wait(2.5)
+        if AutoVoteEnabled and AutoStartEnabled then FireGetReady() end
+    end)
+    _syncRespawnConn = LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1.5)
+        if AutoVoteEnabled and AutoStartEnabled then
+            FireVote_Solo()
+            task.spawn(function()
+                task.wait(2.5)
+                if AutoVoteEnabled and AutoStartEnabled then FireGetReady() end
             end)
         end
     end)
 end
 
-local function stepMainStateMachine()
-    if not AutoFarmEnabled then
-        if farmState ~= "IDLE" then
-            farmState = "IDLE"; StopLock(); if movingTween then movingTween:Cancel() end
-        end
-        return
-    end
-    if getgenv().ACTIVE_MODE ~= "farm" then return end
+local function SetupAutoVote_SoloOnly(enabled)
+    if _voteRespawnConn then _voteRespawnConn:Disconnect(); _voteRespawnConn = nil end
+    if not enabled then return end
+    FireVote_Solo()
+    _voteRespawnConn = LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1.5)
+        if AutoVoteEnabled and not AutoStartEnabled then FireVote_Solo() end
+    end)
+end
 
-    local mob, mType, prompt = GetPriorityMob()
-    if not mob then
-        if farmState ~= "IDLE" then
-            farmState = "IDLE"; StopLock(); if movingTween then movingTween:Cancel() end
-            WaitingRespawn = true
-        end
-        return
-    end
-    WaitingRespawn = false
+local function SetupAutoStartOnly(enabled)
+    if AutoStartConnection then AutoStartConnection:Disconnect(); AutoStartConnection = nil end
+    if not enabled then return end
+    FireGetReady()
+    AutoStartConnection = LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1)
+        if AutoStartEnabled and not AutoVoteEnabled then task.spawn(FireGetReady) end
+    end)
+end
 
-    if SafeModeEnabled then
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-        if hum then
-            local percent = (hum.Health / hum.MaxHealth) * 100
-            if percent < SafeValue then
-                local root = mob:FindFirstChild("HumanoidRootPart")
-                if root then LocalPlayer.Character:PivotTo(CFrame.new(root.Position + Vector3.new(0, 111, 0))) end
-                return
-            end
-        end
-    end
+local function RefreshVoteAndStartSetup()
+    if _voteRespawnConn   then _voteRespawnConn:Disconnect();   _voteRespawnConn   = nil end
+    if _syncRespawnConn   then _syncRespawnConn:Disconnect();   _syncRespawnConn   = nil end
+    if AutoStartConnection then AutoStartConnection:Disconnect(); AutoStartConnection = nil end
 
-    if farmState == "IDLE" then
-        currentMob = mob; currentMobType = mType; currentPrompt = prompt
-        farmState = "MOVING"
-        StartDamageChecker(mob)
-    end
-
-    if farmState == "MOVING" then
-        local cf = GetTargetCFrame(currentMob, FarmPosition)
-        if cf then
-            if FarmMode == "Tween" then
-                if movingTween then movingTween:Cancel() end
-                movingTween = TweenService:Create(LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = cf })
-                movingTween:Play()
-                movingTween.Completed:Wait()
-                movingTween = nil
-            else
-                tp1(cf)
-            end
-            farmState = "LOCKING"
-            StartLock(currentMob, currentMobType, currentPrompt)
-        end
-    end
-
-    if farmState == "LOCKING" and IsMobDead(currentMob) then
-        StopLock(); ResetMobOverride(currentMob); farmState = "IDLE"; currentMob = nil
+    if AutoVoteEnabled and AutoStartEnabled then
+        SetupSyncVoteAndStart()
+    elseif AutoVoteEnabled and not AutoStartEnabled then
+        SetupAutoVote_SoloOnly(true)
+    elseif not AutoVoteEnabled and AutoStartEnabled then
+        SetupAutoStartOnly(true)
     end
 end
 
-local voteCd = 0
-local function stepAutoVote()
-    if not AutoVoteEnabled and not AutoStartEnabled and not AutoVoteinGameEnabled then return end
-    if voteCd > 0 then voteCd = voteCd - 0.5; if voteCd > 0 then return end
-    if AutoVoteEnabled then pcall(function() ReplicatedStorage.MainHandler:FireServer({ [1] = "StartSolo", [2] = AutoGameValue }) end) end
-    if AutoStartEnabled then task.spawn(function() task.wait(2.5); pcall(function() ReplicatedStorage.GetReadyRemote:FireServer("1", true) end) end) end
-    if AutoVoteinGameEnabled then pcall(function() ReplicatedStorage.Vote:FireServer(AutoVoteValue) end) end
-    voteCd = 5
+local function SetupAutoVote_InGame(enabled)
+    if _voteIGRespawnConn then _voteIGRespawnConn:Disconnect(); _voteIGRespawnConn = nil end
+    if not enabled then return end
+    FireVote_InGame()
+    _voteIGRespawnConn = LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1.5)
+        if AutoVoteinGameEnabled then FireVote_InGame() end
+    end)
 end
 
-local rebirthCd = 0
-local function stepAutoRebirth()
-    if not AutoRebirthEnabled then return end
-    if rebirthCd > 0 then rebirthCd = rebirthCd - 0.5; if rebirthCd > 0 then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChild("Humanoid")
-    if hum and hum.Health <= 0 then
-        pcall(function() local rebirthRemote = ReplicatedStorage:FindFirstChild("Rebirth"); if rebirthRemote then rebirthRemote:FireServer() end end)
-        rebirthCd = 5
-    end
+local function StartAutoStart()
+    AutoStartEnabled = true
+    RefreshVoteAndStartSetup()
 end
 
-local dailyCd = 0
-local function stepAutoDaily()
-    if not AutoDailyEnabled then return end
-    if dailyCd > 0 then dailyCd = dailyCd - 1; if dailyCd > 0 then return end
-    pcall(function() local dailyRemote = ReplicatedStorage:FindFirstChild("DailyReward"); if dailyRemote then dailyRemote:FireServer() end end)
-    dailyCd = 60
+local function StopAutoStart()
+    AutoStartEnabled = false
+    RefreshVoteAndStartSetup()
 end
 
-local chestCd = 0
-local function stepAutoChest()
-    if not AutoChestEnabled then return end
-    if chestCd > 0 then chestCd = chestCd - 0.5; if chestCd > 0 then return end
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("Model") and (obj.Name:lower():find("chest") or obj.Name:lower():find("crate")) then
-                local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
+-- ====================== TELEPORT TO IDLE ======================
+local function TeleportToIdle()
+    LockActive = false
+    task.wait(0.1)
+    WaitingRespawn = true
+    pcall(function()
+        Character:PivotTo(IdlePosition)
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+    end)
+end
+
+-- ====================== PROXIMITY PROMPT HELPERS ======================
+local function ActivateProximityPrompt(prompt)
+    pcall(function()
+        prompt.HoldDuration = 0
+        prompt.MaxActivationDistance = 50
+        if fireproximityprompt then fireproximityprompt(prompt) end
+        prompt:InputHoldBegin()
+        task.wait(0.05)
+        prompt:InputHoldEnd()
+    end)
+end
+
+local function ActivateAllFlushPrompts()
+    pcall(function()
+        for _, part in pairs(workspace:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("Model") then
+                local prompt = part:FindFirstChildOfClass("ProximityPrompt")
                 if prompt then
-                    local dist = (hrp.Position - obj:GetPivot().Position).Magnitude
-                    if dist <= 50 then pcall(function() prompt.HoldDuration = 0; fireproximityprompt(prompt) end) end
+                    local actionText = prompt.ActionText:lower()
+                    if actionText:find("flush") or actionText:find("flash") or actionText:find("dragon") then
+                        ActivateProximityPrompt(prompt)
+                    end
                 end
             end
         end
-    end
-    chestCd = 1
+    end)
 end
 
-local godRespawnCd = 0
-local function stepAutoGodMode()
-    if not AutoGodModeEnabled then return end
-    if godRespawnCd > 0 then godRespawnCd = godRespawnCd - 0.5; if godRespawnCd > 0 then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChild("Humanoid")
-    if not hum or hum.Health <= 0 then return end
-    local percent = (hum.Health / hum.MaxHealth) * 100
-    if percent <= GodRespawnThreshold then
-        pcall(function() local resetRemote = ReplicatedStorage:FindFirstChild("ResetCharacter"); if resetRemote then resetRemote:InvokeServer() end end)
-        pcall(function() local chatRemote = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents"); if chatRemote then local sayMsg = chatRemote:FindFirstChild("SayMessageRequest"); if sayMsg then sayMsg:FireServer(";reset", "All") end end end)
-        pcall(function() LocalPlayer:Kick("Auto God Mode: Respawning") end)
-        godRespawnCd = 3
-    end
-end
+-- ============================================================
+-- ====================== COLLECT SYSTEM ======================
+-- ============================================================
 
-local function stepXmasOpen()
-    if not XmasOpenEnabled then return end
-    pcall(function() ReplicatedStorage:WaitForChild("GachaCapsule"):FireServer() end)
-end
-local function stepXmasCollect()
-    if not XmasCollectEnabled then return end
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local nearestPresent, nearestDist = nil, math.huge
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj.Name == "The Present" then
-            local pos = obj:IsA("Model") and obj.PrimaryPart and obj.PrimaryPart.Position or obj.Position
-            local d = (hrp.Position - pos).Magnitude
-            if d < nearestDist then nearestDist = d; nearestPresent = obj end
-        end
-    end
-    if nearestPresent then
-        local prompt = nearestPresent:FindFirstChildOfClass("ProximityPrompt")
-        if prompt then
-            prompt.HoldDuration = 0
-            local target = nearestPresent:IsA("Model") and nearestPresent.PrimaryPart and nearestPresent.PrimaryPart.Position + Vector3.new(0, 3, 0) or nearestPresent.Position + Vector3.new(0, 3, 0)
-            hrp.CFrame = CFrame.new(target)
-            task.wait(0.1)
-            fireproximityprompt(prompt)
-        end
-    end
-end
+local CollectItems = {
+    "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
+    "Astro Samples", "Weird Prism", "Key Card", "Zombie Core",
+    "Flash Drives", "Presents",
+}
 
-local function stepBatchBuy()
-    if not BatchBuyEnabled then return end
-    local items = Config:Get("BatchBuyItems", {})
-    local amounts = Config:Get("BatchBuyAmounts", {})
-    for _, item in ipairs(items) do
-        for _, amt in ipairs(amounts) do
-            pcall(function() ReplicatedStorage:WaitForChild("BuyItemFromShopHourly"):FireServer(item, amt) end)
-        end
-    end
-end
-local function stepBatchGachaChar()
-    if not BatchGachaCharEnabled then return end
-    local spins = Config:Get("BatchGachaCharSpins", { "1SpinLucky", "10Spins", "1Spin" })
-    for _, spin in ipairs(spins) do
-        pcall(function() ReplicatedStorage:WaitForChild("GachaCharacter"):FireServer(spin) end)
-    end
-end
-local function stepBatchGachaSkin()
-    if not BatchGachaSkinEnabled then return end
-    local spins = Config:Get("BatchGachaSkinSpins", { "1SpinLucky", "1Spin", "10Spins" })
-    for _, spin in ipairs(spins) do
-        pcall(function() ReplicatedStorage:WaitForChild("GachaSkins"):FireServer(spin) end)
-    end
-end
+local CollectGroupMap = {
+    ["Astro Samples"] = {
+        "Trooper Blast","Trooper Spinner","Specialist Blaster","Specialist Spinner",
+        "Specialist Sword Arm","Strider Leg","Interceptor Wing","Interceptor Goggles",
+        "Interceptor Spinner","Impactor Cannon","Impactor Laser","High Impactor Cannon",
+        "High Impactor Laser","Destructor Laser","Destructor Blaster","Destructor Core",
+        "Obliterator Blaster","Obliterator Spinner",
+    },
+    ["Presents"] = {
+        "Gacha Capsule",
+    },
+}
 
-local WSValue = Config:Get("WSValue", 16)
-local JPValue = Config:Get("JPValue", 50)
-local NoClip = Config:Get("NoClip", false)
-local function updatePlayerStats()
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-    if hum then hum.WalkSpeed = WSValue; hum.JumpPower = JPValue end
-end
-LocalPlayer.CharacterAdded:Connect(function() task.wait(1); updatePlayerStats() end)
-local function stepNoClip()
-    if NoClip and LocalPlayer.Character then
-        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-    end
-end
+local AutoCollectEnabled   = Config:Get("AutoCollectEnabled", false)
+local SelectedCollectItems = Config:Get("SelectedCollectItems", {})
+local CollectMode          = Config:Get("CollectMode", "Clean")
 
--- 飞行功能已替换为 ToggleFly，不再需要原来的 startFly 和 fly 变量
--- 注意：原有的 flying、flySpeed、flyConnection、flyBodyVelocity 已删除
+local KnownCollectItems = {}
+local CollectRunning    = false
 
-local function updateFullBright()
-    if fullBrightEnabled then
-        Lighting.Ambient = Color3.new(1, 1, 1)
-        Lighting.Brightness = 5
-        Lighting.ClockTime = 14
-        if not fullBrightConnection then
-            fullBrightConnection = RunService.RenderStepped:Connect(function()
-                if fullBrightEnabled then
-                    Lighting.ClockTime = 14
-                    Lighting.Brightness = 10
-                    Lighting.Ambient = Color3.new(1, 1, 1)
-                end
-            end)
-        end
-    else
-        if fullBrightConnection then fullBrightConnection:Disconnect(); fullBrightConnection = nil end
-        Lighting.Ambient = Color3.new(0, 0, 0)
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
+local function MatchesPattern(objectName, pattern)
+    local objL, patL = objectName:lower(), pattern:lower()
+    if objL == patL then return true end
+    if #objL > #patL and objL:sub(1, #patL) == patL then
+        local nc = objL:sub(#patL + 1, #patL + 1)
+        if nc == " " or nc == "#" or nc == "_" or nc == "-" then return true end
     end
-end
-local function updateNoFog()
-    if noFogEnabled then
-        Lighting.FogStart = 0
-        Lighting.FogEnd = 1e10
-        Lighting.FogColor = Color3.fromRGB(255, 255, 255)
-        if not noFogConnection then
-            noFogConnection = RunService.RenderStepped:Connect(function()
-                if noFogEnabled then
-                    Lighting.FogStart = 0
-                    Lighting.FogEnd = 1e10
-                    Lighting.FogColor = Color3.fromRGB(255, 255, 255)
-                end
-            end)
-        end
-    else
-        if noFogConnection then noFogConnection:Disconnect(); noFogConnection = nil end
-        Lighting.FogStart = 0
-        Lighting.FogEnd = 100000
-        Lighting.FogColor = Color3.fromRGB(255, 255, 255)
-    end
-end
-local function updateVibrant()
-    if not vibrantEffect then
-        vibrantEffect = Lighting:FindFirstChild("VibrantEffect") or Instance.new("ColorCorrectionEffect")
-        vibrantEffect.Name = "VibrantEffect"
-        vibrantEffect.Parent = Lighting
-    end
-    if vibrantEnabled then
-        Lighting.Ambient = Color3.fromRGB(180, 180, 180)
-        Lighting.OutdoorAmbient = Color3.fromRGB(170, 170, 170)
-        Lighting.ColorShift_Top = Color3.fromRGB(255, 230, 200)
-        Lighting.ColorShift_Bottom = Color3.fromRGB(200, 240, 255)
-        vibrantEffect.Saturation = 1
-        vibrantEffect.Contrast = 0.4
-        vibrantEffect.Brightness = 0.05
-        vibrantEffect.Enabled = true
-    else
-        Lighting.Ambient = Color3.new(0, 0, 0)
-        Lighting.OutdoorAmbient = Color3.new(0, 0, 0)
-        Lighting.ColorShift_Top = Color3.new(0, 0, 0)
-        Lighting.ColorShift_Bottom = Color3.new(0, 0, 0)
-        vibrantEffect.Enabled = false
-    end
-end
-
-local function initFPSDisplay()
-    if not fpsText then
-        fpsText = Drawing.new("Text")
-        fpsText.Size = 16
-        fpsText.Color = Color3.fromRGB(0, 255, 0)
-        fpsText.Center = false
-        fpsText.Outline = true
-        fpsText.Visible = showFPS
-        msText = Drawing.new("Text")
-        msText.Size = 16
-        msText.Color = Color3.fromRGB(0, 255, 0)
-        msText.Center = false
-        msText.Outline = true
-        msText.Visible = showPing
-    end
-    fpsText.Position = Vector2.new(Camera.ViewportSize.X - 100, 10)
-    msText.Position = Vector2.new(Camera.ViewportSize.X - 100, 30)
-end
-local function updateFPSDisplay()
-    if not showFPS and not showPing then return
-    initFPSDisplay()
-    fpsCounter = fpsCounter + 1
-    if tick() - fpsLastUpdate >= 1 then
-        if showFPS then
-            fpsText.Text = "FPS: " .. tostring(fpsCounter)
-            fpsText.Visible = true
-        else
-            fpsText.Visible = false
-        end
-        if showPing then
-            local pingStat = Stats.Network.ServerStatsItem["Data Ping"]
-            local ping = pingStat and math.floor(pingStat:GetValue()) or 0
-            msText.Text = "Ping: " .. ping .. " ms"
-            if ping <= 60 then msText.Color = Color3.fromRGB(0, 255, 0)
-            elseif ping <= 120 then msText.Color = Color3.fromRGB(255, 165, 0)
-            else msText.Color = Color3.fromRGB(255, 0, 0); msText.Text = "Ping: " .. ping .. " ms" end
-            msText.Visible = true
-        else
-            msText.Visible = false
-        end
-        fpsCounter = 0
-        fpsLastUpdate = tick()
-    end
-    if Camera and Camera.ViewportSize then
-        fpsText.Position = Vector2.new(Camera.ViewportSize.X - 100, 10)
-        msText.Position = Vector2.new(Camera.ViewportSize.X - 100, 30)
-    end
-end
-
--- 天文币刷取模式（状态机）
-local astroState = "IDLE"
-local astroTimer = 0
-local astroAngle = 0
-local astroOrbitConn = nil
-local astroStrikeRunning = false
-local function AstroIsInLobby()
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    return pg and pg:FindFirstChild("Lobby") and pg.Lobby.Enabled == true
-end
-local function AstroHasVoteUI()
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then return false end
-    for _, v in ipairs(pg:GetDescendants()) do
-        if v:IsA("GuiObject") and v.Visible then
-            local name = v.Name:lower()
-            if name:find("vote") or name:find("map") or name:find("choose") then return true end
+    if CollectGroupMap[pattern] then
+        for _, gName in ipairs(CollectGroupMap[pattern]) do
+            if objL == gName:lower() then return true end
         end
     end
     return false
 end
-local function AstroVoteAndPrepare()
-    local vote = ReplicatedStorage:FindFirstChild("Vote")
-    local getReady = ReplicatedStorage:FindFirstChild("GetReadyRemote")
-    if vote then pcall(function() vote:FireServer("AstroV2") end) end
-    task.wait(0.3)
-    if getReady then pcall(function() getReady:FireServer("3", true) end) end
-    task.wait(0.3)
-    if getReady then pcall(function() getReady:FireServer("1", true) end) end
-end
-local function stepAstroMode()
-    if getgenv().ACTIVE_MODE ~= "astro" then
-        if astroOrbitConn then astroOrbitConn:Disconnect(); astroOrbitConn = nil end
-        if astroStrikeRunning then astroStrikeRunning = false end
-        astroState = "IDLE"
-        return
+
+local function IsCollectTarget(objectName)
+    for _, pattern in ipairs(SelectedCollectItems) do
+        if MatchesPattern(objectName, pattern) then return true end
     end
-    if astroState == "IDLE" then
-        if AstroIsInLobby() or AstroHasVoteUI() then
-            AstroVoteAndPrepare()
-            astroState = "VOTING"
-        end
-    elseif astroState == "VOTING" then
-        if not AstroHasVoteUI() and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            task.wait(2)
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.Humanoid.PlatformStand = true
-                astroAngle = 0
-                if astroOrbitConn then astroOrbitConn:Disconnect() end
-                astroOrbitConn = RunService.Heartbeat:Connect(function(dt)
-                    if getgenv().ACTIVE_MODE ~= "astro" then return end
-                    astroAngle = (astroAngle + AstroFlySpeed * dt) % (math.pi * 2)
-                    local pos = Vector3.new(0, 250, 0) + Vector3.new(math.cos(astroAngle) * AstroFlyRadius, 0, math.sin(astroAngle) * AstroFlyRadius)
-                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        hrp.CFrame = CFrame.new(pos, Vector3.new(0, 250, 0))
-                        hrp.Velocity = Vector3.zero
-                        hrp.RotVelocity = Vector3.zero
-                    end
-                end)
-                astroStrikeRunning = true
-                task.spawn(function()
-                    while astroStrikeRunning and getgenv().ACTIVE_MODE == "astro" do
-                        pcall(function()
-                            local remote = ReplicatedStorage:FindFirstChild("VillanArcAirStrike")
-                            if remote then remote:FireServer(Vector3.new(-23.34, -0.19, 0.34)) end
-                        end)
-                        task.wait(1)
-                    end
-                end)
-                astroTimer = 0
-                astroState = "FLYING"
-            end
-        end
-    elseif astroState == "FLYING" then
-        astroTimer = astroTimer + 0.5
-        if astroTimer >= AstroGameDuration or AstroIsInLobby() or AstroHasVoteUI() then
-            if astroOrbitConn then astroOrbitConn:Disconnect(); astroOrbitConn = nil end
-            astroStrikeRunning = false
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = CFrame.new(-23.34, -0.19, 0.34)
-                char.HumanoidRootPart.Velocity = Vector3.zero
-            end
-            astroState = "RETURNING"
-        end
-    elseif astroState == "RETURNING" then
-        task.wait(1)
-        astroState = "IDLE"
-    end
+    return false
 end
 
+local function FindNewCollectItems()
+    local found = {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj and obj.Parent and IsCollectTarget(obj.Name) then
+            if obj:IsA("Model") or obj:IsA("MeshPart") or obj:IsA("Part") or obj:IsA("BasePart") then
+                if not KnownCollectItems[obj] then table.insert(found, obj) end
+            end
+        end
+    end
+    return found
+end
+
+local function GetItemRootPart(obj)
+    if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then return obj end
+    return nil
+end
+
+local function TweenToItem(itemRoot)
+    if not itemRoot or not HumanoidRootPart then return end
+    local targetPos = itemRoot.Position + Vector3.new(0, 3, 0)
+    local targetCF  = CFrame.new(targetPos, itemRoot.Position)
+    local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = targetCF })
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+local function ActivateItemPrompts(obj)
+    pcall(function()
+        for _, child in ipairs(obj:GetDescendants()) do
+            if child:IsA("ProximityPrompt") then
+                child.HoldDuration = 0; child.MaxActivationDistance = 50
+                if fireproximityprompt then fireproximityprompt(child) end
+                child:InputHoldBegin(); task.wait(0.05); child:InputHoldEnd()
+            end
+        end
+    end)
+end
+
+local function IsItemGone(obj) return not obj or not obj.Parent end
+
+local function CollectSingleItem(obj)
+    if IsItemGone(obj) then return end
+    local itemRoot = GetItemRootPart(obj)
+    if not itemRoot then return end
+    TweenToItem(itemRoot)
+    local lockConn
+    lockConn = RunService.RenderStepped:Connect(function()
+        if IsItemGone(obj) or not AutoCollectEnabled then lockConn:Disconnect(); return end
+        if not itemRoot or not itemRoot.Parent then lockConn:Disconnect(); return end
+        local targetCF = CFrame.new(itemRoot.Position + Vector3.new(0, 3, 0), itemRoot.Position)
+        if Character and HumanoidRootPart then
+            Character:PivotTo(targetCF)
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+    local timeout = 0
+    repeat
+        ActivateItemPrompts(obj); task.wait(0.1); timeout = timeout + 0.1
+        if timeout > 10 then break end
+    until IsItemGone(obj) or not AutoCollectEnabled
+    lockConn:Disconnect()
+    KnownCollectItems[obj] = true
+end
+
+local function AllMobsDead()
+    local livingFolder = workspace:FindFirstChild("Living")
+    if not livingFolder then return true end
+    for _, mob in ipairs(livingFolder:GetChildren()) do
+        if IsValidMob(mob) then return false end
+    end
+    return true
+end
+
+local function StartAutoCollectLoop()
+    if CollectRunning then return end
+    CollectRunning = true
+    task.spawn(function()
+        while AutoCollectEnabled do
+            if #SelectedCollectItems > 0 then
+                local itemsToCollect = FindNewCollectItems()
+                if #itemsToCollect > 0 then
+                    if CollectMode == "IDGF" then
+                        LockActive = false; task.wait(0.1)
+                        for _, obj in ipairs(itemsToCollect) do
+                            if not AutoCollectEnabled then break end
+                            if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
+                        end
+                        if AutoFarmEnabled then TeleportToIdle(); WaitingRespawn = false end
+
+                    elseif CollectMode == "Clean" then
+                        local waitedClean = 0
+                        while not AllMobsDead() and AutoCollectEnabled do
+                            task.wait(0.5); waitedClean = waitedClean + 0.5
+                            if waitedClean >= 120 then break end
+                        end
+                        if not AutoCollectEnabled then break end
+                        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
+                        LockActive = false; task.wait(0.1)
+                        for _, obj in ipairs(FindNewCollectItems()) do
+                            if not AutoCollectEnabled then break end
+                            if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
+                        end
+                        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(true) end
+                        if not IsPlayerHPFull() and AutoFillUpEnabled then
+                            local fw = 0
+                            while not IsPlayerHPFull() and AutoFillUpEnabled and AutoCollectEnabled do
+                                task.wait(0.5); fw = fw + 0.5; if fw >= 60 then break end
+                            end
+                        end
+                        if AutoFarmEnabled then TeleportToIdle(); WaitingRespawn = false end
+                    end
+                else
+                    for obj, _ in pairs(KnownCollectItems) do
+                        if IsItemGone(obj) then KnownCollectItems[obj] = nil end
+                    end
+                end
+            end
+            task.wait(0.5)
+        end
+        CollectRunning = false
+    end)
+end
+
+workspace.DescendantAdded:Connect(function(obj)
+    if not AutoCollectEnabled or #SelectedCollectItems == 0 then return end
+    if not IsCollectTarget(obj.Name) then return end
+    if not (obj:IsA("Model") or obj:IsA("MeshPart") or obj:IsA("Part") or obj:IsA("BasePart")) then return end
+    print("[DYHUB] 收集: 新物品 " .. obj.Name)
+end)
+
+-- ============================================================
+-- ====================== MAIN FARM LOOP ======================
+-- ============================================================
+local function StartFarmLoop()
+    task.spawn(function()
+        task.spawn(function()
+            while AutoFarmEnabled do
+                if WaitingRespawn and not LockActive then
+                    pcall(function()
+                        local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = IdlePosition })
+                        tween:Play(); tween.Completed:Wait()
+                        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                    end)
+                end
+                task.wait(0.1)
+            end
+        end)
+
+        while AutoFarmEnabled do
+            if not Character or not Character.Parent then
+                Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+                HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+                Client = LocalPlayer
+            end
+
+            local mob, mobType, extraData, priority = GetPriorityMob()
+
+            if mob then
+                WaitingRespawn = false
+                _currentTargetPriority = priority
+
+                if mobType == "GiantST" and extraData then
+                    local cf = GetTargetCFrame(mob, FarmPosition)
+                    if cf then
+                        if FarmMode == "Tween" then
+                            local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = cf })
+                            tween:Play(); tween.Completed:Wait()
+                        else tp1(cf) end
+                    end
+                    local giantLockConn
+                    giantLockConn = RunService.RenderStepped:Connect(function()
+                        if IsMobDead(mob) or not mob.Parent or not AutoFarmEnabled then
+                            giantLockConn:Disconnect(); return
+                        end
+                        local lockCF = GetTargetCFrame(mob, FarmPosition)
+                        if lockCF and Character and HumanoidRootPart then
+                            Character:PivotTo(lockCF)
+                            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                        end
+                    end)
+                    repeat
+                        task.wait(0.2)
+                        ActivateProximityPrompt(extraData)
+                        ActivateAllFlushPrompts()
+                    until IsMobDead(mob) or not mob.Parent or not AutoFarmEnabled
+                    giantLockConn:Disconnect()
+
+                else
+                    if SafeModeEnabled and GetPlayerHealthPercent() < SafeValue then
+                        local mobRoot = mob:FindFirstChild("HumanoidRootPart")
+                        if mobRoot then
+                            local safePos = mobRoot.Position + Vector3.new(0, 111, 0)
+                            pcall(function()
+                                Character:PivotTo(CFrame.new(safePos))
+                                HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                                HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                            end)
+                        end
+                        task.wait(0.5)
+                    else
+                        StartDamageChecker(mob)
+                        TeleportToMob(mob)
+
+                        LockActive = true
+                        local lockConn
+                        lockConn = RunService.RenderStepped:Connect(function()
+                            if not AutoFarmEnabled or IsMobDead(mob) or not LockActive then
+                                lockConn:Disconnect(); LockActive = false; return
+                            end
+                            if not Character or not HumanoidRootPart then return end
+                            local cf = GetTargetCFrame(mob, FarmPosition)
+                            if cf then
+                                Character:PivotTo(cf)
+                                HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                                HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                            end
+                        end)
+
+                        repeat
+                            task.wait(0.1)
+                            local shouldInterrupt, newPriority = CheckInterrupt(priority)
+                            if shouldInterrupt then
+                                _interruptSignal = true
+                                break
+                            end
+                        until IsMobDead(mob) or not AutoFarmEnabled
+
+                        lockConn:Disconnect()
+                        LockActive = false
+                        _interruptSignal = false
+                        ResetMobOverride(mob)
+                    end
+                end
+
+            else
+                _currentTargetPriority = 0
+                TeleportToIdle()
+                repeat task.wait(0.5) until GetPriorityMob() ~= nil or not AutoFarmEnabled
+                WaitingRespawn = false
+            end
+
+            task.wait(0.1)
+        end
+
+        WaitingRespawn = false
+        _currentTargetPriority = 0
+    end)
+end
+
+-- ====================== MISC OPTIONS HANDLER ======================
 local SyncFarmOnly = Config:Get("SyncFarmOnly", true)
-function HandleMiscOptions(selectedOptions)
+
+local function HandleMiscOptions(selectedOptions)
     MiscOptions = selectedOptions
     local canRun = AutoFarmEnabled or not SyncFarmOnly
-    AutoAttackEnabled = table.find(selectedOptions, "自动攻击") ~= nil and canRun
-    AutoSkillEnabled = table.find(selectedOptions, "自动技能") ~= nil and canRun
-    AutoSkipHeliEnabled = table.find(selectedOptions, "自动跳过直升机") ~= nil and canRun
-    if AutoSkipHeliEnabled then
-        pcall(function() ReplicatedStorage.SetSettingAutoSkipWave:FireServer(true) end)
-    else
-        pcall(function() ReplicatedStorage.SetSettingAutoSkipWave:FireServer(false) end)
+
+    local hasAutoAttack = table.find(selectedOptions, "自动攻击")
+    if hasAutoAttack and not AutoAttackEnabled and canRun then
+        AutoAttackEnabled = true; StartAutoAttack()
+    elseif not hasAutoAttack then
+        AutoAttackEnabled = false
     end
-    local hasAutoStart = table.find(selectedOptions, "自动开局") ~= nil
-    if hasAutoStart and canRun then
-        if not AutoStartEnabled then AutoStartEnabled = true end
-    elseif not hasAutoStart and AutoStartEnabled then
-        AutoStartEnabled = false
+
+    local hasAutoSkill = table.find(selectedOptions, "自动技能")
+    if hasAutoSkill and not AutoSkillEnabled and canRun then
+        AutoSkillEnabled = true; StartAutoSkill()
+    elseif not hasAutoSkill then
+        AutoSkillEnabled = false
     end
-    AutoFillUpEnabled = table.find(selectedOptions, "自动补血") ~= nil and canRun
-    SafeModeEnabled = table.find(selectedOptions, "安全模式") ~= nil
-    GodModeEnabled = table.find(selectedOptions, "上帝模式") ~= nil
-    local hasBoostFPS = table.find(selectedOptions, "删除地图") ~= nil
+
+    local hasAutoSkipHeli = table.find(selectedOptions, "自动跳过直升机")
+    if hasAutoSkipHeli and not AutoSkipHeliEnabled and canRun then
+        AutoSkipHeliEnabled = true; TriggerAutoSkipHeli(true)
+    elseif not hasAutoSkipHeli and AutoSkipHeliEnabled then
+        AutoSkipHeliEnabled = false; TriggerAutoSkipHeli(false)
+    end
+
+    local hasBoostFPS = table.find(selectedOptions, "删除地图")
     if hasBoostFPS and not BoostFPS_Active then
         SaveAndBoostFPS()
     elseif not hasBoostFPS and BoostFPS_Active then
         RestoreBoostFPS()
     end
+
+    SafeModeEnabled = table.find(selectedOptions, "安全模式") ~= nil
+    GodModeEnabled  = table.find(selectedOptions, "上帝模式") ~= nil
+
+    local hasAutoStart = table.find(selectedOptions, "自动开局")
+    if hasAutoStart and not AutoStartEnabled and canRun then
+        StartAutoStart()
+    elseif not hasAutoStart and AutoStartEnabled then
+        StopAutoStart()
+    end
+
+    local hasAutoFillUp = table.find(selectedOptions, "自动补血")
+    if hasAutoFillUp and not AutoFillUpEnabled then
+        if canRun then AutoFillUpEnabled = true; StartAutoFillUpLoop() end
+    elseif not hasAutoFillUp then
+        AutoFillUpEnabled = false; FillUpRunning = false
+    end
+
     Config:Set("MiscOptions", selectedOptions)
     Config:Save()
 end
 
-local BoostFPS_OriginalData = {}; local BoostFPS_LightingData = {}; local BoostFPS_RestoreConnection = nil
-function SaveAndBoostFPS()
-    if BoostFPS_Active then return end
-    BoostFPS_Active = true
-    local LightingSvc = game:GetService("Lighting")
-    BoostFPS_LightingData = {
-        Brightness = LightingSvc.Brightness,
-        GlobalShadows = LightingSvc.GlobalShadows,
-        FogEnd = LightingSvc.FogEnd,
-        FogStart = LightingSvc.FogStart
-    }
+-- ====================== CHARACTER RESPAWN HANDLER ======================
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character        = char
+    HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+    Client           = LocalPlayer
+    MobHeightOverride   = {}
+    MobConfirmedPadding = {}
+    MobLastHealth       = {}
+    task.wait(1)
+    local cam = workspace.CurrentCamera
+    cam.CameraSubject = HumanoidRootPart
+    cam.CameraType    = Enum.CameraType.Custom
+end)
+
+-- ====================== UI: MAIN ======================
+Main:Section({ Title = "自动挂机", Icon = "package" })
+
+AutoFarmToggle = Main:Toggle({
+    Title = "自动挂机",
+    Desc = "根据优先级系统自动刷怪",
+    Value = AutoFarmEnabled,
+    Callback = function(state)
+        AutoFarmEnabled = state
+        if state then
+            StartFarmLoop()
+            HandleMiscOptions(MiscOptions)
+            WindUI:Notify({ Title = "自动挂机", Content = "已开启", Duration = 2, Icon = "play" })
+        else
+            AutoAttackEnabled = false; AutoSkillEnabled = false
+            AutoSkipHeliEnabled = false; AutoFillUpEnabled = false
+            FillUpRunning = false; LockActive = false
+            if AutoStartEnabled then StopAutoStart() end
+            if SyncFarmOnly then
+                TriggerAutoSkipHeli(false)
+                WindUI:Notify({ Title = "自动挂机", Content = "已关闭（同步模式生效）", Duration = 3, Icon = "square" })
+            else
+                WindUI:Notify({ Title = "自动挂机", Content = "已关闭", Duration = 2, Icon = "square" })
+            end
+        end
+        Config:Set("AutoFarmEnabled", state); Config:Save()
+    end
+})
+
+Main:Section({ Title = "挂机设置", Icon = "settings" })
+
+PositionDropdown = Main:Dropdown({
+    Title = "站位位置",
+    Values = { "Above", "Under" },
+    Multi = false,
+    Value = FarmPosition,
+    Callback = function(value) FarmPosition = value; Config:Set("FarmPosition", value); Config:Save() end
+})
+
+ModeDropdown = Main:Dropdown({
+    Title = "移动模式",
+    Values = { "Tween" },
+    Multi = false,
+    Value = FarmMode,
+    Callback = function(value) FarmMode = value; Config:Set("FarmMode", value); Config:Save() end
+})
+
+MiscDropdown = Main:Dropdown({
+    Title = "辅助功能",
+    Values = { "自动攻击", "自动技能", "自动开局", "自动跳过直升机", "自动补血", "安全模式", "上帝模式", "删除地图" },
+    Multi = true,
+    Value = MiscOptions,
+    Callback = function(values)
+        MiscOptions = values
+        if not AutoFarmEnabled and SyncFarmOnly then
+            local hasFeatures = #values > 0
+            local onlyGodOrBoost = true
+            for _, v in ipairs(values) do
+                if v ~= "上帝模式" and v ~= "删除地图" then
+                    onlyGodOrBoost = false; break
+                end
+            end
+            if hasFeatures and not onlyGodOrBoost then
+                WindUI:Notify({
+                    Title = "辅助功能",
+                    Content = "请先开启自动挂机（同步模式已开启）",
+                    Duration = 3, Icon = "triangle-alert"
+                })
+            end
+        end
+        HandleMiscOptions(values)
+    end
+})
+
+Main:Toggle({
+    Title = "同步挂机模式",
+    Desc = "开启后，辅助功能需要自动挂机开启才能生效",
+    Value = SyncFarmOnly,
+    Callback = function(state)
+        SyncFarmOnly = state
+        Config:Set("SyncFarmOnly", state)
+        Config:Save()
+        if state then
+            WindUI:Notify({ Title = "同步挂机模式", Content = "开启：辅助功能需自动挂机开启", Duration = 3, Icon = "link" })
+        else
+            WindUI:Notify({ Title = "同步挂机模式", Content = "关闭：辅助功能可独立运行", Duration = 3, Icon = "unlink" })
+            HandleMiscOptions(MiscOptions)
+        end
+    end
+})
+
+Main:Section({ Title = "通用设置", Icon = "zap" })
+
+SkillDropdown = Main:Dropdown({
+    Title = "自动技能按键",
+    Values = skillDropdownValues,
+    Multi = true,
+    Value = SelectedSkills,
+    Callback = function(values) SelectedSkills = values; Config:Set("SelectedSkills", values); Config:Save() end
+})
+
+SkillDelaySlider = Main:Slider({
+    Title = "技能延迟（秒）",
+    Value = { Min = 1, Max = 30, Default = SkillDelay },
+    Step = 1,
+    Callback = function(value) SkillDelay = value; Config:Set("SkillDelay", value); Config:Save() end
+})
+
+FarmHeightSlider = Main:Slider({
+    Title = "挂机高度偏移（+Y）",
+    Value = { Min = -30, Max = 30, Default = HeightValue },
+    Step = 1,
+    Callback = function(value)
+        HeightValue = value; Config:Set("HeightValue", value); Config:Save()
+        for mob, _ in pairs(MobHeightOverride) do
+            if MobConfirmedPadding[mob] == nil then MobHeightOverride[mob] = nil end
+        end
+    end
+})
+
+Main:Slider({
+    Title = "安全模式血量（%）",
+    Value = { Min = 1, Max = 100, Default = SafeValue },
+    Step = 1,
+    Callback = function(value) SafeValue = value; Config:Set("SafeValue", value); Config:Save() end
+})
+
+Main:Slider({
+    Title = "上帝模式触发血量（%）",
+    Value = { Min = 1, Max = 99, Default = GodModeValue },
+    Step = 1,
+    Callback = function(value)
+        GodModeValue = value
+        Config:Set("GodModeValue", value)
+        Config:Save()
+    end
+})
+
+-- ====================== UI: PRIORITY SETTINGS ======================
+Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
+
+Main:Paragraph({
+    Title = "优先级顺序",
+    Desc = "GiantST → 直升机 → 高血量精英 → 最近怪物，高级怪物出现时立即切换",
+    Image = "rbxassetid://104487529937663",
+    ImageSize = 26,
+})
+
+Main:Slider({
+    Title = "高血量阈值（最大生命值）",
+    Value = { Min = 1, Max = 100000, Default = HighHPThreshold },
+    Step = 100,
+    Callback = function(value)
+        HighHPThreshold = value
+        Config:Set("HighHPThreshold", value)
+        Config:Save()
+        print("[DYHUB] 高血量阈值已设置为 " .. value)
+    end
+})
+
+-- ====================== UI: OVERRIDE SETTINGS ======================
+Main:Section({ Title = "覆写设置", Icon = "ruler" })
+
+PaddingReduceInput = Main:Input({
+    Title = "设置覆写递减步长",
+    Default = tostring(PADDING_REDUCE_STEP),
+    Placeholder = "默认: 2",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then PADDING_REDUCE_STEP = num; Config:Set("PaddingReduceStep", num); Config:Save()
+        else warn("输入的数字无效") end
+    end
+})
+
+PaddingSafeInput = Main:Input({
+    Title = "设置最小安全高度（全局下限）",
+    Default = tostring(PADDING_SAFE_MIN),
+    Placeholder = "默认: -30",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then PADDING_SAFE_MIN = num; Config:Set("PaddingSafeMin", num); Config:Save()
+        else warn("输入的数字无效") end
+    end
+})
+
+Main:Slider({
+    Title = "防卡墙边距（格）",
+    Value = { Min = 0, Max = 10, Default = ANTI_CLIP_MARGIN },
+    Step = 1,
+    Callback = function(value)
+        ANTI_CLIP_MARGIN = value; Config:Set("AntiClipMargin", value); Config:Save()
+    end
+})
+
+Main:Slider({
+    Title = "伤害阈值（确认锁定）",
+    Value = { Min = 1, Max = 500, Default = DMG_THRESHOLD },
+    Step = 1,
+    Callback = function(value)
+        DMG_THRESHOLD = value; Config:Set("DmgThreshold", value); Config:Save()
+    end
+})
+
+Main:Button({
+    Title = "重置所有已确认位置",
+    Desc = "清除所有已保存的怪物高度位置",
+    Callback = function()
+        MobConfirmedPadding = {}
+        MobHeightOverride   = {}
+        WindUI:Notify({ Title = "覆写重置", Content = "所有已确认位置已清除", Duration = 2, Icon = "refresh-cw" })
+    end
+})
+
+Main:Section({ Title = "冲水设置", Icon = "toilet" })
+
+local Flushaura      = Config:Get("flushaura", false)
+local FlushAuraValue = Config:Get("FlushAuraValue", 5)
+
+Main:Slider({
+    Title = "冲水范围（格）",
+    Value = { Min = 1, Max = 15, Default = FlushAuraValue },
+    Step = 1,
+    Callback = function(value) FlushAuraValue = value; Config:Set("FlushAuraValue", value); Config:Save() end
+})
+
+Main:Toggle({
+    Title = "冲水光环",
+    Desc = "自动触发范围内的冲水提示",
+    Value = Flushaura,
+    Callback = function(enabled)
+        Flushaura = enabled; Config:Set("flushaura", enabled); Config:Save()
+        if enabled then
+            task.spawn(function()
+                while Flushaura do
+                    pcall(function()
+                        local char = game.Players.LocalPlayer.Character
+                        if not char then return end
+                        local root = char:FindFirstChild("HumanoidRootPart")
+                        if not root then return end
+                        for _, prompt in pairs(workspace:GetDescendants()) do
+                            if prompt:IsA("ProximityPrompt") then
+                                local at = prompt.ActionText
+                                if at == "Flush" or at == "Dragon Flash" or at == "flush" or at == "Flash" then
+                                    local part = prompt.Parent
+                                    if part and part:IsA("BasePart") then
+                                        if (root.Position - part.Position).Magnitude <= FlushAuraValue then
+                                            prompt.HoldDuration = 0; prompt.MaxActivationDistance = FlushAuraValue
+                                            if fireproximityprompt then fireproximityprompt(prompt)
+                                            else prompt:InputHoldBegin(); task.wait(); prompt:InputHoldEnd() end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    task.wait(0.1)
+                end
+            end)
+        end
+    end
+})
+
+-- ============================================================
+-- ====================== ESP SYSTEM =========================
+-- ============================================================
+
+local ESP = {
+    Enabled       = Config:Get("EspEnabled", false),
+    MobEnabled    = Config:Get("EspMobEnabled", true),
+    PlayerEnabled = Config:Get("EspPlayerEnabled", true),
+    ItemEnabled   = Config:Get("EspItemEnabled", true),
+    Settings      = Config:Get("EspSettings", { "高亮", "距离", "血量", "名称" }),
+    SelectedItems = Config:Get("EspSelectedItems", {}),
+    MaxDistance   = 1500,
+    _mobHighlights    = {},
+    _playerHighlights = {},
+    _itemHighlights   = {},
+    ItemList = {
+        "Clock Spider","X-18 Core","Green Energy Core","Weird Transmitter",
+        "Presents","Weird Prism","Key Card","Zombie Core","Flash Drives","Astro Samples",
+    },
+}
+
+local function IsESPItemTarget(objectName, selectedList)
+    for _, pattern in ipairs(selectedList) do
+        if objectName:lower() == pattern:lower() then return true end
+        if #objectName > #pattern then
+            if objectName:lower():sub(1, #pattern) == pattern:lower() then
+                local nc = objectName:lower():sub(#pattern + 1, #pattern + 1)
+                if nc == " " or nc == "#" or nc == "_" or nc == "-" then return true end
+            end
+        end
+        if CollectGroupMap[pattern] then
+            for _, gName in ipairs(CollectGroupMap[pattern]) do
+                if objectName:lower() == gName:lower() then return true end
+            end
+        end
+    end
+    return false
+end
+
+local function CreateESPLabel(parent, labelText)
+    local existing = parent:FindFirstChild("DYHUB_ESP_LABEL")
+    if existing then existing:Destroy() end
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "DYHUB_ESP_LABEL"; billboard.Size = UDim2.new(0, 120, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3, 0); billboard.AlwaysOnTop = true
+    billboard.ResetOnSpawn = false; billboard.Adornee = parent; billboard.Parent = parent
+    local frame = Instance.new("Frame"); frame.BackgroundTransparency = 1
+    frame.Size = UDim2.fromScale(1, 1); frame.Parent = billboard
+    local label = Instance.new("TextLabel"); label.BackgroundTransparency = 1
+    label.Size = UDim2.fromScale(1, 1); label.Font = Enum.Font.GothamBold
+    label.TextSize = 11; label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0.4; label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    label.Text = labelText; label.Parent = frame
+    return billboard, label
+end
+
+local function CreateHighlight(model, outlineColor, fillColor, fillTransparency)
+    local existing = model:FindFirstChild("DYHUB_ESP_HIGHLIGHT")
+    if existing then existing:Destroy() end
+    local hl = Instance.new("Highlight")
+    hl.Name = "DYHUB_ESP_HIGHLIGHT"; hl.OutlineColor = outlineColor
+    hl.FillColor = fillColor; hl.FillTransparency = fillTransparency or 0.9
+    hl.OutlineTransparency = 0; hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee = model; hl.Parent = model
+    return hl
+end
+
+local function RemoveESP(model)
     pcall(function()
-        LightingSvc.GlobalShadows = false
-        LightingSvc.Brightness = 1
-        LightingSvc.FogEnd = 100000
-        LightingSvc.FogStart = 100000
-    end)
-    for _, effect in ipairs(LightingSvc:GetChildren()) do
-        if effect:IsA("Atmosphere") or effect:IsA("BloomEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("Sky") then
-            BoostFPS_LightingData["effect_" .. effect.Name] = effect
-            effect.Parent = nil
-        end
-    end
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
-            if not obj:IsDescendantOf(workspace:FindFirstChild("Living")) then
-                BoostFPS_OriginalData[obj] = { Transparency = obj.Transparency, CastShadow = obj.CastShadow, Material = obj.Material }
-                obj.Transparency = 1
-                obj.CastShadow = false
-            end
-        elseif obj:IsA("Decal") or obj:IsA("Texture") then
-            BoostFPS_OriginalData[obj] = { Transparency = obj.Transparency }
-            obj.Transparency = 1
-        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-            BoostFPS_OriginalData[obj] = { Enabled = obj.Enabled }
-            obj.Enabled = false
-        elseif obj:IsA("SpecialMesh") then
-            BoostFPS_OriginalData[obj] = { TextureId = obj.TextureId }
-            obj.TextureId = ""
-        end
-    end
-    BoostFPS_RestoreConnection = workspace.DescendantAdded:Connect(function(obj)
-        if not BoostFPS_Active then return end
-        task.wait(0.05)
-        if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
-            if not obj:IsDescendantOf(workspace:FindFirstChild("Living")) then
-                obj.Transparency = 1
-                obj.CastShadow = false
-            end
-        elseif obj:IsA("Decal") or obj:IsA("Texture") then
-            obj.Transparency = 1
-        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-            obj.Enabled = false
-        end
+        local hl = model:FindFirstChild("DYHUB_ESP_HIGHLIGHT"); if hl then hl:Destroy() end
+        local hb = model:FindFirstChild("DYHUB_ESP_LABEL"); if hb then hb:Destroy() end
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        if hrp then local lb = hrp:FindFirstChild("DYHUB_ESP_LABEL"); if lb then lb:Destroy() end end
     end)
 end
-function RestoreBoostFPS()
-    if not BoostFPS_Active then return end
-    BoostFPS_Active = false
-    if BoostFPS_RestoreConnection then BoostFPS_RestoreConnection:Disconnect(); BoostFPS_RestoreConnection = nil end
-    local LightingSvc = game:GetService("Lighting")
-    pcall(function()
-        if BoostFPS_LightingData.Brightness then LightingSvc.Brightness = BoostFPS_LightingData.Brightness end
-        if BoostFPS_LightingData.GlobalShadows then LightingSvc.GlobalShadows = BoostFPS_LightingData.GlobalShadows end
-        if BoostFPS_LightingData.FogEnd then LightingSvc.FogEnd = BoostFPS_LightingData.FogEnd end
-        if BoostFPS_LightingData.FogStart then LightingSvc.FogStart = BoostFPS_LightingData.FogStart end
-    end)
-    for name, obj in pairs(BoostFPS_LightingData) do
-        if type(name) == "string" and name:sub(1, 7) == "effect_" and obj:IsA("Effect") then
-            obj.Parent = LightingSvc
-        end
+
+local function IsInRange(targetPart)
+    if not targetPart or not HumanoidRootPart then return false end
+    return (HumanoidRootPart.Position - targetPart.Position).Magnitude <= ESP.MaxDistance
+end
+
+local function BuildLabelText(model, showName, showHealth, showDistance)
+    local parts = {}
+    if showName then table.insert(parts, model.Name) end
+    if showHealth then
+        local humanoid = model:FindFirstChild("Humanoid")
+        if humanoid then table.insert(parts, "❤ " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)) end
     end
-    for obj, data in pairs(BoostFPS_OriginalData) do
-        pcall(function()
-            if data.Transparency then obj.Transparency = data.Transparency end
-            if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
-            if data.Material then obj.Material = data.Material end
-            if data.Enabled ~= nil then obj.Enabled = data.Enabled end
-            if data.TextureId then obj.TextureId = data.TextureId end
+    if showDistance then
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        if hrp and HumanoidRootPart then table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - hrp.Position).Magnitude) .. "m") end
+    end
+    return table.concat(parts, "\n")
+end
+
+local function BuildItemLabelText(obj, showName, showDistance)
+    local parts = {}
+    if showName then table.insert(parts, obj.Name) end
+    if showDistance then
+        local root = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")) or (obj:IsA("BasePart") and obj or nil)
+        if root and HumanoidRootPart then table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - root.Position).Magnitude) .. "m") end
+    end
+    return table.concat(parts, "\n")
+end
+
+local function GetESPSettings()
+    local s = ESP.Settings
+    return {
+        highlight = table.find(s, "高亮") ~= nil,
+        distance  = table.find(s, "距离") ~= nil,
+        health    = table.find(s, "血量") ~= nil,
+        name      = table.find(s, "名称") ~= nil,
+    }
+end
+
+local function ApplyMobESP(mob)
+    if not mob or not mob.Parent then return end
+    local hrp = mob:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    local settings = GetESPSettings()
+    if settings.highlight then CreateHighlight(mob, Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 255, 255), 0.9) end
+    if settings.name or settings.health or settings.distance then
+        local _, label = CreateESPLabel(hrp, "")
+        task.spawn(function()
+            while mob and mob.Parent and ESP.Enabled and ESP.MobEnabled do
+                local humanoid = mob:FindFirstChild("Humanoid")
+                if not humanoid or humanoid.Health <= 0 then break end
+                if not IsInRange(hrp) then label.Visible = false; task.wait(0.5)
+                else label.Visible = true; label.Text = BuildLabelText(mob, settings.name, settings.health, settings.distance); task.wait(0.15) end
+            end
+            RemoveESP(mob); ESP._mobHighlights[mob] = nil
         end)
     end
-    BoostFPS_OriginalData = {}; BoostFPS_LightingData = {}
+    ESP._mobHighlights[mob] = true
+end
+
+local function ScanMobs()
+    local livingFolder = workspace:FindFirstChild("Living"); if not livingFolder then return end
+    for _, mob in ipairs(livingFolder:GetChildren()) do
+        if IsValidMob(mob) and not ESP._mobHighlights[mob] then
+            local hrp = mob:FindFirstChild("HumanoidRootPart")
+            if hrp and IsInRange(hrp) then ApplyMobESP(mob) end
+        end
+    end
+end
+
+local function ApplyPlayerESP(playerChar)
+    if not playerChar or not playerChar.Parent then return end
+    local hrp = playerChar:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    if playerChar == LocalPlayer.Character then return end
+    local settings = GetESPSettings()
+    if settings.highlight then CreateHighlight(playerChar, Color3.fromRGB(50, 255, 50), Color3.fromRGB(255, 255, 255), 0.9) end
+    if settings.name or settings.health or settings.distance then
+        local _, label = CreateESPLabel(hrp, "")
+        task.spawn(function()
+            while playerChar and playerChar.Parent and ESP.Enabled and ESP.PlayerEnabled do
+                local humanoid = playerChar:FindFirstChild("Humanoid")
+                if not humanoid or humanoid.Health <= 0 then break end
+                if not IsInRange(hrp) then label.Visible = false; task.wait(0.5)
+                else label.Visible = true; label.Text = BuildLabelText(playerChar, settings.name, settings.health, settings.distance); task.wait(0.15) end
+            end
+            RemoveESP(playerChar); ESP._playerHighlights[playerChar] = nil
+        end)
+    end
+    ESP._playerHighlights[playerChar] = true
+end
+
+local function ScanPlayers()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local char = player.Character
+            if not ESP._playerHighlights[char] then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
+            end
+        end
+    end
+end
+
+local function GetItemRoot(obj)
+    if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then return obj end
+    return nil
+end
+
+local function ApplyItemESP(obj)
+    if not obj or not obj.Parent then return end
+    local root = GetItemRoot(obj); if not root then return end
+    local settings = GetESPSettings()
+    if settings.highlight then CreateHighlight(obj, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 255, 255), 0.9) end
+    if settings.name or settings.distance then
+        local _, label = CreateESPLabel(root, "")
+        task.spawn(function()
+            while obj and obj.Parent and ESP.Enabled and ESP.ItemEnabled do
+                local currentRoot = GetItemRoot(obj); if not currentRoot then break end
+                if not IsInRange(currentRoot) then label.Visible = false; task.wait(0.5)
+                else label.Visible = true; label.Text = BuildItemLabelText(obj, settings.name, settings.distance); task.wait(0.25) end
+            end
+            RemoveESP(obj); ESP._itemHighlights[obj] = nil
+        end)
+    end
+    ESP._itemHighlights[obj] = true
+end
+
+local function ScanItems()
+    if #ESP.SelectedItems == 0 then return end
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if not ESP._itemHighlights[obj] and IsESPItemTarget(obj.Name, ESP.SelectedItems) then
+            local root = GetItemRoot(obj)
+            if root and IsInRange(root) then ApplyItemESP(obj) end
+        end
+    end
+end
+
+local function ClearAllESP()
+    for mob, _ in pairs(ESP._mobHighlights) do RemoveESP(mob) end
+    ESP._mobHighlights = {}
+    for char, _ in pairs(ESP._playerHighlights) do RemoveESP(char) end
+    ESP._playerHighlights = {}
+    for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
+    ESP._itemHighlights = {}
+end
+
+local ESPConnection = nil
+
+local function StartESPLoop()
+    if ESPConnection then ESPConnection:Disconnect(); ESPConnection = nil end
+    local tickCounter = 0
+    ESPConnection = RunService.Heartbeat:Connect(function()
+        tickCounter = tickCounter + 1
+        if tickCounter % 30 == 0 and ESP.Enabled and ESP.MobEnabled    then pcall(ScanMobs) end
+        if tickCounter % 47 == 0 and ESP.Enabled and ESP.PlayerEnabled then pcall(ScanPlayers) end
+        if tickCounter % 61 == 0 and ESP.Enabled and ESP.ItemEnabled   then pcall(ScanItems) end
+        if tickCounter >= 3660 then tickCounter = 0 end
+    end)
+end
+
+local function StopESPLoop()
+    if ESPConnection then ESPConnection:Disconnect(); ESPConnection = nil end
+    ClearAllESP()
+end
+
+workspace.DescendantAdded:Connect(function(obj)
+    if not ESP.Enabled or not ESP.ItemEnabled or #ESP.SelectedItems == 0 then return end
+    task.wait(0.1)
+    if IsESPItemTarget(obj.Name, ESP.SelectedItems) and not ESP._itemHighlights[obj] then
+        local root = GetItemRoot(obj)
+        if root and IsInRange(root) then ApplyItemESP(obj) end
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(char)
+        if not ESP.Enabled or not ESP.PlayerEnabled then return end
+        task.wait(1)
+        if not ESP._playerHighlights[char] then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
+        end
+    end)
+end)
+
+local function WatchLivingFolder()
+    local living = workspace:FindFirstChild("Living")
+    if living then
+        living.ChildAdded:Connect(function(obj)
+            if not ESP.Enabled or not ESP.MobEnabled then return end
+            task.wait(0.2)
+            if IsValidMob(obj) and not ESP._mobHighlights[obj] then
+                local hrp = obj:FindFirstChild("HumanoidRootPart")
+                if hrp and IsInRange(hrp) then ApplyMobESP(obj) end
+            end
+        end)
+    end
 end
 
 task.spawn(function()
+    if not workspace:FindFirstChild("Living") then
+        workspace.ChildAdded:Connect(function(child)
+            if child.Name == "Living" then WatchLivingFolder() end
+        end)
+    else
+        WatchLivingFolder()
+    end
+end)
+
+-- ====================== UI: ESP TAB ======================
+Main4:Section({ Title = "透视视觉", Icon = "eye" })
+
+EspEnableToggle = Main4:Toggle({
+    Title = "启用透视", Value = ESP.Enabled,
+    Desc = "启用所有透视效果",
+    Callback = function(state)
+        ESP.Enabled = state; Config:Set("EspEnabled", state); Config:Save()
+        if state then StartESPLoop() else StopESPLoop() end
+    end
+})
+
+EspMobToggle = Main4:Toggle({
+    Title = "怪物透视", Value = ESP.MobEnabled,
+    Desc = "在怪物上方显示高亮和标签",
+    Callback = function(state)
+        ESP.MobEnabled = state; Config:Set("EspMobEnabled", state); Config:Save()
+        if not state then for mob, _ in pairs(ESP._mobHighlights) do RemoveESP(mob) end; ESP._mobHighlights = {} end
+    end
+})
+
+EspPlayerToggle = Main4:Toggle({
+    Title = "玩家透视", Value = ESP.PlayerEnabled,
+    Desc = "在其他玩家上方显示高亮和标签",
+    Callback = function(state)
+        ESP.PlayerEnabled = state; Config:Set("EspPlayerEnabled", state); Config:Save()
+        if not state then for char, _ in pairs(ESP._playerHighlights) do RemoveESP(char) end; ESP._playerHighlights = {} end
+    end
+})
+
+EspItemToggle = Main4:Toggle({
+    Title = "物品透视", Value = ESP.ItemEnabled,
+    Desc = "在可收集物品上显示高亮和标签",
+    Callback = function(state)
+        ESP.ItemEnabled = state; Config:Set("EspItemEnabled", state); Config:Save()
+        if not state then for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end; ESP._itemHighlights = {} end
+    end
+})
+
+Main4:Section({ Title = "透视设置", Icon = "settings" })
+
+EspSettingsDropdown = Main4:Dropdown({
+    Title = "透视选项", Multi = true,
+    Values = { "高亮", "距离", "血量", "名称" },
+    Value = ESP.Settings,
+    Callback = function(value)
+        ESP.Settings = value or {}; Config:Set("EspSettings", value); Config:Save()
+        if ESP.Enabled then ClearAllESP() end
+    end,
+})
+
+EspItemDropdown = Main4:Dropdown({
+    Title = "透视物品", Multi = true,
+    Values = ESP.ItemList,
+    Value = ESP.SelectedItems,
+    Callback = function(value)
+        ESP.SelectedItems = value or {}; Config:Set("EspSelectedItems", value); Config:Save()
+        for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
+        ESP._itemHighlights = {}
+        if ESP.Enabled and ESP.ItemEnabled then pcall(ScanItems) end
+    end,
+})
+
+-- ====================== UI: PLAYER TAB ======================
+Main2:Section({ Title = "本地玩家", Icon = "user" })
+
+local WSValue = Config:Get("WSValue", 16)
+local JPValue = Config:Get("JPValue", 50)
+local NoClip  = Config:Get("NoClip", false)
+
+local function updatePlayerStats()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = WSValue
+        LocalPlayer.Character.Humanoid.JumpPower = JPValue
+    end
+end
+
+RunService.Stepped:Connect(function()
+    if NoClip and LocalPlayer.Character then
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    updatePlayerStats()
+end)
+
+Main2:Slider({
+    Title = "移动速度",
+    Value = { Min = 1, Max = 200, Default = WSValue },
+    Step = 1,
+    Callback = function(value) WSValue = value; Config:Set("WSValue", value); Config:Save(); updatePlayerStats() end
+})
+
+Main2:Slider({
+    Title = "跳跃高度",
+    Value = { Min = 1, Max = 500, Default = JPValue },
+    Step = 1,
+    Callback = function(value) JPValue = value; Config:Set("JPValue", value); Config:Save(); updatePlayerStats() end
+})
+
+nocliptoggle = Main2:Toggle({
+    Title = "穿墙模式", Value = NoClip,
+    Desc = "允许角色穿过墙壁和部件",
+    Callback = function(state) NoClip = state; Config:Set("NoClip", state); Config:Save() end
+})
+
+Main2:Section({ Title = "兑换码", Icon = "bird" })
+
+local SelectedCodes = Config:Get("SelectedCodes", {})
+
+CodeDropdown = Main2:Dropdown({
+    Title = "选择兑换码", Multi = true,
+    Values = GlobalTables.redeemCodes, Value = SelectedCodes,
+    Callback = function(value) SelectedCodes = value or {}; Config:Set("SelectedCodes", value); Config:Save() end,
+})
+
+Main2:Button({
+    Title = "兑换选中码",
+    Desc = "只兑换下拉框中选中的代码",
+    Callback = function()
+        for _, code in ipairs(SelectedCodes or {}) do
+            pcall(function() ReplicatedStorage:WaitForChild("RedeemCode"):FireServer(code); task.wait(0.2) end)
+        end
+    end,
+})
+
+Main2:Button({
+    Title = "兑换所有码",
+    Desc = "一次性兑换所有可用代码",
+    Callback = function()
+        for _, code in ipairs(GlobalTables.redeemCodes or {}) do
+            pcall(function() ReplicatedStorage:WaitForChild("RedeemCode"):FireServer(code); task.wait(0.5) end)
+        end
+    end,
+})
+
+-- ====================== UI: UNLOCK GAMEPASS ======================
+Main2:Section({ Title = "解锁游戏通行证", Icon = "badge-dollar-sign" })
+
+local SelectedGamepass = Config:Get("SelectedGamepass", {})
+GlobalTables.Gamepassts = SelectedGamepass
+
+GamepassDropdown = Main2:Dropdown({
+    Title = "选择通行证",
+    Multi = true,
+    Values = GlobalTables.Gamepasst,
+    Value = SelectedGamepass,
+    Callback = function(value)
+        GlobalTables.Gamepassts = value or {}
+        SelectedGamepass = value or {}
+        Config:Set("SelectedGamepass", value)
+        Config:Save()
+    end,
+})
+
+Main2:Button({
+    Title = "解锁选中通行证",
+    Desc = "本地解锁选中的游戏通行证",
+    Callback = function()
+        local gachaData = LocalPlayer:FindFirstChild("GachaData")
+        if not gachaData then
+            gachaData = Instance.new("Folder")
+            gachaData.Name = "GachaData"
+            gachaData.Parent = LocalPlayer
+        end
+        local toUnlock = {}
+        for _, v in ipairs(GlobalTables.Gamepassts) do
+            if v == "全部" then
+                toUnlock = {"LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost"}
+                break
+            else
+                table.insert(toUnlock, v)
+            end
+        end
+        if #toUnlock == 0 then
+            WindUI:Notify({ Title = "解锁通行证", Content = "请先选择通行证", Duration = 3, Icon = "alert-triangle" })
+            return
+        end
+        local successCount = 0
+        for _, gamepassName in ipairs(toUnlock) do
+            pcall(function()
+                local boolValue = gachaData:FindFirstChild(gamepassName)
+                if not boolValue then
+                    boolValue = Instance.new("BoolValue")
+                    boolValue.Name = gamepassName
+                    boolValue.Parent = gachaData
+                end
+                boolValue.Value = true
+                successCount = successCount + 1
+                task.wait(0.2)
+            end)
+        end
+        WindUI:Notify({
+            Title = "解锁通行证",
+            Content = "已解锁 " .. successCount .. "/" .. #toUnlock .. " 个通行证",
+            Duration = 3,
+            Icon = "badge-check"
+        })
+    end,
+})
+
+-- ====================== UI: GAMEMODE TAB ======================
+Main7:Section({ Title = "投票信息", TextXAlignment = "Center", TextSize = 17 })
+Main7:Divider()
+Main7:Paragraph({
+    Title = "自动投票: 游戏模式",
+    Desc = "- [步骤1] 点击恢复投票系统\n- [步骤2] 在大厅中（游戏内）等待\n- [步骤3] 设置自动投票并等待",
+    Image = "rbxassetid://104487529937663",
+    ImageSize = 30,
+})
+Main7:Divider()
+Main7:Section({ Title = "投票模式", Icon = "gamepad-2" })
+
+Main7:Button({
+    Title = "恢复投票系统",
+    Desc = "⚠️ 首次使用自动投票前请点击此按钮",
+    Callback = function()
+        pcall(function()
+            ReplicatedStorage.GetReadyRemote:FireServer("3", true)
+            task.wait(1.25)
+            ReplicatedStorage.GetReadyRemote:FireServer("3", false)
+            task.wait(0.67)
+            ReplicatedStorage.GetReadyRemote:FireServer("2", true)
+            task.wait(1.25)
+            ReplicatedStorage.GetReadyRemote:FireServer("2", false)
+            task.wait(0.67)
+            ReplicatedStorage.GetReadyRemote:FireServer("1", true)
+        end)
+        WindUI:Notify({
+            Title = "恢复中",
+            Content = "就绪，正在恢复投票系统...",
+            Duration = 2,
+            Icon = "check-circle"
+        })
+        task.wait(6)
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(-220, 3, -600)
+            end
+        end)
+        WindUI:Notify({
+            Title = "恢复中",
+            Content = "投票系统恢复中，请稍等",
+            Duration = 5,
+            Icon = "check-circle"
+        })
+        task.wait(10)
+        WindUI:Notify({
+            Title = "恢复完成",
+            Content = "投票系统已恢复，现在可以使用自动投票",
+            Duration = 5,
+            Icon = "check-circle"
+        })
+        pcall(function()
+            ReplicatedStorage.GetReadyRemote:FireServer("3", true)
+            task.wait(1.25)
+            ReplicatedStorage.GetReadyRemote:FireServer("3", false)
+            task.wait(0.67)
+            ReplicatedStorage.GetReadyRemote:FireServer("2", true)
+            task.wait(1.25)
+            ReplicatedStorage.GetReadyRemote:FireServer("2", false)
+        end)
+    end
+})
+
+GameModeDropdown2 = Main7:Dropdown({
+    Title = "设置投票模式",
+    Values = GlobalTables.Votes,
+    Multi = false,
+    Value = AutoVoteValue,
+    Callback = function(value)
+        AutoVoteValue = value; Config:Set("AutoVoteValue", value); Config:Save()
+        print("[DYHUB] 投票模式已选择: " .. tostring(value))
+    end
+})
+
+AutoVoteIGToggle = Main7:Toggle({
+    Title = "自动投票（局内）",
+    Desc = "每回合自动为选定模式投票",
+    Value = AutoVoteinGameEnabled,
+    Callback = function(enabled)
+        AutoVoteinGameEnabled = enabled; Config:Set("AutoVoteinGameEnabled", enabled); Config:Save()
+        SetupAutoVote_InGame(enabled)
+    end
+})
+Main7:Divider()
+Main7:Section({ Title = "休闲信息", TextXAlignment = "Center", TextSize = 17 })
+Main7:Divider()
+Main7:Paragraph({
+    Title = "休闲模式: 任务选择",
+    Desc = "- [步骤1] 在大厅中（不在游戏内）\n- [步骤2] 点击开始并进入经典模式选择界面\n- [步骤3] 选择休闲模式并完成传送\n- [步骤4] 运行脚本",
+    Image = "rbxassetid://104487529937663",
+    ImageSize = 30,
+})
+Main7:Divider()
+Main7:Section({ Title = "游戏模式", Icon = "gamepad-2" })
+
+GameModeDropdown = Main7:Dropdown({
+    Title = "设置游戏模式",
+    Values = GlobalTables.ModeDisplay,
+    Multi = false,
+    Value = (function()
+        for ch, en in pairs(GlobalTables.ModeInternal) do
+            if en == AutoGameValue then return ch end
+        end
+        return "普通模式"
+    end)(),
+    Callback = function(chineseValue)
+        local englishValue = GlobalTables.ModeInternal[chineseValue]
+        if englishValue then
+            AutoGameValue = englishValue
+            Config:Set("AutoGameValue", englishValue)
+            Config:Save()
+            print("[DYHUB] 游戏模式已选择: " .. englishValue)
+        end
+    end
+})
+
+-- 自动开始系统（大厅自动导航）
+task.spawn(function()
     local playBtn = workspace:FindFirstChild("ForGui") and workspace.ForGui:FindFirstChild("SurfaceGui") and workspace.ForGui.SurfaceGui:FindFirstChild("Frame") and workspace.ForGui.SurfaceGui.Frame:FindFirstChild("Play")
     if playBtn then
-        WindUI:Notify({ Title = "自动开始", Content = "检测到开始按钮", Duration = 2 })
+        WindUI:Notify({ Title = "自动开始", Content = "检测到开始按钮，自动启动...", Duration = 2 })
         task.wait(1)
         local playGui = pg:FindFirstChild("Play")
-        if not (playGui and playGui.Enabled) then pcall(function() playBtn:Activate() end) end
+        if not (playGui and playGui.Enabled) then
+            pcall(function() playBtn:Activate() end)
+            WindUI:Notify({ Title = "自动开始", Content = "已按下开始按钮", Duration = 2 })
+        end
     end
     task.wait(1)
     local playGui = pg:FindFirstChild("Play")
     if playGui and playGui.Enabled then
         local classicBtn = playGui:FindFirstChild("Classic")
-        if classicBtn then task.wait(1); pcall(function() classicBtn:Activate() end) end
+        if classicBtn then
+            task.wait(1)
+            pcall(function() classicBtn:Activate() end)
+        end
         task.wait(1)
         local modeGui = pg:FindFirstChild("mode select2")
         if modeGui and modeGui.Enabled then
@@ -1770,6 +2433,7 @@ task.spawn(function()
         end
     end
 end)
+
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -1791,829 +2455,295 @@ task.spawn(function()
     end
 end)
 
-if AntiAFK then
-    task.spawn(function()
-        game.Players.LocalPlayer.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-        while AntiAFK do
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-            task.wait(60)
-        end
-    end)
-end
+AutoVoteToggle = Main7:Toggle({
+    Title = "自动游戏模式（大厅）",
+    Desc = "在大厅时自动创建选定的游戏模式",
+    Value = AutoVoteEnabled,
+    Callback = function(enabled)
+        AutoVoteEnabled = enabled
+        Config:Set("AutoVoteEnabled", enabled)
+        Config:Save()
+        if enabled then WindUI:Notify({ Title = "自动游戏模式", Content = "已启用", Duration = 2 }) end
+    end
+})
 
-local noBarrierConnection = nil
-local function startNoBarrier()
-    if noBarrierConnection then return end
-    noBarrierConnection = RunService.Heartbeat:Connect(function()
-        pcall(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            local pos = hrp.Position
-            if math.abs(pos.X) > 1000 or math.abs(pos.Y) > 1000 or math.abs(pos.Z) > 1000 then
-                hrp.CFrame = CFrame.new(Vector3.new(0, 50, 0))
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then hum.Health = hum.MaxHealth end
-            end
-        end)
-    end)
-end
-local function stopNoBarrier()
-    if noBarrierConnection then noBarrierConnection:Disconnect(); noBarrierConnection = nil end
-end
-if noBarrierActive then startNoBarrier() end
+-- ====================== UI: AUTO BUY ======================
+Main5:Section({ Title = "商店武器", Icon = "helicopter" })
 
--- ====================== ESP 对象复用 ======================
-local ESP = {
-    Enabled = false, MobEnabled = false, PlayerEnabled = false, ItemEnabled = false,
-    Settings = {}, SelectedItems = {}, ESPMode = "Highlight",
-    ItemList = { "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
-        "Presents", "Weird Prism", "Key Card", "Zombie Core", "Flash Drives", "Astro Samples" },
-}
-local function GetESPSettings()
-    local s = ESP.Settings
-    return {
-        highlight = table.find(s, "高亮") ~= nil,
-        distance = table.find(s, "距离") ~= nil,
-        health = table.find(s, "血量") ~= nil,
-        name = table.find(s, "名称") ~= nil,
-    }
-end
-local function EnsureHighlight(model, color)
-    if ESP.ESPMode == "BoxHandle" then
-        local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local box = hrp:FindFirstChild("DYHUB_ESP_BOX")
-            if not box then
-                box = Instance.new("BoxHandleAdornment")
-                box.Name = "DYHUB_ESP_BOX"
-                box.Adornee = hrp
-                box.AlwaysOnTop = true
-                box.ZIndex = 10
-                box.Size = Vector3.new(4, 6, 2)
-                box.Color3 = color or Color3.fromRGB(255, 0, 0)
-                box.Transparency = 0.5
-                box.Parent = hrp
-            else
-                box.Color3 = color or Color3.fromRGB(255, 0, 0)
-                box.Visible = true
-            end
-            return box
-        end
-        return nil
-    else
-        local hl = model:FindFirstChild("DYHUB_ESP_HIGHLIGHT")
-        if not hl then
-            hl = Instance.new("Highlight")
-            hl.Name = "DYHUB_ESP_HIGHLIGHT"
-            hl.Adornee = model
-            hl.Parent = model
-        end
-        hl.FillColor = color or Color3.fromRGB(255, 0, 0)
-        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-        hl.FillTransparency = 0.9
-        hl.Enabled = true
-        return hl
+-- 读取配置（英文），转换为中文显示
+local currentWeaponEn = Config:Get("SelectedWeapon", "Stungun")
+local currentWeaponDisplay = (function()
+    for ch, en in pairs(GlobalTables.WeaponInternal) do
+        if en == currentWeaponEn then return ch end
     end
-end
-local function EnsureBillboard(hrp)
-    local bill = hrp:FindFirstChild("DYHUB_ESP_LABEL")
-    if not bill then
-        bill = Instance.new("BillboardGui")
-        bill.Name = "DYHUB_ESP_LABEL"
-        bill.Size = UDim2.new(0, 150, 0, 40)
-        bill.StudsOffset = Vector3.new(0, 2.5, 0)
-        bill.AlwaysOnTop = true
-        bill.Adornee = hrp
-        bill.Parent = hrp
-        local frame = Instance.new("Frame", bill)
-        frame.Size = UDim2.new(1, 0, 1, 0)
-        frame.BackgroundTransparency = 1
-        local label = Instance.new("TextLabel", frame)
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.Font = Enum.Font.GothamBold
-        label.TextSize = 12
-        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-        label.TextStrokeTransparency = 0.3
-        label.Name = "Label"
-    end
-    return bill
-end
-local function UpdateESPForMob(mob)
-    if not ESP.MobEnabled then return end
-    local hrp = mob:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local settings = GetESPSettings()
-    if settings.highlight then EnsureHighlight(mob) end
-    if settings.name or settings.health or settings.distance then
-        local bill = EnsureBillboard(hrp)
-        local label = bill:FindFirstChild("Frame").Label
-        local parts = {}
-        if settings.name then table.insert(parts, mob.Name) end
-        if settings.health then
-            local hum = mob:FindFirstChild("Humanoid")
-            if hum then table.insert(parts, string.format("❤ %.0f/%.0f", hum.Health, hum.MaxHealth)) end
-        end
-        if settings.distance and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
-            table.insert(parts, string.format("📏 %.0fm", dist))
-        end
-        label.Text = table.concat(parts, "\n")
-        bill.Visible = true
-    else
-        local bill = hrp:FindFirstChild("DYHUB_ESP_LABEL")
-        if bill then bill.Visible = false end
-    end
-end
-local function stepESPScan()
-    if not ESP.Enabled then return end
-    if ESP.MobEnabled and Scanner.Cache.mobs then
-        for _, mob in ipairs(Scanner.Cache.mobs) do UpdateESPForMob(mob) end
-    end
-end
-Scheduler:register("ESPScan", safeTask("ESPScan", stepESPScan), 3.0)
+    return "电击枪"
+end)()
 
--- ====================== 自动收集（分帧 + 物品通知） ======================
-local AutoCollectEnabled = Config:Get("AutoCollectEnabled", false)
-local CollectMode = Config:Get("CollectMode", "Clean")
-local itemNotifyEnabled = Config:Get("ItemNotifyEnabled", false)
-local CollectQueue = {}
-local CollectIndex = 1
-local KnownCollectItems = {}
-local function ProcessCollectBatch()
-    if not AutoCollectEnabled or #SelectedCollectItems == 0 then return end
-    if #CollectQueue == 0 then
-        CollectQueue = {}
-        if Scanner.Cache.items then
-            for _, obj in ipairs(Scanner.Cache.items) do
-                if obj and obj.Parent and not KnownCollectItems[obj] then table.insert(CollectQueue, obj) end
-            end
+WeaponDropdown = Main5:Dropdown({
+    Title = "选择武器",
+    Values = GlobalTables.WeaponDisplay, Multi = false, Value = currentWeaponDisplay,
+    Callback = function(chineseValue)
+        local englishValue = GlobalTables.WeaponInternal[chineseValue]
+        if englishValue then
+            SelectedWeapon = englishValue
+            Config:Set("SelectedWeapon", englishValue)
+            Config:Save()
         end
-        CollectIndex = 1
     end
-    if #CollectQueue == 0 then return end
-    local processed = 0
-    while processed < 5 and CollectIndex <= #CollectQueue do
-        local obj = CollectQueue[CollectIndex]
-        if obj and obj.Parent then
-            if itemNotifyEnabled then
-                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local root = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")) or obj
-                    if root then
-                        local dist = (hrp.Position - root.Position).Magnitude
-                        WindUI:Notify({ Title = "物品通知", Content = string.format("%s\n距离: %.0fm", obj.Name, dist), Duration = 2 })
+})
+
+AutoBuyWeaponToggle = Main5:Toggle({
+    Title = "自动购买武器", Value = AutoBuyWeaponEnabled,
+    Callback = function(enabled)
+        AutoBuyWeaponEnabled = enabled
+        Config:Set("AutoBuyWeaponEnabled", enabled)
+        Config:Save()
+        if enabled then
+            task.spawn(function()
+                while AutoBuyWeaponEnabled do
+                    if SelectedWeapon then
+                        pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedWeapon) end)
                     end
-                end
-            end
-            pcall(function()
-                local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
-                if prompt then
-                    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local targetPos = obj:IsA("Model") and (obj.PrimaryPart and obj.PrimaryPart.Position or obj.Position) or obj.Position
-                        targetPos = targetPos + Vector3.new(0, 3, 0)
-                        hrp.CFrame = CFrame.new(targetPos)
-                        task.wait(0.05)
-                        prompt.HoldDuration = 0
-                        if fireproximityprompt then fireproximityprompt(prompt) else prompt:InputHoldBegin(); task.wait(0.05); prompt:InputHoldEnd() end
-                        KnownCollectItems[obj] = true
-                    end
+                    task.wait(10)
                 end
             end)
         end
-        CollectIndex = CollectIndex + 1
-        processed = processed + 1
-    end
-    if CollectIndex > #CollectQueue then CollectQueue = {} end
-end
-Scheduler:register("AutoCollect", safeTask("AutoCollect", ProcessCollectBatch), 0.2)
-
-local flushAuraEnabled = Config:Get("flushaura", false)
-local flushAuraRange = Config:Get("FlushAuraValue", 5)
-local function stepFlushAura()
-    if not flushAuraEnabled then return end
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    if not Scanner.Cache.flushPrompts then return end
-    for _, entry in ipairs(Scanner.Cache.flushPrompts) do
-        local prompt = entry.prompt
-        local part = prompt.Parent
-        if part and part:IsA("BasePart") then
-            local dist = (hrp.Position - part.Position).Magnitude
-            if dist <= flushAuraRange then
-                pcall(function()
-                    prompt.HoldDuration = 0
-                    if fireproximityprompt then fireproximityprompt(prompt)
-                    else prompt:InputHoldBegin(); task.wait(0.05); prompt:InputHoldEnd() end
-                end)
-            end
-        end
-    end
-end
-Scheduler:register("FlushAura", safeTask("FlushAura", stepFlushAura), 1.5)
-
-local function stepHitboxUpdate()
-    if not getgenv().HitboxEnabled then return end
-    if not Scanner.Cache.mobs then return end
-    for _, mob in ipairs(Scanner.Cache.mobs) do
-        local humanoid = mob:FindFirstChildOfClass("Humanoid")
-        local hrp = mob:FindFirstChild("HumanoidRootPart")
-        if humanoid and hrp then
-            local existing = hrp:FindFirstChild("DYHUB_Hitbox")
-            if getgenv().HitboxEnabled then
-                if not existing then
-                    local box = Instance.new("BoxHandleAdornment")
-                    box.Name = "DYHUB_Hitbox"
-                    box.Adornee = hrp
-                    box.AlwaysOnTop = true
-                    box.ZIndex = 10
-                    box.Size = Vector3.new(getgenv().HitboxSize, getgenv().HitboxSize, getgenv().HitboxSize)
-                    box.Transparency = getgenv().HitboxShow and 0.5 or 1
-                    box.Color3 = Color3.fromRGB(255, 0, 0)
-                    box.Parent = hrp
-                else
-                    existing.Size = Vector3.new(getgenv().HitboxSize, getgenv().HitboxSize, getgenv().HitboxSize)
-                    existing.Transparency = getgenv().HitboxShow and 0.5 or 1
-                end
-            else
-                if existing then existing:Destroy() end
-            end
-        end
-    end
-end
-Scheduler:register("HitboxUpdate", safeTask("HitboxUpdate", stepHitboxUpdate), 3.0)
-
-local MasteryAutoFarmActive = false
-local MasteryAutoFarmActiveTest = false
-local ActionMode = Config:Get("ActionMode", "Default")
-local CharacterMode = Config:Get("CharacterMode", "Used")
-local MasteryMovementMode = Config:Get("MasteryMovementMode", "CFrame")
-local function getMasteryAttackSpeed()
-    if ActionMode == "Slow" then return 0.25
-    elseif ActionMode == "Faster" then return 0.05
-    elseif ActionMode == "Flash (Lag)" then return 0.01
-    else return 0.1 end
-end
-local function getMasteryTarget()
-    if CharacterMode == "Large" then
-        for _, m in ipairs(Scanner.Cache.mobs or {}) do
-            if m.Name:lower():find("giant") or m.Name:lower():find("titan") or m.Name:lower():find("boss") then return m end
-        end
-    elseif CharacterMode == "Support (Not Good)" then
-        local lowest, lowestHP = nil, math.huge
-        for _, m in ipairs(Scanner.Cache.mobs or {}) do
-            local hp = GetMobMaxHP(m)
-            if hp > 0 and hp < lowestHP then lowestHP = hp; lowest = m end
-        end
-        if lowest then return lowest end
-    elseif CharacterMode == "Titan" then
-        local highest, highestHP = nil, 0
-        for _, m in ipairs(Scanner.Cache.mobs or {}) do
-            local hp = GetMobMaxHP(m)
-            if hp > highestHP then highestHP = hp; highest = m end
-        end
-        if highest then return highest end
-    end
-    return GetNearestMob()
-end
-local function stepMasteryNoFlush()
-    if not MasteryAutoFarmActive then return end
-    local mob = getMasteryTarget()
-    if mob and not WaitingRespawn then
-        local hum = mob:FindFirstChild("Humanoid")
-        if hum and hum.Health > 0 then
-            local cf = GetTargetCFrame(mob, FarmPosition)
-            if cf then
-                if MasteryMovementMode == "Teleport" then tp1(cf) else tp1(cf) end
-            end
-            pcall(function() ReplicatedStorage.LMB:FireServer() end)
-            task.wait(getMasteryAttackSpeed())
-        end
-    end
-end
-local function stepMasteryFlush()
-    if not MasteryAutoFarmActiveTest then return end
-    local mob = getMasteryTarget()
-    if mob and not WaitingRespawn then
-        for _, prompt in pairs(mob:GetDescendants()) do
-            if prompt:IsA("ProximityPrompt") and (prompt.ActionText == "Flush" or prompt.ActionText == "Dragon Flash") then
-                pcall(function()
-                    prompt.HoldDuration = 0
-                    if fireproximityprompt then fireproximityprompt(prompt) else prompt:InputHoldBegin(); task.wait(0.05); prompt:InputHoldEnd() end
-                end)
-            end
-        end
-        local hum = mob:FindFirstChild("Humanoid")
-        if hum and hum.Health > 0 then
-            local cf = GetTargetCFrame(mob, FarmPosition)
-            if cf then
-                if MasteryMovementMode == "Teleport" then tp1(cf) else tp1(cf) end
-            end
-            pcall(function() ReplicatedStorage.LMB:FireServer() end)
-        end
-        task.wait(getMasteryAttackSpeed())
-    end
-end
-
-local function stepAutoQuestCollect() end
-local function stepAutoQuestSkip() end
-
--- ====================== 注册所有调度器任务 ======================
-Scheduler:register("AutoAttack", safeTask("AutoAttack", stepAutoAttack), 0.8)
-Scheduler:register("AutoSkill", safeTask("AutoSkill", stepAutoSkill), 1.2)
-Scheduler:register("AutoFillUp", safeTask("AutoFillUp", stepAutoFillUp), 2.0)
-Scheduler:register("AutoSkipHeli", safeTask("AutoSkipHeli", stepAutoSkipHeli), 2.0)
-Scheduler:register("GodMode", safeTask("GodMode", stepGodMode), 2.0)
-Scheduler:register("AutoBuyWeapon", safeTask("AutoBuyWeapon", stepAutoBuyWeapon), 30)
-Scheduler:register("AutoBuyMisc", safeTask("AutoBuyMisc", stepAutoBuyMisc), 30)
-Scheduler:register("IdlePosition", safeTask("IdlePosition", stepIdlePosition), 1.0)
-Scheduler:register("MainStateMachine", safeTask("MainStateMachine", stepMainStateMachine), 0.8)
-Scheduler:register("AutoVote", safeTask("AutoVote", stepAutoVote), 5.0)
-Scheduler:register("NoClip", safeTask("NoClip", stepNoClip), 1.0)
-Scheduler:register("AutoRebirth", safeTask("AutoRebirth", stepAutoRebirth), 4.0)
-Scheduler:register("AutoDaily", safeTask("AutoDaily", stepAutoDaily), 300)
-Scheduler:register("AutoChest", safeTask("AutoChest", stepAutoChest), 4.0)
-Scheduler:register("AutoGodMode", safeTask("AutoGodMode", stepAutoGodMode), 2.0)
-Scheduler:register("XmasOpen", safeTask("XmasOpen", stepXmasOpen), 0.05)
-Scheduler:register("XmasCollect", safeTask("XmasCollect", stepXmasCollect), 1.0)
-Scheduler:register("BatchBuy", safeTask("BatchBuy", stepBatchBuy), 0.2)
-Scheduler:register("BatchGachaChar", safeTask("BatchGachaChar", stepBatchGachaChar), 0.2)
-Scheduler:register("BatchGachaSkin", safeTask("BatchGachaSkin", stepBatchGachaSkin), 0.2)
-Scheduler:register("AstroMode", safeTask("AstroMode", stepAstroMode), 0.5)
-Scheduler:register("MasteryNoFlush", safeTask("MasteryNoFlush", stepMasteryNoFlush), 0.3)
-Scheduler:register("MasteryFlush", safeTask("MasteryFlush", stepMasteryFlush), 0.3)
-Scheduler:register("AutoQuestCollect", safeTask("AutoQuestCollect", stepAutoQuestCollect), 4.0)
-Scheduler:register("AutoQuestSkip", safeTask("AutoQuestSkip", stepAutoQuestSkip), 4.0)
-Scheduler:register("FPSDisplay", safeTask("FPSDisplay", updateFPSDisplay), 0.1)
-Scheduler:register("VisualUpdate", safeTask("VisualUpdate", function()
-    updateFullBright(); updateNoFog(); updateVibrant()
-end), 1.0)
-Scheduler:register("PerformanceMonitor", safeTask("PerformanceMonitor", function()
-    if ShowCPU then
-        local ping = Stats.Network.ServerStatsItem["Data Ping"] and Stats.Network.ServerStatsItem["Data Ping"]:GetValue() or 0
-        local fps = 1 / (RunService.Heartbeat:Wait() or 0.016)
-        if math.random(1, 100) == 1 then print(string.format("[PERF] FPS: %.1f, Ping: %.0fms", fps, ping)) end
-    end
-end), 5)
-
--- ====================== UI 构建 ======================
-local themesList = { "Dark", "Light", "Gray", "Blue", "Green", "Purple" }
-local currentThemeIndex = 1
-local Window = WindUI:CreateWindow({
-    Title = "DYHUB", IconThemed = true, Icon = "rbxassetid://93661445926652",
-    Author = "STBB | " .. version, Folder = "DYHUB_FINAL", Size = UDim2.fromOffset(650, 550),
-    Transparent = true, Theme = "Dark", BackgroundImageTransparency = 0.8,
-    HasOutline = false, HideSearchBar = true, ScrollBarEnabled = true,
-    User = { Enabled = true, Anonymous = false,
-        Callback = function()
-            currentThemeIndex = currentThemeIndex % #themesList + 1
-            WindUI:SetTheme(themesList[currentThemeIndex])
-            WindUI:Notify({ Title = T("theme"), Content = T("theme") .. " " .. themesList[currentThemeIndex], Duration = 2 })
-        end
-    }
-})
-Window:Tag({ Title = version, Color = Color3.fromHex("#db7093") })
-Window:EditOpenButton({ Title = "DYHUB - " .. T("theme"), Icon = "monitor", CornerRadius = UDim.new(0, 6), StrokeThickness = 2, Draggable = true })
-
-local Info = Window:Tab({ Title = "信息", Icon = "info" })
-local Main = Window:Tab({ Title = "核心", Icon = "rocket" })
-local Main4 = Window:Tab({ Title = "透视", Icon = "eye" })
-local Main2 = Window:Tab({ Title = "玩家", Icon = "user" })
-local Main5 = Window:Tab({ Title = "商店", Icon = "shopping-cart" })
-local Main6 = Window:Tab({ Title = "收集", Icon = "hand" })
-local Main7 = Window:Tab({ Title = "模式", Icon = "gamepad-2" })
-local MasteryTab = Window:Tab({ Title = "熟练度", Icon = "award" })
-local HitboxTab = Window:Tab({ Title = "碰撞箱", Icon = "package" })
-local QuestTab = Window:Tab({ Title = "任务", Icon = "sword" })
-local ExtraTab = Window:Tab({ Title = "额外", Icon = "zap" })
-local XmasTab = Window:Tab({ Title = "Xmas", Icon = "gift" })
-local MiscTab = Window:Tab({ Title = "视觉效果", Icon = "palette" })
-local Main3 = Window:Tab({ Title = "设置", Icon = "settings" })
-Window:SelectTab(1)
-
--- 信息标签页（移除 Discord 相关内容）
-Info:Section({ Title = "最近更新", TextXAlignment = "Center", TextSize = 17 })
-Info:Divider()
-Info:Paragraph({
-    Title = "2026/05/27",
-    Desc = "- 单例架构 | 统一调度器 | 单一扫描源\n- ESP对象复用 | 分帧收集 | 降频光环\n- 全功能整合 | 内存监控 | 无无限重试\n- 完整多语言：中文、English、Русский、Português",
-    ImageSize = 30
-})
-Info:Divider()
-Info:Section({ Title = "关于", TextXAlignment = "Center", TextSize = 17 })
-Info:Divider()
-Info:Paragraph({ Title = T("info_owner"), Desc = "@dyumraisgoodguy#8888", Image = "rbxassetid://119789418015420", ImageSize = 30 })
-Info:Paragraph({ Title = T("info_version"), Desc = version .. " " .. ver, ImageSize = 30 })
-Info:Paragraph({ Title = T("info_lines"), Desc = "约 5000 行（全功能完整）", ImageSize = 26 })
-
--- 设置标签页 - 语言设置
-Main3:Section({ Title = T("language"), Icon = "globe" })
-Main3:Dropdown({
-    Title = T("language"),
-    Values = { "Chinese", "English", "Russian", "Portuguese" },
-    Default = currentLanguage,
-    Multi = false,
-    Callback = function(v)
-        currentLanguage = v
-        WindUI:Notify({ Title = "Language", Content = "Switched to " .. v, Duration = 2 })
     end
 })
 
--- 核心标签页（关键控件，与原脚本相同）
-Main:Section({ Title = T("auto_farm"), Icon = "package" })
-Main:Toggle({
-    Title = T("auto_farm"), Desc = T("auto_farm_desc"), Value = AutoFarmEnabled,
-    Callback = function(state)
-        AutoFarmEnabled = state
-        if state then
-            HandleMiscOptions(MiscOptions)
-            WindUI:Notify({ Title = T("auto_farm"), Content = T("farm_enabled"), Duration = 2 })
-        else
-            AutoAttackEnabled = false; AutoSkillEnabled = false; AutoSkipHeliEnabled = false; AutoFillUpEnabled = false
-            if AutoStartEnabled then AutoStartEnabled = false end
-            if SyncFarmOnly then
-                pcall(function() ReplicatedStorage.SetSettingAutoSkipWave:FireServer(false) end)
-                WindUI:Notify({ Title = T("auto_farm"), Content = T("farm_disabled") .. " (sync)", Duration = 3 })
-            else
-                WindUI:Notify({ Title = T("auto_farm"), Content = T("farm_disabled"), Duration = 2 })
-            end
+Main5:Button({
+    Title = "购买武器（一次）",
+    Callback = function()
+        if SelectedWeapon then
+            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedWeapon) end)
         end
-        Config:Set("AutoFarmEnabled", state); Config:Save()
     end
 })
-Main:Section({ Title = "挂机设置", Icon = "settings" })
-Main:Dropdown({ Title = "站位位置", Values = { "Above", "Under" }, Multi = false, Value = FarmPosition, Callback = function(v) FarmPosition = v; Config:Set("FarmPosition", v) end })
-Main:Dropdown({ Title = "移动模式", Values = { "Tween", "tp", "Tp", "tp1" }, Multi = false, Value = FarmMode, Callback = function(v) FarmMode = v; Config:Set("FarmMode", v) end })
-Main:Dropdown({
-    Title = "辅助功能",
-    Values = { "自动攻击", "自动技能", "自动开局", "自动跳过直升机", "自动补血", "安全模式", "上帝模式", "删除地图" },
-    Multi = true,
-    Value = MiscOptions,
-    Callback = function(v)
-        if not AutoFarmEnabled and SyncFarmOnly then
-            local onlyGodOrBoost = true
-            for _, item in ipairs(v) do if item ~= "上帝模式" and item ~= "删除地图" then onlyGodOrBoost = false; break end end
-            if #v > 0 and not onlyGodOrBoost then
-                WindUI:Notify({ Title = "辅助功能", Content = "请先开启自动挂机（同步模式已开启）", Duration = 3 })
-            end
-        end
-        HandleMiscOptions(v)
-    end
-})
-Main:Toggle({ Title = T("sync_mode"), Desc = T("sync_mode_desc"), Value = SyncFarmOnly, Callback = function(v)
-    SyncFarmOnly = v; Config:Set("SyncFarmOnly", v)
-    if v then WindUI:Notify({ Title = T("sync_mode"), Content = T("sync_on"), Duration = 2 })
-    else WindUI:Notify({ Title = T("sync_mode"), Content = T("sync_off"), Duration = 2 }); HandleMiscOptions(MiscOptions) end
-})
 
-Main:Section({ Title = "通用设置", Icon = "zap" })
-Main:Dropdown({ Title = "自动技能按键", Values = skillDropdownValues, Multi = true, Value = SelectedSkills, Callback = function(v) SelectedSkills = v; Config:Set("SelectedSkills", v) end })
-Main:Slider({ Title = "技能延迟（秒）", Value = { Min = 1, Max = 30, Default = SkillDelay }, Step = 1, Callback = function(v) SkillDelay = v; Config:Set("SkillDelay", v) end })
-Main:Slider({ Title = "挂机高度偏移（+Y）", Value = { Min = -30, Max = 30, Default = HeightValue }, Step = 1, Callback = function(v) HeightValue = v; Config:Set("HeightValue", v) end })
-Main:Slider({ Title = "安全模式血量（%）", Value = { Min = 1, Max = 100, Default = SafeValue }, Step = 1, Callback = function(v) SafeValue = v; Config:Set("SafeValue", v) end })
-Main:Slider({ Title = "上帝模式触发血量（%）", Value = { Min = 1, Max = 99, Default = GodModeValue }, Step = 1, Callback = function(v) GodModeValue = v; Config:Set("GodModeValue", v) end })
+Main5:Section({ Title = "商店道具", Icon = "helicopter" })
 
-Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
-Main:Paragraph({ Title = "优先级顺序", Desc = "GiantST → 直升机 → 高血量 → 最近怪物", ImageSize = 26 })
-Main:Slider({ Title = "高血量阈值", Value = { Min = 1, Max = 100000, Default = HighHPThreshold }, Step = 100, Callback = function(v) HighHPThreshold = v; Config:Set("HighHPThreshold", v) end })
-
-Main:Section({ Title = "覆写设置", Icon = "ruler" })
-Main:Input({ Title = "递减步长", Default = tostring(PADDING_REDUCE_STEP), Placeholder = "2", Callback = function(t) local n = tonumber(t); if n then PADDING_REDUCE_STEP = n; Config:Set("PaddingReduceStep", n) end end })
-Main:Input({ Title = "最小安全高度", Default = tostring(PADDING_SAFE_MIN), Placeholder = "-30", Callback = function(t) local n = tonumber(t); if n then PADDING_SAFE_MIN = n; Config:Set("PaddingSafeMin", n) end end })
-Main:Slider({ Title = "防卡墙边距", Value = { Min = 0, Max = 10, Default = ANTI_CLIP_MARGIN }, Step = 1, Callback = function(v) ANTI_CLIP_MARGIN = v; Config:Set("AntiClipMargin", v) end })
-Main:Slider({ Title = "伤害阈值", Value = { Min = 1, Max = 500, Default = DMG_THRESHOLD }, Step = 1, Callback = function(v) DMG_THRESHOLD = v; Config:Set("DmgThreshold", v) end })
-Main:Button({ Title = "重置所有已确认位置", Callback = function() MobConfirmedPadding = {}; MobHeightOverride = {}; WindUI:Notify({ Title = "重置", Content = "完成", Duration = 2 }) end })
-
-Main:Section({ Title = "冲水光环", Icon = "toilet" })
-Main:Slider({ Title = "冲水范围", Value = { Min = 1, Max = 15, Default = flushAuraRange }, Step = 1, Callback = function(v) flushAuraRange = v; Config:Set("FlushAuraValue", v) end })
-Main:Toggle({ Title = "冲水光环", Value = flushAuraEnabled, Callback = function(v) flushAuraEnabled = v; Config:Set("flushaura", v) end })
-
-Main:Section({ Title = "高风险功能（无检测）", Icon = "flame" })
-Main:Toggle({ Title = T("motion_prediction"), Desc = T("motion_prediction_desc"), Value = MotionPredictionEnabled, Callback = function(v) MotionPredictionEnabled = v; Config:Set("MotionPredictionEnabled", v) end })
-Main:Toggle({ Title = T("follow_mode"), Desc = T("follow_mode_desc"), Value = FollowModeEnabled, Callback = function(v) FollowModeEnabled = v; Config:Set("FollowModeEnabled", v) end })
-Main:Toggle({ Title = T("rotate_90"), Desc = T("rotate_90_desc"), Value = Rotate90Enabled, Callback = function(v) Rotate90Enabled = v; Config:Set("Rotate90Enabled", v) end })
-Main:Toggle({ Title = T("auto_god_mode"), Desc = T("auto_god_mode_desc"), Value = AutoGodModeEnabled, Callback = function(v)
-    AutoGodModeEnabled = v; Config:Set("AutoGodModeEnabled", v)
-    if v then Scheduler:register("AutoGodMode", safeTask("AutoGodMode", stepAutoGodMode), 2.0) else Scheduler:unregister("AutoGodMode") end
-})
-Main:Slider({ Title = T("god_respawn_threshold"), Value = { Min = 1, Max = 100, Default = GodRespawnThreshold }, Step = 1, Callback = function(v) GodRespawnThreshold = v; Config:Set("GodRespawnThreshold", v) end })
-
--- 透视标签页
-Main4:Section({ Title = "透视视觉", Icon = "eye" })
-Main4:Toggle({ Title = T("esp_enable"), Value = ESP.Enabled, Callback = function(v) ESP.Enabled = v; Config:Set("EspEnabled", v) end })
-Main4:Toggle({ Title = T("esp_mob"), Value = ESP.MobEnabled, Callback = function(v) ESP.MobEnabled = v; Config:Set("EspMobEnabled", v) end })
-Main4:Toggle({ Title = T("esp_player"), Value = ESP.PlayerEnabled, Callback = function(v) ESP.PlayerEnabled = v; Config:Set("EspPlayerEnabled", v) end })
-Main4:Toggle({ Title = T("esp_item"), Value = ESP.ItemEnabled, Callback = function(v) ESP.ItemEnabled = v; Config:Set("EspItemEnabled", v) end })
-Main4:Dropdown({ Title = "ESP 模式", Values = { "Highlight", "BoxHandle" }, Multi = false, Value = ESP.ESPMode, Callback = function(v) ESP.ESPMode = v; Config:Set("EspMode", v) end })
-Main4:Section({ Title = "透视设置", Icon = "settings" })
-Main4:Dropdown({ Title = "透视选项", Multi = true, Values = { "高亮", "距离", "血量", "名称" }, Value = ESP.Settings, Callback = function(v) ESP.Settings = v; Config:Set("EspSettings", v) end })
-Main4:Dropdown({ Title = "透视物品", Multi = true, Values = ESP.ItemList, Value = ESP.SelectedItems, Callback = function(v) ESP.SelectedItems = v; Config:Set("EspSelectedItems", v) end })
-
--- 玩家标签页（包含新的飞行模式 Toggle）
-Main2:Section({ Title = "本地玩家", Icon = "user" })
-Main2:Slider({ Title = "移动速度", Value = { Min = 1, Max = 200, Default = WSValue }, Step = 1, Callback = function(v) WSValue = v; Config:Set("WSValue", v); updatePlayerStats() end })
-Main2:Slider({ Title = "跳跃高度", Value = { Min = 1, Max = 500, Default = JPValue }, Step = 1, Callback = function(v) JPValue = v; Config:Set("JPValue", v); updatePlayerStats() end })
-Main2:Toggle({ Title = T("no_clip"), Value = NoClip, Callback = function(v) NoClip = v; Config:Set("NoClip", v) end })
-local infJumpEnabled = false
-Main2:Toggle({ Title = T("infinity_jump"), Value = infJumpEnabled, Callback = function(v)
-    infJumpEnabled = v
-    if v then
-        if infJumpConnection then infJumpConnection:Disconnect() end
-        infJumpConnection = UserInputService.JumpRequest:Connect(function()
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end)
-    else
-        if infJumpConnection then infJumpConnection:Disconnect(); infJumpConnection = nil end
-    end
-end })
--- 飞行模式 Toggle（替换原有飞行 Toggle）
-local flyEnabledLocal = false
-Main2:Toggle({
-    Title = T("fly"),
-    Desc = "开启/关闭飞行模式 (Fly GUI V3 by XNEO)",
-    Value = flyEnabledLocal,
-    Callback = function(state)
-        flyEnabledLocal = state
-        ToggleFly(state)
-    end
-})
-Main2:Slider({ Title = "飞行速度", Value = { Min = 10, Max = 200, Default = 50 }, Step = 5, Callback = function(v) 
-    -- 速度调节已由 Fly GUI 内部处理，此处仅保留占位，实际无影响
-    if flyGuiScreenGui and flyGuiScreenGui.Frame and flyGuiScreenGui.Frame.speed then
-        -- 可选：更新 GUI 中的速度显示
-    end
-end })
-
-Main2:Section({ Title = "兑换码", Icon = "bird" })
-local SelectedCodes = Config:Get("SelectedCodes", {})
-Main2:Dropdown({ Title = T("select_codes"), Multi = true, Values = GlobalTables.redeemCodes, Value = SelectedCodes, Callback = function(v) Config:Set("SelectedCodes", v) end })
-Main2:Button({ Title = T("redeem_selected"), Callback = function() for _, c in pairs(SelectedCodes) do pcall(function() ReplicatedStorage:WaitForChild("RedeemCode"):FireServer(c); task.wait(0.2) end) end end })
-Main2:Button({ Title = T("redeem_all"), Callback = function() for _, c in pairs(GlobalTables.redeemCodes) do pcall(function() ReplicatedStorage:WaitForChild("RedeemCode"):FireServer(c); task.wait(0.5) end) end end })
-
-Main2:Section({ Title = "解锁游戏通行证", Icon = "badge-dollar-sign" })
-local SelectedGamepass = Config:Get("SelectedGamepass", {})
-Main2:Dropdown({ Title = T("select_gamepass"), Multi = true, Values = GlobalTables.Gamepasst, Value = SelectedGamepass, Callback = function(v) Config:Set("SelectedGamepass", v) end })
-Main2:Button({ Title = T("unlock_gamepass"), Callback = function()
-    local gacha = LocalPlayer:FindFirstChild("GachaData") or Instance.new("Folder", LocalPlayer); gacha.Name = "GachaData"
-    local toUnlock = {}
-    for _, v in ipairs(SelectedGamepass) do if v == "全部" then toUnlock = { "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" } break else table.insert(toUnlock, v) end end
-    for _, name in ipairs(toUnlock) do local bv = gacha:FindFirstChild(name) or Instance.new("BoolValue", gacha); bv.Name = name; bv.Value = true end
-    WindUI:Notify({ Title = "解锁通行证", Content = "已解锁", Duration = 2 })
-end })
-
--- 商店标签页
-Main5:Section({ Title = "商店武器", Icon = "helicopter" })
-local currentWeaponEn = Config:Get("SelectedWeapon", "Stungun")
-local weaponDisplayMap = {}; for ch, en in pairs(GlobalTables.WeaponInternal) do weaponDisplayMap[en] = ch end
-Main5:Dropdown({ Title = T("select_weapon"), Values = GlobalTables.WeaponDisplay, Multi = false, Value = weaponDisplayMap[currentWeaponEn] or "电击枪", Callback = function(ch) SelectedWeapon = GlobalTables.WeaponInternal[ch]; Config:Set("SelectedWeapon", SelectedWeapon) end })
-Main5:Toggle({ Title = T("auto_buy_weapon"), Value = AutoBuyWeaponEnabled, Callback = function(v) AutoBuyWeaponEnabled = v; Config:Set("AutoBuyWeaponEnabled", v) end })
-Main5:Button({ Title = T("buy_once"), Callback = function() if SelectedWeapon then pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedWeapon) end) end end })
-
-Main5:Section({ Title = "商店道具", Icon = "shopping-cart" })
 local currentMiscEn = Config:Get("SelectedMiscItem", "HeadPhone")
-local miscDisplayMap = {}; for ch, en in pairs(GlobalTables.MiscInternal) do miscDisplayMap[en] = ch end
-Main5:Dropdown({ Title = T("select_misc"), Values = GlobalTables.MiscDisplay, Multi = false, Value = miscDisplayMap[currentMiscEn] or "耳机", Callback = function(ch) SelectedMiscItem = GlobalTables.MiscInternal[ch]; Config:Set("SelectedMiscItem", SelectedMiscItem) end })
-Main5:Toggle({ Title = T("auto_buy_misc"), Value = AutoBuyMiscEnabled, Callback = function(v) AutoBuyMiscEnabled = v; Config:Set("AutoBuyMiscEnabled", v) end })
-Main5:Button({ Title = T("buy_once"), Callback = function() if SelectedMiscItem then pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedMiscItem) end) end end })
+local currentMiscDisplay = (function()
+    for ch, en in pairs(GlobalTables.MiscInternal) do
+        if en == currentMiscEn then return ch end
+    end
+    return "耳机"
+end)()
 
-Main5:Section({ Title = "无延迟批量购买", Icon = "rocket" })
-Main5:Toggle({ Title = T("batch_buy"), Desc = T("batch_buy_desc"), Value = BatchBuyEnabled, Callback = function(v)
-    BatchBuyEnabled = v; Config:Set("BatchBuyEnabled", v)
-    if v then Scheduler:register("BatchBuy", safeTask("BatchBuy", stepBatchBuy), 0.2) else Scheduler:unregister("BatchBuy") end
-})
-Main5:Dropdown({ Title = T("batch_items"), Multi = true, Values = (function() local list = {}; for _, gear in pairs(game:GetService("ReplicatedFirst"):WaitForChild("Gears"):GetChildren()) do table.insert(list, gear.Name) end; return list end)(), Callback = function(v) Config:Set("BatchBuyItems", v) end })
-Main5:Dropdown({ Title = T("batch_amount"), Multi = true, Values = { "1", "2", "3", "4", "5", "10", "20" }, Callback = function(v) Config:Set("BatchBuyAmounts", v) end })
-
-Main5:Section({ Title = "无延迟批量抽卡", Icon = "gem" })
-Main5:Toggle({ Title = T("gacha_char"), Value = BatchGachaCharEnabled, Callback = function(v)
-    BatchGachaCharEnabled = v; Config:Set("BatchGachaCharEnabled", v)
-    if v then Scheduler:register("BatchGachaChar", safeTask("BatchGachaChar", stepBatchGachaChar), 0.2) else Scheduler:unregister("BatchGachaChar") end
-})
-Main5:Dropdown({ Title = T("select_char_spins"), Multi = true, Values = { "1SpinLucky", "10Spins", "1Spin" }, Callback = function(v) Config:Set("BatchGachaCharSpins", v) end })
-Main5:Toggle({ Title = T("gacha_skin"), Value = BatchGachaSkinEnabled, Callback = function(v)
-    BatchGachaSkinEnabled = v; Config:Set("BatchGachaSkinEnabled", v)
-    if v then Scheduler:register("BatchGachaSkin", safeTask("BatchGachaSkin", stepBatchGachaSkin), 0.2) else Scheduler:unregister("BatchGachaSkin") end
-})
-Main5:Dropdown({ Title = T("select_skin_spins"), Multi = true, Values = { "1SpinLucky", "1Spin", "10Spins" }, Callback = function(v) Config:Set("BatchGachaSkinSpins", v) end })
-
--- 收集标签页
-Main6:Section({ Title = "自动收集", Icon = "hand" })
-Main6:Toggle({ Title = "启用收集", Value = AutoCollectEnabled, Callback = function(v)
-    AutoCollectEnabled = v; Config:Set("AutoCollectEnabled", v); if v then KnownCollectItems = {} end
-})
-Main6:Toggle({ Title = "物品通知", Value = itemNotifyEnabled, Callback = function(v) itemNotifyEnabled = v; Config:Set("ItemNotifyEnabled", v) end })
-Main6:Dropdown({ Title = "收集物品", Multi = true, Values = CollectItemsList, Value = SelectedCollectItems, Callback = function(v) SelectedCollectItems = v; Config:Set("SelectedCollectItems", v) end })
-Main6:Dropdown({ Title = "收集模式", Values = { "Clean", "IDGF" }, Multi = false, Value = CollectMode, Callback = function(v) CollectMode = v; Config:Set("CollectMode", v) end })
-
--- 模式标签页
-Main7:Section({ Title = "投票系统", Icon = "gamepad-2" })
-Main7:Button({ Title = "恢复投票系统", Callback = function()
-    pcall(function()
-        ReplicatedStorage.GetReadyRemote:FireServer("3", true); task.wait(1.25)
-        ReplicatedStorage.GetReadyRemote:FireServer("3", false); task.wait(0.67)
-        ReplicatedStorage.GetReadyRemote:FireServer("2", true); task.wait(1.25)
-        ReplicatedStorage.GetReadyRemote:FireServer("2", false); task.wait(0.67)
-        ReplicatedStorage.GetReadyRemote:FireServer("1", true)
-    end)
-    WindUI:Notify({ Title = "投票系统", Content = "已恢复", Duration = 3 })
-end })
-Main7:Dropdown({ Title = "投票模式", Values = GlobalTables.Votes, Multi = false, Value = AutoVoteValue, Callback = function(v) AutoVoteValue = v; Config:Set("AutoVoteValue", v) end })
-Main7:Toggle({ Title = "自动投票（局内）", Value = AutoVoteinGameEnabled, Callback = function(v) AutoVoteinGameEnabled = v; Config:Set("AutoVoteinGameEnabled", v) end })
-Main7:Divider()
-Main7:Section({ Title = "模式切换" })
-Main7:Button({ Title = "▶ 自动挂机模式", Callback = function() getgenv().ACTIVE_MODE = "farm"; WindUI:Notify({ Title = "模式", Content = "已切换到自动挂机模式", Duration = 2 }) end })
-Main7:Button({ Title = "✈ 天文币刷取模式", Callback = function()
-    getgenv().ACTIVE_MODE = "astro"
-    WindUI:Notify({ Title = "模式", Content = "已切换到天文币刷取模式", Duration = 2 })
-end })
-Main7:Section({ Title = "天文币刷取参数", Icon = "settings" })
-Main7:Slider({ Title = "游戏持续时间（秒）", Value = { Min = 60, Max = 3600, Default = AstroGameDuration }, Step = 30, Callback = function(v) AstroGameDuration = v; Config:Set("AstroGameDuration", v) end })
-Main7:Slider({ Title = "飞行半径", Value = { Min = 50, Max = 1000, Default = AstroFlyRadius }, Step = 50, Callback = function(v) AstroFlyRadius = v; Config:Set("AstroFlyRadius", v) end })
-Main7:Slider({ Title = "飞行速度", Value = { Min = 0.5, Max = 10, Default = AstroFlySpeed }, Step = 0.5, Callback = function(v) AstroFlySpeed = v; Config:Set("AstroFlySpeed", v) end })
-Main7:Section({ Title = "自动游戏模式（大厅）", Icon = "gamepad-2" })
-Main7:Dropdown({ Title = "选择游戏模式", Values = GlobalTables.ModeDisplay, Multi = false, Value = (function() for ch, en in pairs(GlobalTables.ModeInternal) do if en == AutoGameValue then return ch end end return T("vote_normal") end)(), Callback = function(ch) local en = GlobalTables.ModeInternal[ch]; if en then AutoGameValue = en; Config:Set("AutoGameValue", en); Config:Save() end end })
-Main7:Toggle({ Title = "自动游戏模式（大厅）", Desc = "在大厅时自动创建选定的游戏模式", Value = AutoVoteEnabled, Callback = function(v) AutoVoteEnabled = v; Config:Set("AutoVoteEnabled", v) end })
-
--- Mastery 标签页
-MasteryTab:Section({ Title = T("mastery_title"), Icon = "book-open" })
-MasteryTab:Dropdown({ Title = "移动模式", Values = { "Teleport", "CFrame" }, Default = MasteryMovementMode, Multi = false, Callback = function(v) MasteryMovementMode = v; Config:Set("MasteryMovementMode", v) end })
-MasteryTab:Dropdown({ Title = T("mastery_action_speed"), Values = { "Default", "Slow", "Faster", "Flash (Lag)" }, Default = ActionMode, Callback = function(v) ActionMode = v; Config:Set("ActionMode", v) end })
-MasteryTab:Dropdown({ Title = T("mastery_char_list"), Values = { "Small", "Large", "Support (Not Good)", "Titan" }, Default = CharacterMode, Callback = function(v) CharacterMode = v; Config:Set("CharacterMode", v) end })
-MasteryTab:Dropdown({ Title = "站位位置", Values = { "Spin", "Above", "Back", "Under", "Front" }, Default = FarmPosition, Callback = function(v) FarmPosition = v; Config:Set("FarmPosition", v) end })
-MasteryTab:Slider({ Title = "与NPC距离", Value = { Min = 0, Max = 50, Default = getgenv().DistanceValue or 1 }, Step = 1, Callback = function(val) getgenv().DistanceValue = val end })
-MasteryTab:Toggle({ Title = T("mastery_no_flush"), Default = MasteryAutoFarmActive, Callback = function(v)
-    MasteryAutoFarmActive = v
-    if v then Scheduler:register("MasteryNoFlush", safeTask("MasteryNoFlush", stepMasteryNoFlush), 0.3) else Scheduler:unregister("MasteryNoFlush") end
-})
-MasteryTab:Toggle({ Title = T("mastery_flush"), Default = MasteryAutoFarmActiveTest, Callback = function(v)
-    MasteryAutoFarmActiveTest = v
-    if v then Scheduler:register("MasteryFlush", safeTask("MasteryFlush", stepMasteryFlush), 0.3) else Scheduler:unregister("MasteryFlush") end
+MiscShopDropdown = Main5:Dropdown({
+    Title = "选择道具",
+    Values = GlobalTables.MiscDisplay, Multi = false, Value = currentMiscDisplay,
+    Callback = function(chineseValue)
+        local englishValue = GlobalTables.MiscInternal[chineseValue]
+        if englishValue then
+            SelectedMiscItem = englishValue
+            Config:Set("SelectedMiscItem", englishValue)
+            Config:Save()
+        end
+    end
 })
 
--- Hitbox 标签页
-HitboxTab:Section({ Title = T("hitbox_title"), Icon = "crosshair" })
-HitboxTab:Button({ Title = T("hitbox_scan"), Callback = function()
-    if not Scanner.Cache.mobs then return end
-    for _, mob in ipairs(Scanner.Cache.mobs) do
-        if mob:IsA("Model") and mob:FindFirstChildOfClass("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-            if not Players:GetPlayerFromCharacter(mob) then
-                local hrp = mob:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local box = Instance.new("BoxHandleAdornment")
-                    box.Name = "DYHUB_Hitbox"
-                    box.Adornee = hrp
-                    box.AlwaysOnTop = true
-                    box.ZIndex = 10
-                    box.Size = Vector3.new(getgenv().HitboxSize, getgenv().HitboxSize, getgenv().HitboxSize)
-                    box.Transparency = getgenv().HitboxShow and 0.5 or 1
-                    box.Color3 = Color3.fromRGB(255, 0, 0)
-                    box.Parent = hrp
+AutoBuyMiscToggle = Main5:Toggle({
+    Title = "自动购买道具", Value = AutoBuyMiscEnabled,
+    Callback = function(enabled)
+        AutoBuyMiscEnabled = enabled
+        Config:Set("AutoBuyMiscEnabled", enabled)
+        Config:Save()
+        if enabled then
+            task.spawn(function()
+                while AutoBuyMiscEnabled do
+                    if SelectedMiscItem then
+                        pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedMiscItem) end)
+                    end
+                    task.wait(10)
+                end
+            end)
+        end
+    end
+})
+
+Main5:Button({
+    Title = "购买道具（一次）",
+    Callback = function()
+        if SelectedMiscItem then
+            pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedMiscItem) end)
+        end
+    end
+})
+
+-- ====================== UI: COLLECT TAB ======================
+Main6:Section({ Title = "物品收集", Icon = "package" })
+
+AutoCollectToggle = Main6:Toggle({
+    Title = "自动收集", Value = AutoCollectEnabled,
+    Desc = "自动收集地图上出现的选定物品",
+    Callback = function(state)
+        AutoCollectEnabled = state; Config:Set("AutoCollectEnabled", state); Config:Save()
+        if state then KnownCollectItems = {}; StartAutoCollectLoop()
+        else CollectRunning = false end
+    end
+})
+
+Main6:Section({ Title = "收集设置", Icon = "settings" })
+
+CollectItemDropdown = Main6:Dropdown({
+    Title = "收集物品",
+    Values = CollectItems, Multi = true, Value = SelectedCollectItems,
+    Callback = function(values) SelectedCollectItems = values or {}; Config:Set("SelectedCollectItems", values); Config:Save() end
+})
+
+CollectModeDropdown = Main6:Dropdown({
+    Title = "收集模式",
+    Values = { "Clean", "IDGF" }, Multi = false, Value = CollectMode,
+    Callback = function(value) CollectMode = value; Config:Set("CollectMode", value); Config:Save() end
+})
+
+-- ====================== UI: SETTING TAB ======================
+Main3:Section({ Title = "保存配置", Icon = "save" })
+
+Main3:Button({
+    Title = "立即保存配置",
+    Desc = "将所有当前设置保存到配置文件",
+    Callback = function()
+        Config:Save()
+        WindUI:Notify({ Title = "配置已保存", Content = "保存成功", Duration = 2, Icon = "save" })
+    end
+})
+
+local AutoSaveEnabled = Config:Get("AutoSaveEnabled", true)
+local AutoSaveDelay   = Config:Get("AutoSaveDelay", 15)
+
+Main3:Toggle({
+    Title = "自动保存配置", Value = AutoSaveEnabled,
+    Desc = "按设定间隔自动保存配置",
+    Callback = function(state) AutoSaveEnabled = state; Config:Set("AutoSaveEnabled", state); Config:Save() end
+})
+
+Main3:Input({
+    Title = "保存间隔（秒）", Default = tostring(AutoSaveDelay), Placeholder = "默认: 15",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num and num >= 1 then AutoSaveDelay = num; Config:Set("AutoSaveDelay", num); Config:Save()
+        else warn("[DYHUB] 间隔值无效") end
+    end
+})
+
+Main3:Section({ Title = "服务器状态", Icon = "server" })
+
+Main3:Button({
+    Title = "更换服务器",
+    Desc = "传送到此游戏的其他随机服务器",
+    Callback = function()
+        local TeleportService = game:GetService("TeleportService")
+        local servers = {}
+        local success, result = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
+        end)
+        if success and result and result.data then
+            for _, server in ipairs(result.data) do
+                if server.id ~= game.JobId and server.playing < server.maxPlayers then
+                    table.insert(servers, server.id)
                 end
             end
         end
-    end
-    WindUI:Notify({ Title = "碰撞箱", Content = "扫描完成", Duration = 2 })
-end })
-HitboxTab:Slider({ Title = T("hitbox_size"), Value = { Min = 16, Max = 100, Default = getgenv().HitboxSize }, Step = 1, Callback = function(val) getgenv().HitboxSize = val; Config:Set("HitboxSize", val) end })
-HitboxTab:Toggle({ Title = T("hitbox_enable"), Default = getgenv().HitboxEnabled, Callback = function(v)
-    getgenv().HitboxEnabled = v; Config:Set("HitboxEnabled", v)
-    if v then Scheduler:register("HitboxUpdate", safeTask("HitboxUpdate", stepHitboxUpdate), 3.0) else Scheduler:unregister("HitboxUpdate") end
-})
-HitboxTab:Toggle({ Title = T("hitbox_show"), Default = getgenv().HitboxShow, Callback = function(v) getgenv().HitboxShow = v; Config:Set("HitboxShow", v) end })
-
--- Quest 标签页
-QuestTab:Section({ Title = T("quest_title"), Icon = "album" })
-QuestTab:Button({ Title = T("quest_open_clock"), Callback = function()
-    local gui = LocalPlayer.PlayerGui:FindFirstChild("QuestClockManUI")
-    if gui then gui.Enabled = not gui.Enabled end
-})
-QuestTab:Button({ Title = T("quest_open_quest"), Callback = function()
-    local gui = LocalPlayer.PlayerGui:FindFirstChild("QuestUI")
-    if gui then gui.Enabled = not gui.Enabled end
-})
-QuestTab:Section({ Title = "任务自动设置", Icon = "star-half" })
-QuestTab:Toggle({ Title = T("quest_auto_collect"), Default = autoQuestCollectActive, Callback = function(v)
-    autoQuestCollectActive = v
-    if v then Scheduler:register("AutoQuestCollect", safeTask("AutoQuestCollect", stepAutoQuestCollect), 4.0) else Scheduler:unregister("AutoQuestCollect") end
-})
-QuestTab:Toggle({ Title = T("quest_auto_skip"), Default = autoQuestSkipActive, Callback = function(v)
-    autoQuestSkipActive = v
-    if v then Scheduler:register("AutoQuestSkip", safeTask("AutoQuestSkip", stepAutoQuestSkip), 4.0) else Scheduler:unregister("AutoQuestSkip") end
-})
-
--- 额外功能标签页
-ExtraTab:Section({ Title = "自动化额外", Icon = "zap" })
-ExtraTab:Toggle({ Title = "自动重生", Desc = "死亡后自动重生", Value = AutoRebirthEnabled, Callback = function(v)
-    AutoRebirthEnabled = v; Config:Set("AutoRebirthEnabled", v)
-    if v then Scheduler:register("AutoRebirth", safeTask("AutoRebirth", stepAutoRebirth), 4.0) else Scheduler:unregister("AutoRebirth") end
-})
-ExtraTab:Toggle({ Title = "自动领取每日奖励", Value = AutoDailyEnabled, Callback = function(v)
-    AutoDailyEnabled = v; Config:Set("AutoDailyEnabled", v)
-    if v then Scheduler:register("AutoDaily", safeTask("AutoDaily", stepAutoDaily), 300) else Scheduler:unregister("AutoDaily") end
-})
-ExtraTab:Toggle({ Title = "自动开宝箱", Value = AutoChestEnabled, Callback = function(v)
-    AutoChestEnabled = v; Config:Set("AutoChestEnabled", v)
-    if v then Scheduler:register("AutoChest", safeTask("AutoChest", stepAutoChest), 4.0) else Scheduler:unregister("AutoChest") end
-})
-ExtraTab:Toggle({ Title = T("show_cpu"), Value = ShowCPU, Callback = function(v) ShowCPU = v; Config:Set("ShowCPU", v) end })
-ExtraTab:Toggle({ Title = T("reconnect_on_disconnect"), Value = ReconnectOnDisconnect, Callback = function(v)
-    ReconnectOnDisconnect = v; Config:Set("ReconnectOnDisconnect", v)
-    if v then
-        local function reconnect() task.wait(5); TeleportService:Teleport(game.PlaceId, LocalPlayer) end
-        game:GetService("NetworkClient").ChildAdded:Connect(function(child)
-            if child.Name == "Disconnected" then WindUI:Notify({ Title = "断线", Content = "正在重连...", Duration = 3 }); task.spawn(reconnect) end
-        end)
-    end
-})
-ExtraTab:Toggle({ Title = "Auto Ready", Value = autoReadyActive, Callback = function(v) autoReadyActive = v; Config:Set("AutoReadyEnabled", v) end })
-ExtraTab:Toggle({ Title = "Auto Skip Helicopter", Value = autoSkipHelicopterActive, Callback = function(v) autoSkipHelicopterActive = v; Config:Set("AutoSkipHelicopterEnabled", v) end })
-
--- Xmas 标签页
-XmasTab:Section({ Title = T("xmas_title"), Icon = "gift" })
-XmasTab:Toggle({ Title = T("xmas_open"), Value = XmasOpenEnabled, Callback = function(v)
-    XmasOpenEnabled = v
-    if v then Scheduler:register("XmasOpen", safeTask("XmasOpen", stepXmasOpen), 0.05) else Scheduler:unregister("XmasOpen") end
-})
-XmasTab:Toggle({ Title = T("xmas_collect"), Value = XmasCollectEnabled, Callback = function(v)
-    XmasCollectEnabled = v
-    if v then Scheduler:register("XmasCollect", safeTask("XmasCollect", stepXmasCollect), 1.0) else Scheduler:unregister("XmasCollect") end
-})
-XmasTab:Button({ Title = T("xmas_open_now"), Callback = function()
-    for i = 1, 100 do pcall(function() ReplicatedStorage:WaitForChild("GachaCapsule"):FireServer() end); task.wait(0.01) end
-    WindUI:Notify({ Title = "Xmas", Content = "已打开100个礼物", Duration = 2 })
-})
-
--- 视觉效果标签页
-MiscTab:Section({ Title = "视觉效果", Icon = "eye" })
-MiscTab:Toggle({ Title = T("fullbright"), Value = fullBrightEnabled, Callback = function(v) fullBrightEnabled = v; updateFullBright() end })
-MiscTab:Toggle({ Title = T("nofog"), Value = noFogEnabled, Callback = function(v) noFogEnabled = v; updateNoFog() end })
-MiscTab:Toggle({ Title = T("vibrant"), Value = vibrantEnabled, Callback = function(v) vibrantEnabled = v; updateVibrant() end })
-MiscTab:Toggle({ Title = T("show_fps"), Value = showFPS, Callback = function(v) showFPS = v; if fpsText then fpsText.Visible = v end end })
-MiscTab:Toggle({ Title = T("show_ping"), Value = showPing, Callback = function(v) showPing = v; if msText then msText.Visible = v end end })
-MiscTab:Button({ Title = T("fps_boost"), Callback = function()
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        Lighting.Brightness = 2
-        Lighting.FogEnd = 100
-        Lighting.GlobalShadows = false
-        Lighting.EnvironmentDiffuseScale = 0
-        Lighting.EnvironmentSpecularScale = 0
-        Lighting.ClockTime = 14
-        local terrain = workspace:FindFirstChildOfClass("Terrain")
-        if terrain then
-            terrain.WaterWaveSize = 0; terrain.WaterWaveSpeed = 0; terrain.WaterReflectance = 0; terrain.WaterTransparency = 1
+        if #servers > 0 then
+            WindUI:Notify({ Title = "更换服务器", Content = "正在传送...", Duration = 2, Icon = "server" })
+            task.wait(1)
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer)
+        else
+            WindUI:Notify({ Title = "更换失败", Content = "未找到可用服务器", Duration = 3, Icon = "alert-triangle" })
         end
-        for _, obj in ipairs(Lighting:GetDescendants()) do
-            if obj:IsA("PostEffect") or obj:IsA("BloomEffect") or obj:IsA("ColorCorrectionEffect") or obj:IsA("SunRaysEffect") or obj:IsA("BlurEffect") then
-                obj.Enabled = false
+    end
+})
+
+Main3:Button({
+    Title = "重新加入",
+    Desc = "重新加入当前游戏服务器",
+    Callback = function()
+        WindUI:Notify({ Title = "重新加入", Content = "正在重连...", Duration = 2, Icon = "refresh-cw" })
+        task.wait(1)
+        game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+    end
+})
+
+Main3:Section({ Title = "其他", Icon = "settings" })
+
+NoBarrierToggle = Main3:Toggle({
+    Title = "绕过边界（已失效）", Value = noBarrierActive,
+    Desc = "尝试绕过隐形边界",
+    Callback = function(value)
+        noBarrierActive = value; Config:Set("NoBarrier", value); Config:Save()
+        if value then startNoBarrier() else stopNoBarrier() end
+    end
+})
+
+local antiafk = Main3:Toggle({
+    Title = "防挂机检测", Value = AntiAFK,
+    Desc = "防止因长时间不动被踢出游戏",
+    Callback = function(enabled)
+        AntiAFK = enabled; Config:Set("AntiAfk", enabled); Config:Save()
+        if enabled then
+            task.spawn(function()
+                game.Players.LocalPlayer.Idled:Connect(function()
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                end)
+                while AntiAFK do
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                    task.wait(60)
+                end
+            end)
+        end
+    end
+})
+
+-- ====================== 自动启动 ======================
+if AutoFarmEnabled then
+    task.wait(2)
+    StartFarmLoop()
+    HandleMiscOptions(MiscOptions)
+end
+
+if noBarrierActive then startNoBarrier() end
+
+if ESP.Enabled then
+    task.wait(2)
+    StartESPLoop()
+end
+
+if AutoBuyWeaponEnabled then
+    task.spawn(function()
+        while AutoBuyWeaponEnabled do
+            if SelectedWeapon then
+                pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedWeapon) end)
             end
-        end
-        for _, part in ipairs(workspace:GetDescendants()) do
-            if part:IsA("BasePart") then part.CastShadow = false end
+            task.wait(10)
         end
     end)
-    WindUI:Notify({ Title = "优化", Content = "已应用", Duration = 2 })
-end })
+end
 
--- 设置标签页
-Main3:Section({ Title = "服务器", Icon = "server" })
-Main3:Button({ Title = T("server_hop"), Callback = function()
-    local servers = {}
-    local success, res = pcall(function() return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100")) end)
-    if success and res and res.data then
-        for _, s in ipairs(res.data) do if s.id ~= game.JobId and s.playing < s.maxPlayers then table.insert(servers, s.id) end end
-    end
-    if #servers > 0 then TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer)
-    else WindUI:Notify({ Title = T("server_hop"), Content = "无可用服务器", Duration = 2 }) end
-end })
-Main3:Button({ Title = T("rejoin"), Callback = function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end })
-Main3:Section({ Title = "配置", Icon = "save" })
-Main3:Button({ Title = T("save_config"), Callback = function() Config:Save(); WindUI:Notify({ Title = "已保存", Duration = 2 }) end })
-Main3:Section({ Title = "其他" })
-Main3:Toggle({ Title = T("anti_afk"), Value = AntiAFK, Callback = function(v) AntiAFK = v; Config:Set("AntiAfk", v) end })
-Main3:Toggle({ Title = T("bypass_barrier"), Value = noBarrierActive, Callback = function(v) noBarrierActive = v; Config:Set("NoBarrier", v); if v then startNoBarrier() else stopNoBarrier() end end })
+if AutoBuyMiscEnabled then
+    task.spawn(function()
+        while AutoBuyMiscEnabled do
+            if SelectedMiscItem then
+                pcall(function() ReplicatedStorage.ShopSystem:FireServer("Buy", SelectedMiscItem) end)
+            end
+            task.wait(10)
+        end
+    end)
+end
 
--- ====================== 启动调度器 ======================
-Scheduler:start()
-HandleMiscOptions(MiscOptions)
-initFPSDisplay()
+if AutoCollectEnabled then
+    task.wait(2)
+    StartAutoCollectLoop()
+end
 
-core.Window = Window
-core.Scheduler = Scheduler
-core.Config = Config
-core.Ready = true
+if AutoVoteEnabled or AutoStartEnabled then
+    RefreshVoteAndStartSetup()
+end
 
-print("[DYHUB] 最终完整版加载完成 | 全功能保留 | 单扫描源 | 对象复用 | 内存监控")
-print("[DYHUB] 再次执行本脚本只会显示窗口，不会重复创建任何对象")
-print("[DYHUB] 高风险功能：运动预测 | 跟随模式 | Auto God Mode | Xmas极速 | 批量无延迟 | Rotate90°")
-print("[DYHUB] 飞行模式已集成 Fly GUI V3（XNEO），使用 Toggle 开关")
-print("[DYHUB] 无后门 | 仅供无反作弊游戏使用")
+if AutoVoteinGameEnabled then SetupAutoVote_InGame(true) end
+
+print("[DYHUB] 版本 " .. version .. " " .. ver .. " 加载成功！")
+print("[DYHUB] 配置系统已激活 | 自动保存间隔15秒")
