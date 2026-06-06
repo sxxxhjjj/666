@@ -1,6 +1,8 @@
--- v190 至尊版 | 去后门·无付费墙·全功能整合
+-- v190 | [Local Register Fix]
+-- =========================
 version = "Rework"
-ver = "v023.91-至尊版"
+ver = "v023.91"
+-- =========================
 
 -- ====================== LOAD UI ======================
 WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
@@ -16,17 +18,22 @@ function waitLoadingGone(maxWait)
     maxWait = tonumber(maxWait) or 18
     local gui = pg:FindFirstChild("LoadingGui")
     if not gui then return true end
+
     WindUI:Notify({ Title = "Initialization", Content = "Game is loading, Please wait.", Duration = 3, Icon = "download" })
+
     local startedAt = tick()
     while gui and gui.Parent and tick() - startedAt < maxWait do
         task.wait(0.1)
     end
+
     if gui and gui.Parent then
         warn("[DYHUB] LoadingGui did not disappear in time, continuing safely.")
         return false
     end
+
     return true
 end
+
 waitLoadingGone(18)
 
 WindUI:Notify({ Title = "Initialization", Content = "Load complete, Starting in 2 seconds.", Duration = 2, Icon = "shield-check" })
@@ -38,6 +45,7 @@ iddyhub = "rbxassetid://104487529937663"
 DYHUB_WAITING_STAND_CF = CFrame.new(-23.3435822, 67, 0.341766357)
 DYHUB_WAITING_PART_CF = CFrame.new(-23.3435822, 63.95, 0.341766357)
 DYHUB_WAITING_PART_SIZE = Vector3.new(16, 1, 16)
+-- Keep it visible enough to stand on, but avoid expensive decals/textures.
 DYHUB_WAITING_PART_VISIBLE_TRANSPARENCY = 1
 
 function GetDYHUBWaitingStandCFrame()
@@ -46,7 +54,9 @@ end
 
 function EnsureDYHUBWaitingPartImages(waitingPart)
     if not waitingPart or not waitingPart:IsA("BasePart") then return end
+
     local usedFaces = {}
+
     for _, obj in ipairs(waitingPart:GetChildren()) do
         if obj:IsA("Decal") and obj.Name == "dyhub_image" then
             if usedFaces[obj.Face] then
@@ -58,6 +68,7 @@ function EnsureDYHUBWaitingPartImages(waitingPart)
             end
         end
     end
+
     for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
         if not usedFaces[face] then
             local decal = Instance.new("Decal")
@@ -72,6 +83,7 @@ end
 
 function ConfigureDYHUBWaitingPart(waitingPart)
     if not waitingPart or not waitingPart:IsA("BasePart") then return nil end
+
     waitingPart.Name = DYHUB_WAITING_PART_NAME
     waitingPart.Size = DYHUB_WAITING_PART_SIZE
     waitingPart.CFrame = DYHUB_WAITING_PART_CF
@@ -83,11 +95,14 @@ function ConfigureDYHUBWaitingPart(waitingPart)
     waitingPart.Color = Color3.fromRGB(45, 130, 255)
     waitingPart.TopSurface = Enum.SurfaceType.Smooth
     waitingPart.BottomSurface = Enum.SurfaceType.Smooth
+
     local active = AutoFarmEnabled == true
     waitingPart.CanCollide = active
     waitingPart.Transparency = active and DYHUB_WAITING_PART_VISIBLE_TRANSPARENCY or 1
-    EnsureDYHUBWaitingPartImages(waitingPart)
-    return waitingPart
+
+	EnsureDYHUBWaitingPartImages(waitingPart)
+	
+	return waitingPart
 end
 
 function GetDYHUBWaitingPart()
@@ -122,8 +137,11 @@ function EnsureDYHUBWaitingPart()
     return ConfigureDYHUBWaitingPart(waitingPart)
 end
 
+-- Do not create the waiting part while Auto Farm is off.
+-- UpdateDYHUBWaitingPartCollision() will create/destroy it after config loads.
+
 if setfpscap then
-    setfpscap(240)
+    setfpscap(240) -- 1000000 can max CPU/GPU and cause stutter
     WindUI:Notify({ Title = "Service", Content = "FPS Unlocked! | " .. ver, Duration = 3, Icon = "cpu" })
     warn("FPS Unlocked!")
 else
@@ -157,6 +175,7 @@ end
 
 function CustomConfig:Save(force)
     if not writefile then return false end
+
     local now = tick()
     if not force and self._LastSaveAt and now - self._LastSaveAt < 0.75 then
         if not self._SaveQueued then
@@ -168,9 +187,11 @@ function CustomConfig:Save(force)
         end
         return true
     end
+
     local success, err = pcall(function()
         writefile(self.ConfigPath, HttpService:JSONEncode(self.ConfigData))
     end)
+
     if success then
         self._LastSaveAt = now
         return true
@@ -210,10 +231,33 @@ function CustomConfig:AutoSave(interval)
 end
 
 Config = CustomConfig.new()
+-- Auto save is started later from the Setting tab, so only one save loop exists.
 
 -- ====================== WINDOW 2 ======================
 Players = game:GetService("Players")
-userversion = "至尊版"
+
+FreeVersion    = "Free Version"
+PremiumVersion = "Premium Version"
+ExtraVersion   = "Extra Version"
+
+function getData(url)
+    local success, response = pcall(function() return game:HttpGet(url) end)
+    if not success then return nil end
+    local func = loadstring(response)
+    if func then return func() end
+    return nil
+end
+
+function checkVersion(playerName)
+    local extraData = getData("https://raw.githubusercontent.com/mabdu21/2askdkn21h3u21ddaa/refs/heads/main/Main/Premium/STBBList.lua")
+    if extraData and extraData[playerName] then return ExtraVersion end
+    local premiumData = getData("https://raw.githubusercontent.com/mabdu21/2askdkn21h3u21ddaa/refs/heads/main/Main/Premium/listpremium.lua")
+    if premiumData and premiumData[playerName] then return PremiumVersion end
+    return FreeVersion
+end
+
+player    = Players.LocalPlayer
+userversion = checkVersion(player.Name)
 
 -- ====================== WINDOW ======================
 Window = WindUI:CreateWindow({
@@ -233,7 +277,9 @@ Window = WindUI:CreateWindow({
 })
 
 Window:SetToggleKey(Enum.KeyCode.K)
+
 Window:Tag({ Title = version, Color = Color3.fromHex("#db7093") })
+
 Window:EditOpenButton({
     Title = "DYHUB - Open",
     Icon = "monitor",
@@ -258,6 +304,9 @@ Main3  = Window:Tab({ Title = "Setting", Icon = "settings" })
 Window:SelectTab(1)
 
 -- ======================== INFO ========================
+if not ui then ui = {} end
+if not ui.Creator then ui.Creator = {} end
+
 Info:Section({ Title = "Lasted Update", TextXAlignment = "Center", TextSize = 17 })
 Info:Divider()
 Info:Paragraph({
@@ -271,9 +320,97 @@ Info:Paragraph({
 • [ Optimized ] Farming loop/hook descendant scan.]],
 })
 Info:Divider()
+Info:Section({ Title = "Discord Information", TextXAlignment = "Center", TextSize = 17 })
+Info:Divider()
+
+ui.Creator.Request = function(requestData)
+    local success, result = pcall(function()
+        if HttpService.RequestAsync then
+            local response = HttpService:RequestAsync({ Url = requestData.Url, Method = requestData.Method or "GET", Headers = requestData.Headers or {} })
+            return { Body = response.Body, StatusCode = response.StatusCode, Success = response.Success }
+        else
+            local body = HttpService:GetAsync(requestData.Url)
+            return { Body = body, StatusCode = 200, Success = true }
+        end
+    end)
+    if success then return result else error("HTTP Request failed: " .. tostring(result)) end
+end
+
+InviteCode = "jWNDPNMmyB"
+DiscordAPI = "https://discord.com/api/v10/invites/" .. InviteCode .. "?with_counts=true&with_expiration=true"
+
+function LoadDiscordInfo()
+    local success, result = pcall(function()
+        local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+        if not httpRequest then return nil end
+        local response = httpRequest({ Url = DiscordAPI, Method = "GET", Headers = { ["User-Agent"] = "RobloxBot/1.0", ["Accept"] = "application/json" } })
+        if response and response.Body then return game:GetService("HttpService"):JSONDecode(response.Body) end
+        return nil
+    end)
+
+    if success and result and result.guild then
+        local DiscordInfo = Info:Paragraph({
+            Title = result.guild.name,
+            Desc = ' <font color="#52525b">●</font> Member Count : ' .. tostring(result.approximate_member_count) ..
+                   '\n <font color="#16a34a">●</font> Online Count : ' .. tostring(result.approximate_presence_count),
+            Image = "https://cdn.discordapp.com/icons/" .. result.guild.id .. "/" .. result.guild.icon .. ".png?size=1024",
+            ImageSize = 42,
+        })
+
+        Info:Button({
+            Title = "Update Info",
+            Callback = function()
+                local updated, updatedResult = pcall(function()
+                    local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+                    if not httpRequest then return nil end
+                    local response = httpRequest({ Url = DiscordAPI, Method = "GET" })
+                    if response and response.Body then return game:GetService("HttpService"):JSONDecode(response.Body) end
+                    return nil
+                end)
+                if updated and updatedResult and updatedResult.guild then
+                    DiscordInfo:SetDesc(' <font color="#52525b">●</font> Member Count : ' .. tostring(updatedResult.approximate_member_count) .. '\n <font color="#16a34a">●</font> Online Count : ' .. tostring(updatedResult.approximate_presence_count))
+                    WindUI:Notify({ Title = "Discord Info Updated", Content = "Successfully refreshed Discord statistics", Duration = 2, Icon = "refresh-cw" })
+                else
+                    WindUI:Notify({ Title = "Update Failed", Content = "Could not refresh Discord info", Duration = 3, Icon = "alert-triangle" })
+                end
+            end
+        })
+
+        Info:Button({
+            Title = "Copy Discord Invite",
+            Callback = function()
+                setclipboard("https://discord.gg/" .. InviteCode)
+                WindUI:Notify({ Title = "Copied!", Content = "Discord invite copied to clipboard", Duration = 2, Icon = "clipboard-check" })
+            end
+        })
+    else
+        Info:Paragraph({ Title = "Error fetching Discord Info", Desc = "Unable to load Discord information.", Image = "triangle-alert", ImageSize = 26, Color = "Red" })
+    end
+end
+
+LoadDiscordInfo()
+
+Info:Divider()
 Info:Section({ Title = "DYHUB Information", TextXAlignment = "Center", TextSize = 17 })
 Info:Divider()
-Info:Paragraph({ Title = "至尊版", Desc = "去后门·无付费墙·全功能", Image = "rbxassetid://104487529937663", ImageSize = 30 })
+
+Info:Paragraph({ Title = "Main Owner", Desc = "@dyumraisgoodguy#8888", Image = "rbxassetid://119789418015420", ImageSize = 30 })
+
+Info:Paragraph({
+    Title = "Social",
+    Desc = "Copy link social media for follow!",
+    Image = "rbxassetid://104487529937663",
+    ImageSize = 30,
+    Buttons = { { Icon = "copy", Title = "Copy Link", Callback = function() setclipboard("https://guns.lol/DYHUB") end } }
+})
+
+Info:Paragraph({
+    Title = "Discord",
+    Desc = "Join our discord for more scripts!",
+    Image = "rbxassetid://104487529937663",
+    ImageSize = 30,
+    Buttons = { { Icon = "copy", Title = "Copy Link", Callback = function() setclipboard("https://discord.gg/jWNDPNMmyB") end } }
+})
 
 -- ====================== SERVICES ======================
 TweenService        = game:GetService("TweenService")
@@ -298,14 +435,13 @@ GlobalTables = {
     RequestTitanSpeaker = { "Titan-Request", "SpecialTitan-Request", "Speaker-Request" },
     Gamepasst = { "All", "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" },
     Gamepassts = {},
-    Mode = { "Normal", "VeryHard", "Hard", "Insane", "Nightmare", "BossRush", "DarkDimension", "Hell", "ThunderStorm", "Christmas", "Zombie", "AstroV2", "Astro", "100MVisit" },
 }
 
 -- ====================== CONFIG VARIABLES ======================
 skillList          = { "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
 skillDropdownValues = { "All", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
 
--- ====================== FARM HELPERS ======================
+-- ====================== FARM  HELPERS ======================
 function NormalizeFarmMode(mode)
     mode = tostring(mode or "Tween")
     if mode == "tp" or mode == "Tp" or mode == "tp1" then
@@ -333,6 +469,10 @@ function NormalizeCollectMovement(mode)
     return mode
 end
 
+function IsPaidUserVersion()
+    return userversion == PremiumVersion or userversion == ExtraVersion
+end
+
 -- ====================== CAMERA MODE HELPERS ======================
 function NormalizeCameraMode(mode)
     mode = tostring(mode or "Manual")
@@ -344,11 +484,13 @@ function NormalizeCameraMode(mode)
     end
     return "Manual"
 end
+
 -- ====================== STATE VARIABLES ======================
 AutoFarmEnabled        = Config:Get("AutoFarmEnabled", false)
 FarmPosition           = Config:Get("FarmPosition", "Above")
 FarmMode               = NormalizeFarmMode(Config:Get("FarmMode", "Tween"))
 FarmTargetMode         = NormalizeFarmTargetMode(Config:Get("FarmTargetMode", "Normal Mode"))
+if not IsPaidUserVersion() then FarmTargetMode = "Normal Mode" end
 DarkDimensionCollecting = false
 DarkDimensionLowValue   = 0.900
 DarkDimensionSafeValue  = 0.950
@@ -411,7 +553,7 @@ FarmAstroLastReviveTimer = nil
 AutoAttackEnabled      = false
 AutoSkillEnabled       = false
 AutoSkipHeliEnabled    = false
-BoostFPS_Active_dummy  = false
+BoostFPS_Active_dummy  = false -- managed by BoostFPS system
 AutoStartEnabled       = Config:Get("AutoStartEnabled", table.find(MiscOptions, "Auto Start") ~= nil)
 AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
 AutoVoteValue         = Config:Get("AutoVoteValue", "Christmas")
@@ -437,8 +579,8 @@ ResetWaveLastTriggeredKey  = nil
 ResetWaveLastTeleportAt = 0
 WaitingRespawn         = false
 IdlePosition           = GetDYHUBWaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
-IdleHoldDistance       = 12
-IdleTeleportCooldown   = 1.25
+IdleHoldDistance       = 12       -- distance allowed before re-teleporting to idle
+IdleTeleportCooldown   = 1.25     -- prevents repeated idle teleport / camera shake
 LastIdleTeleportAt     = 0
 IdlePositionReached    = false
 SkillDelay             = Config:Get("SkillDelay", 1)
@@ -468,8 +610,10 @@ function UpdateDYHUBWaitingPartCollision()
         part = nil
         return
     end
+
     local waitingPart = EnsureDYHUBWaitingPart and EnsureDYHUBWaitingPart() or GetDYHUBWaitingPart()
     if not waitingPart then return end
+
     part = waitingPart
     pcall(function()
         ConfigureDYHUBWaitingPart(waitingPart)
@@ -491,10 +635,13 @@ function CombatDebug(tag, message, cooldown, showNotify)
     cooldown = cooldown or 3
     local now = tick()
     local key = tostring(tag or "Debug")
+
     if CombatDebugCooldowns[key] and now - CombatDebugCooldowns[key] < cooldown then return end
     CombatDebugCooldowns[key] = now
+
     local text = "[DYHUB][" .. key .. "] " .. tostring(message or "")
     print(text)
+
     if showNotify and WindUI then
         pcall(function()
             WindUI:Notify({
@@ -508,11 +655,12 @@ function CombatDebug(tag, message, cooldown, showNotify)
 end
 
 function IsMiscFarmAllowed()
-    if FarmAstroTokenEnabled and SyncFarmOnly then return false end
-    return AutoFarmEnabled or not SyncFarmOnly
+	if FarmAstroTokenEnabled and SyncFarmOnly then return false end
+	return AutoFarmEnabled or not SyncFarmOnly
 end
 
 function StopMiscFarmRuntime(reason)
+    -- Runtime-only stop. It does not remove saved MiscOptions, so systems can resume when Auto Farm is enabled again.
     AutoAttackEnabled = false
     AutoSkillEnabled = false
     AutoSkipHeliEnabled = false
@@ -525,13 +673,17 @@ function StopMiscFarmRuntime(reason)
     ResetWaveLastTriggeredWave = nil
     ResetWaveLastTriggeredKey = nil
     FillUpRunning = false
+
     if AutoStartEnabled then
         StopAutoStart()
     end
+
     pcall(function() TriggerAutoSkipHeli(false) end)
+
     if BoostFPS_Active then
         RestoreBoostFPS()
     end
+
     CombatDebug("MiscGate", "Misc Farm runtime stopped: " .. tostring(reason or "sync gate"), 3)
 end
 
@@ -550,10 +702,14 @@ CameraSyncToken = 0
 
 function GetCameraTargetForMode(char)
     if not char or not char.Parent then return nil, nil end
+
     local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
+
     if CameraMode == "Classic" then
         return char:FindFirstChild("Head") or humanoid or char:FindFirstChild("HumanoidRootPart"), humanoid
     end
+
+    -- Manual: Roblox default-feel camera. This avoids shake while farm/tween systems move the character.
     return humanoid or char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head"), humanoid
 end
 
@@ -561,19 +717,26 @@ function ApplyCameraMode(force)
     local now = tick()
     if force ~= true and now - (CameraLastApplyAt or 0) < (CameraApplyCooldown or 0.22) then return end
     CameraLastApplyAt = now
+
     pcall(function()
         local cam = workspace.CurrentCamera
         local char = LocalPlayer.Character or Character
         if not cam or not char then return end
+
         CameraMode = NormalizeCameraMode(CameraMode)
         local target, humanoid = GetCameraTargetForMode(char)
         if not target then return end
+
+        -- Do not fight farming movement. Only restore autorotate when the farm lock is not controlling it.
         if humanoid and not AutoFarmEnabled and not LockActive and not FarmCollecting then
             humanoid.AutoRotate = true
         end
+
         if cam.CameraType ~= Enum.CameraType.Custom then
             cam.CameraType = Enum.CameraType.Custom
         end
+
+        -- Write only when needed so the camera will not reset/flicker and will not lag from spam writes.
         if cam.CameraSubject ~= target then
             cam.CameraSubject = target
         end
@@ -596,6 +759,8 @@ function StabilizeFarmCamera()
     local now = tick()
     if now - (LastFarmCameraStabilize or 0) < 0.35 then return end
     LastFarmCameraStabilize = now
+
+    -- Keep every camera rewrite synced with the Setting tab instead of forcing Humanoid every time.
     if AutoFarmEnabled then
         ApplyCameraMode(false)
     end
@@ -633,8 +798,10 @@ end
 function GetVoteUIFrame()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
+
     local voteGui = playerGui:FindFirstChild("OpenVoteUI")
     if not voteGui then return nil end
+
     return voteGui:FindFirstChild("OPEN UI")
 end
 
@@ -652,17 +819,21 @@ end
 
 function FireAutoVote(force)
     if not force and not IsVoteUIOpen() then return false end
+
     local now = tick()
     if now - AutoVoteLastFireAt < 0.25 then return false end
     AutoVoteLastFireAt = now
+
     local remote = GetRemote("Vote")
     if not remote then
         pcall(function() remote = ReplicatedStorage:WaitForChild("Vote", 3) end)
     end
     if not remote then return false end
+
     local ok, err = pcall(function()
         remote:FireServer(AutoVoteValue)
     end)
+
     if ok then
         HideVoteUI()
         print("[DYHUB] Auto Vote fired:", tostring(AutoVoteValue))
@@ -676,10 +847,12 @@ end
 function StartAutoVoteLoop()
     if AutoVoteLoopRunning then return end
     AutoVoteLoopRunning = true
+
     task.spawn(function()
         while AutoVoteinGameEnabled do
             if IsVoteUIOpen() then
                 if AutoStartEnabled and IsMiscFarmAllowed() then
+                    -- Auto Start always calls Auto Vote first when both systems are enabled.
                     FireGetReady(0)
                 else
                     FireAutoVote(false)
@@ -687,13 +860,16 @@ function StartAutoVoteLoop()
             end
             task.wait(0.2)
         end
+
         AutoVoteLoopRunning = false
     end)
 end
 
 -- ====================== NEW PRIORITY SYSTEM CONFIG ======================
+-- มอนที่เลือดสูงสุดต่ำกว่า HighHPThreshold จะถูกข้ามไป → ไปฆ่ามอนปกติที่ใกล้ที่สุดแทน
 HighHPThreshold        = Config:Get("HighHPThreshold", 200)
-_currentTargetPriority = 0
+-- สัญญาณ interrupt: เมื่อ priority mob ระดับสูงกว่าปรากฏ ให้หยุดมอนปัจจุบันทันที
+_currentTargetPriority = 0   -- 0=idle 1=NearMob 2=HighHP 3=Heli 4=GiantST
 _interruptSignal       = false
 
 VirtualUser = game:GetService("VirtualUser")
@@ -849,23 +1025,28 @@ end
 function GetJeffreyRoots(forceRefresh)
     local now = tick()
     if not forceRefresh and now - JeffreyCacheAt <= JeffreyCacheTTL then return JeffreyCacheList end
+
     local list, seen = {}, {}
     pcall(function()
         for _, obj in ipairs(workspace:GetChildren()) do
             AddJeffreyRootFromObject(obj, list, seen)
         end
+
         local living = workspace:FindFirstChild("Living")
         if living then
             for _, obj in ipairs(living:GetDescendants()) do
                 AddJeffreyRootFromObject(obj, list, seen)
             end
         end
+
+        -- Fallback only when common locations did not find Jeffrey/Jeffery.
         if #list == 0 then
             for _, obj in ipairs(workspace:GetDescendants()) do
                 AddJeffreyRootFromObject(obj, list, seen)
             end
         end
     end)
+
     JeffreyCacheList = list
     JeffreyCacheAt = now
     return JeffreyCacheList
@@ -939,6 +1120,7 @@ function BreakFarmLockForJeffrey(reason, pauseTime)
     LockActive = false
     _interruptSignal = true
     WaitingRespawn = false
+
     pcall(function()
         RefreshCombatCharacter()
         if Character then
@@ -953,6 +1135,7 @@ function BreakFarmLockForJeffrey(reason, pauseTime)
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
+
     task.delay(pauseTime + 0.25, function()
         if tick() >= (AntiJeffreyForceRetargetUntil or 0) and not FarmCollecting and not DarkDimensionCollecting then
             FarmForceRetarget = false
@@ -1024,24 +1207,32 @@ function IsFarmTargetSafeFromJeffrey(mob, forceRefresh)
     if not IsFarmJeffreyAvoidActive or not IsFarmJeffreyAvoidActive() then return true end
     if not mob or not mob.Parent then return false end
     if IsJeffreyName(mob.Name) or IsMobTemporarilyBlocked(mob) then return false end
+
     local root = GetMobRootPart(mob)
     if not root then return false end
+
     local range = GetFarmTargetDangerRange()
     if IsPositionBlockedByJeffrey(root.Position, range, forceRefresh == true) then
         MarkMobUnsafeByJeffrey(mob, 2.5)
         return false
     end
+
     local cf = nil
     pcall(function() cf = GetTargetCFrame(mob, FarmPosition) end)
     if cf and IsPositionBlockedByJeffrey(cf.Position, range, forceRefresh == true) then
         MarkMobUnsafeByJeffrey(mob, 2.5)
         return false
     end
+
     return true
 end
 
+
 -- ============================================================
 -- =============== BARRIER SAFE ESCAPE SYSTEM ==================
+-- Keeps Jeffrey escape inside workspace.Map.Barrier.
+-- The Barrier model can contain many BaseParts with the same name.
+-- ============================================================
 BarrierCacheParts = {}
 BarrierCacheAt = 0
 BarrierCacheTTL = 1.25
@@ -1061,6 +1252,7 @@ function GetBarrierParts(forceRefresh)
     if not forceRefresh and now - (BarrierCacheAt or 0) <= (BarrierCacheTTL or 1.25) then
         return BarrierCacheParts or {}
     end
+
     local parts = {}
     local model = GetMapBarrierModel()
     if model then
@@ -1073,6 +1265,7 @@ function GetBarrierParts(forceRefresh)
             table.insert(parts, model)
         end
     end
+
     BarrierCacheParts = parts
     BarrierCacheAt = now
     BarrierBoundsCache = nil
@@ -1092,11 +1285,13 @@ function GetBarrierBounds(forceRefresh)
     if not forceRefresh and BarrierBoundsCache and now - (BarrierBoundsAt or 0) <= (BarrierCacheTTL or 1.25) then
         return BarrierBoundsCache
     end
+
     local parts = GetBarrierParts(forceRefresh == true)
     if not parts or #parts == 0 then
         BarrierBoundsCache = nil
         return nil
     end
+
     local bounds = { minX = math.huge, maxX = -math.huge, minZ = math.huge, maxZ = -math.huge }
     for _, part in ipairs(parts) do
         if part and part.Parent and part:IsA("BasePart") then
@@ -1113,10 +1308,12 @@ function GetBarrierBounds(forceRefresh)
             end
         end
     end
+
     if bounds.minX == math.huge or bounds.maxX == -math.huge or bounds.minZ == math.huge or bounds.maxZ == -math.huge then
         BarrierBoundsCache = nil
         return nil
     end
+
     BarrierBoundsCache = bounds
     BarrierBoundsAt = now
     return BarrierBoundsCache
@@ -1136,6 +1333,7 @@ function ClampPositionInsideBarrier(pos, padding, forceRefresh)
     if not pos then return nil, false end
     local bounds = GetBarrierBounds(forceRefresh == true)
     if not bounds then return pos, false end
+
     padding = padding or BarrierInsetPadding or 8
     local minX, maxX = bounds.minX + padding, bounds.maxX - padding
     local minZ, maxZ = bounds.minZ + padding, bounds.maxZ - padding
@@ -1158,8 +1356,10 @@ function RaycastBarrierPath(fromPos, toPos, forceRefresh)
     if not fromPos or not toPos then return nil end
     local parts = GetBarrierParts(forceRefresh == true)
     if not parts or #parts == 0 then return nil end
+
     local direction = toPos - fromPos
     if direction.Magnitude <= 0.1 then return nil end
+
     local params = RaycastParams.new()
     pcall(function() params.FilterType = Enum.RaycastFilterType.Include end)
     if tostring(params.FilterType):find("Include") == nil then
@@ -1167,6 +1367,7 @@ function RaycastBarrierPath(fromPos, toPos, forceRefresh)
     end
     params.FilterDescendantsInstances = parts
     params.IgnoreWater = true
+
     local ok, result = pcall(function()
         return workspace:Raycast(fromPos, direction, params)
     end)
@@ -1176,9 +1377,11 @@ end
 
 function GetBarrierSafeEscapePosition(fromPos, wantedPos, forceRefresh)
     if not fromPos or not wantedPos then return nil, false end
+
     local adjusted = false
     local safePos, wasClamped = ClampPositionInsideBarrier(wantedPos, BarrierInsetPadding, forceRefresh == true)
     if wasClamped then adjusted = true end
+
     local hit = RaycastBarrierPath(fromPos, safePos, forceRefresh == true)
     if hit and hit.Position then
         local dir = safePos - fromPos
@@ -1187,13 +1390,17 @@ function GetBarrierSafeEscapePosition(fromPos, wantedPos, forceRefresh)
             adjusted = true
         end
     end
+
     local safePos2, wasClamped2 = ClampPositionInsideBarrier(safePos, BarrierInsetPadding, false)
     if wasClamped2 then adjusted = true end
     safePos = safePos2
+
+    -- Last guard: if the point still looks outside, stay inside current arena instead of crossing the wall.
     if not IsPositionInsideBarrier(safePos, BarrierInsetPadding, false) then
         safePos = ClampPositionInsideBarrier(fromPos, BarrierInsetPadding, false)
         adjusted = true
     end
+
     return safePos, adjusted
 end
 
@@ -1230,6 +1437,7 @@ end
 function GetBestJeffreyEscapeCFrame(step, forceRefresh)
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart then return nil end
+
     step = step or AntiJeffreyHardEscapeStep or 70
     local base = HumanoidRootPart.Position
     local look = HumanoidRootPart.CFrame.LookVector
@@ -1238,6 +1446,7 @@ function GetBestJeffreyEscapeCFrame(step, forceRefresh)
         Vector3.new(1,0,1), Vector3.new(1,0,-1), Vector3.new(-1,0,1), Vector3.new(-1,0,-1),
     }
     local steps = { step, step * 0.75, step * 0.5, step * 0.32 }
+
     local bestPos, bestScore = nil, -math.huge
     for _, tryStep in ipairs(steps) do
         for _, dir in ipairs(dirs) do
@@ -1257,6 +1466,7 @@ function GetBestJeffreyEscapeCFrame(step, forceRefresh)
             end
         end
     end
+
     if not bestPos then
         bestPos = ClampPositionInsideBarrier(base, BarrierInsetPadding, true)
     end
@@ -1269,23 +1479,29 @@ function GetJeffreyEscapeCFrame(range, step, forceRefresh)
     if not Character or not HumanoidRootPart then return nil end
     range = range or GetFarmJeffreyAvoidRange()
     step = step or AntiJeffreyEscapeStep or 70
+
     local jeffrey = GetNearestJeffreyRoot(HumanoidRootPart.Position, range, forceRefresh == true)
     if not jeffrey then return nil end
+
     return GetBestJeffreyEscapeCFrame(step, forceRefresh == true)
 end
 
 function MoveAwayFromJeffrey(range, step, tweenTime, forceCritical)
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart then return false end
+
     range = range or GetFarmJeffreyAvoidRange()
     local scanRange = math.max(range, AntiJeffreyDangerRange or 20)
     local jeffrey, dist = GetNearestJeffreyRoot(HumanoidRootPart.Position, scanRange, forceCritical == true)
     if not jeffrey then return false end
+
     local now = tick()
     local isKillZone = dist <= (AntiJeffreyKillZoneRange or 5)
     local isDanger = dist <= (AntiJeffreyDangerRange or 20)
+
     if AntiJeffreyEscapeBusy and not isKillZone then return true end
     if not isKillZone and now - AntiJeffreyLastEscapeAt < AntiJeffreyEscapeCooldown then return true end
+
     if isKillZone then
         step = math.max(step or 0, AntiJeffreyCriticalEscapeStep or 90)
         tweenTime = 0.08
@@ -1296,11 +1512,14 @@ function MoveAwayFromJeffrey(range, step, tweenTime, forceCritical)
         step = math.max(step or 0, AntiJeffreyEscapeStep or 70)
         tweenTime = tweenTime or 0.28
     end
+
     local cf = GetBestJeffreyEscapeCFrame(step, true)
     if not cf then return false end
+
     AntiJeffreyEscapeBusy = true
     AntiJeffreyLastEscapeAt = now
     BreakFarmLockForJeffrey("Jeffrey escape", isKillZone and 0.65 or 0.45)
+
     local ok = false
     if MoveFarmSpecialCFrame then
         ok = MoveFarmSpecialCFrame(cf, tweenTime)
@@ -1308,6 +1527,7 @@ function MoveAwayFromJeffrey(range, step, tweenTime, forceCritical)
         pcall(function() Character:PivotTo(cf) end)
         ok = true
     end
+
     task.wait(0.03)
     pcall(function()
         if HumanoidRootPart then
@@ -1315,6 +1535,7 @@ function MoveAwayFromJeffrey(range, step, tweenTime, forceCritical)
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
+
     AntiJeffreyEscapeBusy = false
     return ok
 end
@@ -1322,37 +1543,46 @@ end
 function HandleFarmJeffreyEmergency(mob)
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart then return false end
+
     local active = IsFarmJeffreyAvoidActive()
     if not active and not AntiJeffreyEnabled then return false end
+
     local range = math.max(GetFarmJeffreyAvoidRange(), DarkDimensionJeffreyAvoidRange or 70, AntiJeffreyDangerRange or 20)
     local scanRange = math.max(range, AntiJeffreyDangerRange or 20)
     local jeffrey, dist = GetNearestJeffreyRoot(HumanoidRootPart.Position, scanRange, true)
+
     if jeffrey and dist <= (AntiJeffreyKillZoneRange or 5) then
         MoveAwayFromJeffrey(scanRange, AntiJeffreyCriticalEscapeStep, 0.08, true)
         return true
     end
+
     if jeffrey and dist <= (AntiJeffreyDangerRange or 20) then
         MoveAwayFromJeffrey(scanRange, AntiJeffreyHardEscapeStep, 0.16, true)
         return true
     end
+
     if active and mob and not IsFarmTargetSafeFromJeffrey(mob, true) then
         MarkMobUnsafeByJeffrey(mob, 3)
         BreakFarmLockForJeffrey("target blocked by Jeffrey", 0.55)
         MoveToJeffreySafeHold("target blocked by Jeffrey")
         return true
     end
+
     if active and not mob and HasAnyJeffreyRoot() and tick() < (JeffreySafeHoldUntil or 0) then
         BreakFarmLockForJeffrey("Jeffrey safe hold wait", 0.35)
         return true
     end
+
     if active and not mob and HasAnyJeffreyRoot() and tick() - (JeffreyLastUnsafeTargetAt or 0) <= 2 then
         MoveToJeffreySafeHold("all targets unsafe near Jeffrey")
         return true
     end
+
     if active and not mob and jeffrey and dist <= range then
         MoveAwayFromJeffrey(scanRange, AntiJeffreyHardEscapeStep, 0.22, true)
         return true
     end
+
     return false
 end
 
@@ -1368,20 +1598,26 @@ function PushAwayFromJeffrey()
     if not AntiJeffreyEnabled then return false end
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart then return false end
+
     local jeffrey, dist = GetNearestJeffreyRoot(HumanoidRootPart.Position, math.max(AntiJeffreyRange, AntiJeffreyDangerRange or 20), false)
     if not jeffrey then return false end
+
     local now = tick()
     if dist > (AntiJeffreyDangerRange or 20) and now - AntiJeffreyLastPushAt < 0.25 then return true end
     AntiJeffreyLastPushAt = now
+
     if dist <= (AntiJeffreyDangerRange or 20) or AutoFarmEnabled then
         return MoveAwayFromJeffrey(math.max(AntiJeffreyRange, AntiJeffreyDangerRange or 20), AntiJeffreyHardEscapeStep, 0.16, dist <= 20)
     end
+
     local pushSize = math.clamp(((AntiJeffreyRange - dist) / math.max(AntiJeffreyRange, 1)) * 18, 5, 28)
     local targetCF = GetBestJeffreyEscapeCFrame(pushSize, false)
     if not targetCF then return false end
+
     if MoveFarmSpecialCFrame then
         return MoveFarmSpecialCFrame(targetCF, 0.18)
     end
+
     pcall(function()
         Character:PivotTo(targetCF)
         HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
@@ -1431,41 +1667,53 @@ function StartJeffreyGuardLoop()
     end)
 end
 
+
 -- ============================================================
 -- ====================== BYPASS JEFFREY ======================
+-- Makes every Jeffrey/Jeffery NotHumanoid sit. Uses event hooks +
+-- slow fallback scan so it will not spam GetDescendants every frame.
+-- ============================================================
 function GetBypassJeffreyObject(obj)
     if not obj then return nil end
     if IsJeffreyName(obj.Name) then return obj end
+
     local cur = obj.Parent
     while cur and cur ~= workspace do
         if IsJeffreyName(cur.Name) then return cur end
         cur = cur.Parent
     end
+
     return nil
 end
 
 function SetBypassJeffreySit(jeffrey)
     if not BypassJeffreyEnabled then return false end
     if not jeffrey or not jeffrey.Parent then return false end
+
     local target = GetBypassJeffreyObject(jeffrey)
     if not target or not target.Parent then return false end
+
     local notHumanoid = nil
     pcall(function()
         notHumanoid = target:FindFirstChild("NotHumanoid") or target:FindFirstChild("NotHumanoid", true)
     end)
     if not notHumanoid then return false end
+
     local ok = pcall(function()
         if notHumanoid.Sit ~= true then
             notHumanoid.Sit = true
         end
     end)
+
     return ok
 end
 
 function ScanBypassJeffreys(forceFullScan)
     if not BypassJeffreyEnabled then return 0 end
+
     local count = 0
     local seen = {}
+
     local function try(obj)
         local target = GetBypassJeffreyObject(obj)
         if target and not seen[target] then
@@ -1475,10 +1723,12 @@ function ScanBypassJeffreys(forceFullScan)
             end
         end
     end
+
     pcall(function()
         for _, obj in ipairs(workspace:GetChildren()) do
             if IsJeffreyName(obj.Name) then try(obj) end
         end
+
         local living = workspace:FindFirstChild("Living")
         if living then
             for _, obj in ipairs(living:GetChildren()) do
@@ -1488,6 +1738,7 @@ function ScanBypassJeffreys(forceFullScan)
                 if obj.Name == "NotHumanoid" then try(obj) end
             end
         end
+
         local now = tick()
         if forceFullScan or now - (BypassJeffreyLastFullScanAt or 0) >= (BypassJeffreyFullScanDelay or 3) then
             BypassJeffreyLastFullScanAt = now
@@ -1498,12 +1749,14 @@ function ScanBypassJeffreys(forceFullScan)
             end
         end
     end)
+
     return count
 end
 
 function StartBypassJeffreyLoop()
     if BypassJeffreyLoopRunning then return end
     BypassJeffreyLoopRunning = true
+
     task.spawn(function()
         while BypassJeffreyEnabled do
             pcall(function()
@@ -1511,12 +1764,14 @@ function StartBypassJeffreyLoop()
             end)
             task.wait(0.75)
         end
+
         BypassJeffreyLoopRunning = false
     end)
 end
 
 function HandleBypassJeffreyObject(obj)
     if not BypassJeffreyEnabled or not obj then return end
+
     if IsJeffreyName(obj.Name) or obj.Name == "NotHumanoid" or GetBypassJeffreyObject(obj) then
         task.defer(function()
             if BypassJeffreyEnabled then
@@ -1527,6 +1782,7 @@ function HandleBypassJeffreyObject(obj)
         end)
     end
 end
+
 
 workspace.DescendantAdded:Connect(function(obj)
     if obj and IsJeffreyName(obj.Name) then
@@ -1600,14 +1856,17 @@ end
 
 function HookMobCacheFolder(folder)
     if MobCacheFolder == folder and MobCacheChildAddedConnection and MobCacheChildRemovedConnection then return end
+
     DisconnectMobCacheFolderHooks()
     MobCacheFolder = folder
     MobCacheList = {}
     MobCacheDirty = true
+
     if not folder then
         CombatDebug("MobCache", "Living folder not found yet.", 5)
         return
     end
+
     MobCacheChildAddedConnection = folder.ChildAdded:Connect(function(obj)
         InvalidateMobCache("mob added")
         CombatDebug("MobCacheAdded", "Mob appeared: " .. tostring(obj and obj.Name or "nil"), 2)
@@ -1620,16 +1879,19 @@ function HookMobCacheFolder(folder)
             RestartCombatLoopsIfNeeded("mob loaded")
         end)
     end)
+
     MobCacheChildRemovedConnection = folder.ChildRemoved:Connect(function(obj)
         InvalidateMobCache("mob removed")
         CombatDebug("MobCacheRemoved", "Mob removed: " .. tostring(obj and obj.Name or "nil"), 2)
         task.delay(0.05, function() RestartCombatLoopsIfNeeded("mob removed") end)
     end)
+
     CombatDebug("MobCache", "Living folder hooked.", 5)
 end
 
 function SetupMobCacheWorkspaceHooks()
     if MobCacheWorkspaceAddedConnection then return end
+
     MobCacheWorkspaceAddedConnection = workspace.ChildAdded:Connect(function(obj)
         if obj and obj.Name == "Living" then
             HookMobCacheFolder(obj)
@@ -1637,6 +1899,7 @@ function SetupMobCacheWorkspaceHooks()
             task.delay(0.25, function() RestartCombatLoopsIfNeeded("Living folder added") end)
         end
     end)
+
     MobCacheWorkspaceRemovedConnection = workspace.ChildRemoved:Connect(function(obj)
         if obj and obj == MobCacheFolder then
             HookMobCacheFolder(nil)
@@ -1650,7 +1913,9 @@ function RebuildMobCache()
     if folder ~= MobCacheFolder then
         HookMobCacheFolder(folder)
     end
+
     MobCacheList = {}
+
     if folder then
         for _, mob in ipairs(folder:GetChildren()) do
             if IsValidMob(mob) then
@@ -1658,6 +1923,7 @@ function RebuildMobCache()
             end
         end
     end
+
     MobCacheDirty = false
     MobCacheLastRebuild = tick()
     CombatDebug("MobCacheRebuild", "Cached valid mobs: " .. tostring(#MobCacheList), 3)
@@ -1668,9 +1934,11 @@ function GetCachedLivingMobs(forceRefresh)
     if folder ~= MobCacheFolder then
         HookMobCacheFolder(folder)
     end
+
     if forceRefresh or MobCacheDirty or tick() - MobCacheLastRebuild > 2 then
         RebuildMobCache()
     end
+
     local alive = {}
     for _, mob in ipairs(MobCacheList) do
         if IsValidMob(mob) then
@@ -1679,6 +1947,8 @@ function GetCachedLivingMobs(forceRefresh)
             MobCacheDirty = true
         end
     end
+
+    -- Fallback: if the cache is empty but Living has children, rebuild once immediately.
     if #alive == 0 and folder and #folder:GetChildren() > 0 and not forceRefresh then
         CombatDebug("MobCacheFallback", "Cache empty while Living has children, rebuilding once.", 3)
         RebuildMobCache()
@@ -1687,6 +1957,7 @@ function GetCachedLivingMobs(forceRefresh)
             if IsValidMob(mob) then table.insert(alive, mob) end
         end
     end
+
     return alive
 end
 
@@ -1707,25 +1978,31 @@ end
 function GetFarmCandidateMobs(forceRefresh)
     local source = GetCachedLivingMobs(forceRefresh == true)
     local useJeffreyAvoid = IsFarmJeffreyAvoidActive and IsFarmJeffreyAvoidActive()
+
     if FarmTargetMode ~= "Astro Holdout Mode" and not useJeffreyAvoid then
         return source
     end
+
     local filtered = {}
     local range = GetFarmTargetDangerRange and GetFarmTargetDangerRange() or (GetFarmJeffreyAvoidRange and GetFarmJeffreyAvoidRange() or DarkDimensionJeffreyAvoidRange)
+
     for _, mob in ipairs(source) do
         if IsFarmMobAllowedByMode(mob) then
             if useJeffreyAvoid and IsMobBlockedByJeffrey(mob, range) then
+                -- Skip mobs standing inside Jeffrey danger range. If every mob is unsafe, the farm loop uses an escape fallback.
             else
                 table.insert(filtered, mob)
             end
         end
     end
+
     return filtered
 end
 
 function GetNearestMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
     if not HumanoidRootPart then return nil end
+
     local nearestMob, nearestDist = nil, math.huge
     for _, mob in ipairs(GetFarmCandidateMobs(false)) do
         local mobRoot = mob:FindFirstChild("HumanoidRootPart")
@@ -1742,8 +2019,10 @@ end
 
 function GetHighestMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
+
     local highestMob, highestY = nil, -math.huge
     local myY = HumanoidRootPart and HumanoidRootPart.Position.Y or 0
+
     for _, mob in ipairs(GetFarmCandidateMobs(false)) do
         local mobRoot = mob:FindFirstChild("HumanoidRootPart")
         if mobRoot then
@@ -1754,11 +2033,16 @@ function GetHighestMob()
             end
         end
     end
+
     return highestMob
 end
 
 -- ============================================================
 -- ====================== PRIORITY SYSTEM =====================
+-- Normal Mode: GiantST(4) → Heli(3) → HighHP(2) → Nearest(1)
+-- Astro Holdout Mode: only mobs with "Astro" in the name are allowed.
+-- ============================================================
+
 function GetHelicopter()
     for _, mob in ipairs(GetFarmCandidateMobs(false)) do
         if mob.Name:lower():find("helicopter") then
@@ -1797,10 +2081,12 @@ end
 function GetPriorityMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
     if not HumanoidRootPart then return nil, nil, nil, 0 end
+
     local giant, prompt = nil, nil
     local heli, highMob, nearMob = nil, nil, nil
     local bestHP, nearDist = HighHPThreshold, math.huge
     local candidates = GetFarmCandidateMobs(false)
+
     for _, mob in ipairs(candidates) do
         if not giant and FarmTargetMode ~= "Astro Holdout Mode" and mob.Name == "Giant ST toilet" then
             local lever = mob:FindFirstChild("lever")
@@ -1809,14 +2095,17 @@ function GetPriorityMob()
                 if pr then giant = mob; prompt = pr end
             end
         end
+
         if not heli and mob.Name:lower():find("helicopter") then
             heli = mob
         end
+
         local hp = GetMobMaxHP(mob)
         if hp > bestHP then
             bestHP = hp
             highMob = mob
         end
+
         local mobRoot = mob:FindFirstChild("HumanoidRootPart")
         if mobRoot and HumanoidRootPart then
             local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
@@ -1826,10 +2115,12 @@ function GetPriorityMob()
             end
         end
     end
+
     if giant and prompt then return giant, "GiantST", prompt, 4 end
     if heli then return heli, "Helicopter", nil, 3 end
     if highMob then return highMob, "HighHP", nil, 2 end
     if nearMob then return nearMob, "NearestMob", nil, 1 end
+
     return nil, nil, nil, 0
 end
 
@@ -1840,6 +2131,7 @@ function CheckInterrupt(currentPriority)
     end
     return false, currentPriority
 end
+
 -- ============================================================
 -- ====================== MOB VISUAL BOUNDS ===================
 -- ============================================================
@@ -1955,7 +2247,7 @@ function StartDamageChecker(mob)
 
         while mob and mob.Parent and not IsMobDead(mob) and AutoFarmEnabled do
             task.wait(0.3)
-            if MobCheckerCancelled[mob] then break end  -- ★ check cancel
+            if MobCheckerCancelled[mob] then break end  -- ★ เช็ค cancel
             if not mob or not mob.Parent or IsMobDead(mob) then break end
             humanoid = mob:FindFirstChild("Humanoid")
             if not humanoid then break end
@@ -1973,14 +2265,14 @@ function StartDamageChecker(mob)
                 lastWasHit = true
                 local curPad = GetEffectivePadding(mob)
                 if dmgDealt >= DMG_THRESHOLD and MobConfirmedPadding[mob] == nil then
-                    if not MobCheckerCancelled[mob] then  -- ★ check before save
+                    if not MobCheckerCancelled[mob] then  -- ★ เช็คก่อน save
                         MobConfirmedPadding[mob] = curPad
                         MobHeightOverride[mob]   = curPad
                     end
                     break
                 end
                 if hitStreak >= 2 and MobConfirmedPadding[mob] == nil then
-                    if not MobCheckerCancelled[mob] then  -- ★ check before save
+                    if not MobCheckerCancelled[mob] then  -- ★ เช็คก่อน save
                         MobConfirmedPadding[mob] = curPad
                         MobHeightOverride[mob]   = curPad
                     end
@@ -2010,7 +2302,7 @@ function StartDamageChecker(mob)
             MobLastHealth[mob] = currentHP
         end
 
-        if not MobCheckerCancelled[mob] then  -- ★ check before clear
+        if not MobCheckerCancelled[mob] then  -- ★ เช็คก่อน clear
             MobHeightOverride[mob] = nil
             MobLastHealth[mob]     = nil
         end
@@ -2018,7 +2310,7 @@ function StartDamageChecker(mob)
 end
 
 function ResetMobOverride(mob)
-    MobCheckerCancelled[mob] = true  -- tell DamageChecker to stop
+    MobCheckerCancelled[mob] = true  -- บอกให้ DamageChecker หยุด
     MobHeightOverride[mob]   = nil
     MobConfirmedPadding[mob] = nil
     MobLastHealth[mob]       = nil
@@ -2038,7 +2330,7 @@ function GetTargetCFrame(mob, position)
     local center, minY, maxY = GetMobVisualBounds(mob)
 
     if position == "Above" then
-        -- ★ stay above mob + look down at head/body so attacks hit like original system
+        -- ★ อยู่เหนือมอน + ก้มมองหัว/ตัวมอน เพื่อให้ตีโดนเหมือนระบบเดิม
         local safeTargetY = math.max(maxY + padding, maxY + 0.5)
         local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
         local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
@@ -2046,7 +2338,7 @@ function GetTargetCFrame(mob, position)
         return lookCF * CFrame.Angles(math.rad(-10), 0, 0)
 
     elseif position == "Under" then
-        -- ★ stay below mob + look up at feet/body so attacks hit like original system
+        -- ★ อยู่ใต้มอน + เงยมองเท้า/ตัวมอน เพื่อให้ตีโดนเหมือนระบบเดิม
         local safeTargetY = math.min(minY - padding, minY - 0.5)
         local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
         local lookAtPos   = Vector3.new(center.X, minY, center.Z)
@@ -2636,7 +2928,7 @@ function SaveAndBoostFPS()
     BoostFPS_OriginalData = {}
     BoostFPS_LightingData = {}
 
-    -- Save and disable Lighting effects
+    -- บันทึกและปิด Lighting effects
     local Lighting = game:GetService("Lighting")
     BoostFPS_LightingData = {
         Brightness        = Lighting.Brightness,
@@ -2650,7 +2942,7 @@ function SaveAndBoostFPS()
         Lighting.FogEnd        = 100000
         Lighting.FogStart      = 100000
     end)
-    -- Remove Atmosphere, Bloom, ColorCorrection, DepthOfField, SunRays, Sky
+    -- ลบ Atmosphere, Bloom, ColorCorrection, DepthOfField, SunRays, Sky
     for _, effect in ipairs(Lighting:GetChildren()) do
         pcall(function()
             if effect:IsA("Atmosphere") or effect:IsA("BloomEffect") or
@@ -2664,7 +2956,7 @@ function SaveAndBoostFPS()
 
     pcall(function()
         for _, obj in ipairs(workspace:GetDescendants()) do
-            -- Skip living creatures (have Humanoid)
+            -- ข้ามสิ่งมีชีวิต (มี Humanoid)
             if IsLivingDescendant(obj) then continue end
 
             if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") or obj:IsA("SpecialMesh") then
@@ -2694,7 +2986,7 @@ function SaveAndBoostFPS()
         end
     end)
 
-    -- Watch if map respawns (DescendantAdded) and apply transparency immediately
+    -- เฝ้าดูถ้าแมพ respawn (DescendantAdded) แล้วทำ transparency ทันที
     BoostFPS_RestoreConnection = workspace.DescendantAdded:Connect(function(obj)
         if not BoostFPS_Active then return end
         if IsLivingDescendant(obj) then return end
@@ -2726,7 +3018,7 @@ function RestoreBoostFPS()
         BoostFPS_RestoreConnection = nil
     end
 
-    -- Restore Lighting
+    -- คืน Lighting
     local Lighting = game:GetService("Lighting")
     pcall(function()
         if BoostFPS_LightingData.Brightness        ~= nil then Lighting.Brightness        = BoostFPS_LightingData.Brightness end
@@ -2742,7 +3034,7 @@ function RestoreBoostFPS()
         end
     end
 
-    -- Restore every object
+    -- คืนค่าทุก object
     for obj, data in pairs(BoostFPS_OriginalData) do
         pcall(function()
             if not obj or not obj.Parent then return end
@@ -2761,7 +3053,7 @@ function RestoreBoostFPS()
     print("[DYHUB] Delete Map: OFF (restored)")
 end
 
--- Loop check if Delete Map is on but map reset, then re-apply
+-- ตรวจสอบแบบ loop ว่าถ้า Delete Map เปิดอยู่แต่แมพ reset แล้ว ให้ re-apply
 task.spawn(function()
     while true do
         task.wait(3)
@@ -2772,7 +3064,7 @@ task.spawn(function()
                     if (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then
                         if not IsLivingDescendant(obj) then
                             if obj.Transparency < 0.99 and not BoostFPS_OriginalData[obj] then
-                                -- new object not yet processed
+                                -- object ใหม่ที่ยังไม่ถูก process
                                 obj.Transparency = 1
                                 obj.CastShadow   = false
                             end
@@ -3132,6 +3424,7 @@ function ActivateAllFlushPrompts()
         end
     end)
 end
+
 -- ============================================================
 -- ====================== COLLECT SYSTEM ======================
 -- ============================================================
@@ -3402,8 +3695,8 @@ function CheckFarmAstroBottomGodMode()
     local reviveTimer = GetFarmAstroReviveTimerValue()
     UpdateFarmAstroReviveTimerArmed(reviveTimer)
 
-    -- Must have 1 HP first, and must have seen TIMER > 5 in ReviveUI in this cycle
-    -- Then wait for TIMER to reach 5 really
+    -- ต้องเลือดเหลือ 1 ก่อน และต้องเห็น TIMER มากกว่า 5 ใน ReviveUI รอบนี้ก่อน
+    -- จากนั้นรอให้ TIMER ลงมาถึง 5 จริง ๆ เท่านั้น
     if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
         if ForceGodModeOnce("Farm Astro bottom lock Revive Timer") then
             FarmAstroBottomGodTriggered = true
@@ -4076,7 +4369,7 @@ end)
 -- ============================================================
 -- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
 -- Priority: GiantST(4) → Heli(3) → HighHP>threshold(2) → Nearest(1)
--- Interrupt: If attacking a low-level mob and a higher-level mob appears → stop immediately
+-- Interrupt: ถ้ากำลังตีมอนระดับต่ำ และมอบระดับสูงกว่าปรากฏ → หยุดทันที
 -- ============================================================
 FarmLoopToken = FarmLoopToken or 0
 
@@ -4538,6 +4831,8 @@ function StartResetWaveLoop()
         ResetWaveLoopRunning = false
     end)
 end
+
+
 -- ====================== MISC OPTIONS HANDLER ======================
 -- SyncFarmOnly is loaded near the main state variables so earlier loops can use it.
 
@@ -4545,10 +4840,16 @@ function HandleMiscOptions(selectedOptions)
     selectedOptions = selectedOptions or {}
     MiscOptions = selectedOptions
 
+    -- ถ้า Sync Farm Only ปิด: ระบบทำงานได้แม้ AutoFarm ปิด
+    -- ถ้า Sync Farm Only เปิด: ต้องเปิด AutoFarm ก่อนถึงจะทำงาน
+    -- ถ้า AutoFarm ปิดและ Sync Farm Only ปิด: ระบบใน MiscFarm ยังทำงาน
+    -- ถ้า AutoFarm ปิดและ Sync Farm Only เปิด: ระบบหยุดทำงาน
+
     local canRun = IsMiscFarmAllowed()
 
     local hasAutoAttack = table.find(selectedOptions, "Auto Attack") ~= nil
     if hasAutoAttack and canRun then
+        -- Always call StartAutoAttack so a stopped loop can restart after Sync Farm Only changes.
         AutoAttackEnabled = true
         StartAutoAttack()
     else
@@ -4557,6 +4858,7 @@ function HandleMiscOptions(selectedOptions)
 
     local hasAutoSkill = table.find(selectedOptions, "Auto Skill") ~= nil
     if hasAutoSkill and canRun then
+        -- Always call StartAutoSkill so a stopped loop can restart after Sync Farm Only changes.
         AutoSkillEnabled = true
         StartAutoSkill()
     else
@@ -4734,24 +5036,32 @@ AutoFarmToggle = Main:Toggle({
     end
 })
 
--- All users get full access to Mode Farm (Paid Wall removed)
-FarmTargetModeDropdown = Main:Dropdown({
-    Title = "Mode Farm",
-    Desc = "Different farming modes.",
-    Values = { "Normal Mode", "Astro Holdout Mode", "Dark Dimension Mode" },
-    Multi = false,
-    Value = FarmTargetMode,
-    Callback = function(value)
-        FarmTargetMode = NormalizeFarmTargetMode(value)
-        Config:Set("FarmTargetMode", FarmTargetMode)
-        Config:Save()
-        InvalidateMobCache("farm target mode changed")
-        FarmForceRetarget = true
-        if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
-        task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
-        WindUI:Notify({ Title = "Mode Farm", Content = "Selected: " .. tostring(FarmTargetMode), Duration = 2, Icon = "target" })
-    end
-})
+if IsPaidUserVersion() then
+    FarmTargetModeDropdown = Main:Dropdown({
+        Title = "Mode Farm",
+        Desc = "Different farming modes.",
+        Values = { "Normal Mode", "Astro Holdout Mode", "Dark Dimension Mode" },
+        Multi = false,
+        Value = FarmTargetMode,
+        Callback = function(value)
+            FarmTargetMode = NormalizeFarmTargetMode(value)
+            Config:Set("FarmTargetMode", FarmTargetMode)
+            Config:Save()
+            InvalidateMobCache("farm target mode changed")
+            FarmForceRetarget = true
+            if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
+            task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
+            WindUI:Notify({ Title = "Mode Farm", Content = "Selected: " .. tostring(FarmTargetMode), Duration = 2, Icon = "target" })
+        end
+    })
+else
+    FarmTargetMode = "Normal Mode"
+    Main:Paragraph({
+        Title = "[ Paid Only ] Mode Farm",
+        Desc  = "This feature is for Paid members only",
+        Image = "rbxassetid://104487529937663", ImageSize = 30,
+    })
+end
 
 Main:Section({ Title = "Farm Settings", Icon = "settings" })
 
@@ -4786,7 +5096,7 @@ MiscDropdown = Main:Dropdown({
     Value = MiscOptions,
     Callback = function(values)
         MiscOptions = values
-        -- If Misc Farm is enabled but AutoFarm is off and SyncFarmOnly is on, notify
+        -- ถ้า Misc Farm ไม่เปิด AutoFarm และ SyncFarmOnly เปิด → notify เตือน
         if not AutoFarmEnabled and SyncFarmOnly and #values > 0 then
             WindUI:Notify({
                 Title = "Misc Farm",
@@ -5104,6 +5414,7 @@ Main:Toggle({
         end
     end
 })
+
 -- ============================================================
 -- ====================== ESP SYSTEM =========================
 -- ============================================================
@@ -5973,6 +6284,7 @@ Main2:Button({
         })
     end,
 })
+
 -- ====================== UI: GAMEMODE TAB ======================
 GlobalTables2 = {
     Votes2 = {
