@@ -1,4 +1,4 @@
--- v190 至尊版·汉化 | 去后门·无付费墙·全功能整合
+--V999至尊版·汉化 | 去后门·无付费墙·全功能整合
 version = "Rework"
 ver = "v023.91-至尊版"
 
@@ -123,11 +123,18 @@ end
 
 if setfpscap then
     setfpscap(240)
-    WindUI:Notify({ Title = "服务", Content = "FPS 已解锁 | " .. ver, Duration = 3, Icon = "cpu" })
+    if WindUI then
+        WindUI:Notify({ Title = "服务", Content = "FPS 已解锁 | " .. ver, Duration = 3, Icon = "cpu" })
+    end
     warn("FPS 已解锁!")
 else
-    WindUI:Notify({ Title = "不支持", Content = "您的执行器不支持 setfpscap.", Duration = 3, Icon = "ban" })
+    if WindUI then
+        WindUI:Notify({ Title = "不支持", Content = "您的执行器不支持 setfpscap.", Duration = 3, Icon = "ban" })
+    end
 end
+
+-- ====================== 提前定义 Players (修复顺序问题) ======================
+Players = game:GetService("Players")
 
 -- ====================== CUSTOM CONFIG SYSTEM ======================
 HttpService = game:GetService("HttpService")
@@ -195,35 +202,18 @@ function CustomConfig:Load()
     end
 end
 
-function CustomConfig:AutoSave(interval)
-    if self._AutoSaveThread then
-        pcall(function() task.cancel(self._AutoSaveThread) end)
-        self._AutoSaveThread = nil
-    end
-    self._AutoSaveThread = task.spawn(function()
-        while true do
-            task.wait(interval or 15)
-            self:Save()
-        end
-    end)
-end
-
 Config = CustomConfig.new()
 
 -- ====================== 多语言系统 ======================
 local currentLanguage = Config:Get("Language", "Chinese")
 local translations = {
     Chinese = {
-        -- 基础
         loading = "游戏加载中...", loaded = "加载完成，2秒后启动",
-        -- 自动挂机
         auto_farm = "自动挂机", auto_farm_desc = "根据优先级自动刷怪",
         farm_enabled = "已开启", farm_disabled = "已关闭",
         sync_mode = "同步挂机模式", sync_desc = "辅助功能需自动挂机开启",
         sync_on = "需自动挂机", sync_off = "辅助功能独立",
-        -- 位置
         position_above = "上方", position_under = "下方",
-        -- 功能名称
         auto_attack = "自动攻击", auto_skill = "自动技能",
         auto_ready = "自动开局", auto_skip_heli = "自动跳过直升机",
         auto_heal = "自动补血", safe_mode = "安全模式",
@@ -232,12 +222,10 @@ local translations = {
         attack_speed = "攻击速度", skill_delay = "技能延迟",
         height_offset = "挂机高度偏移", safe_hp = "安全模式血量",
         god_hp = "上帝模式血量", high_hp_threshold = "高血量阈值",
-        -- ESP
         esp_enable = "启用透视", esp_mob = "怪物透视",
         esp_player = "玩家透视", esp_item = "物品透视",
         esp_highlight = "高亮", esp_distance = "距离",
         esp_health = "血量", esp_name = "名称",
-        -- 分区标题
         farm_settings = "挂机设置", general_settings = "通用设置",
         priority_settings = "优先级设置", override_settings = "覆写设置",
         flush_settings = "冲水设置",
@@ -250,7 +238,6 @@ local translations = {
         game_mode = "游戏模式",
         save_settings = "保存配置", server_status = "服务器状态",
         others = "其他",
-        -- 功能
         reset_wave = "重置波次", reset_wave_val = "重置波次值",
         bypass_jeffrey = "绕过 Jeffrey", anti_jeffrey = "反 Jeffrey",
         anti_jeffrey_range = "反 Jeffrey 范围",
@@ -289,7 +276,6 @@ local translations = {
         lock_movement = "锁定移动属性", no_clip = "穿墙",
         fly = "飞行", fly_speed = "飞行速度",
         infinite_jump = "无限跳跃", full_bright = "全亮", no_fog = "去雾",
-        -- 下拉选项
         normal_mode = "普通模式", astro_holdout_mode = "天文坚守模式", dark_dimension_mode = "暗黑维度模式",
         teleport = "传送", tween = "缓动", above = "上方", under = "下方",
         clean = "清场", idgf = "IDGF (立即收集)",
@@ -319,7 +305,6 @@ local translations = {
         flash_drive_1 = "FlashDrive#1", flash_drive_2 = "FlashDrive#2", flash_drive_3 = "FlashDrive#3",
         flash_drive_4 = "FlashDrive#4", flash_drive_5 = "FlashDrive#5", flash_drive_6 = "FlashDrive#6",
         master_card_normal = "MasterCard:Normal", master_card_normal_titan = "MasterCard:NormalTitan", master_card_special_titan = "MasterCard:SpecialTitan",
-        -- UI 固定文本
         select_redeem_codes = "选择兑换码", select_redeem_codes_desc = "选择要兑换的代码。",
         select_gamepass = "选择通行证", select_gamepass_desc = "选择要本地解锁的游戏通行证标志。",
         fly_movement = "飞行移动", visual_utility = "视觉与实用",
@@ -328,7 +313,6 @@ local translations = {
         auto_collect = "自动收集", auto_collect_desc_full = "自动收集地图上出现的选定物品。",
         language_title = "语言 / Language",
         tab_info = "信息", tab_shop = "商店", tab_settings = "设置",
-        -- 描述文本
         desc_mode_farm = "选择不同的农场模式。",
         desc_position_farm = "选择角色相对目标的站位。",
         desc_movement_farm = "选择角色移动到每个目标的方式。",
@@ -409,7 +393,6 @@ local translations = {
         desc_select_language = "选择界面语言。",
         desc_combat_debug = "输出基于冷却时间的自动攻击/技能和怪物缓存调试日志。",
         desc_anti_afk = "防止 Roblox 因长时间不操作将你踢出。",
-        -- 通知文本
         notify_save_success = "配置已成功保存！",
         notify_selected = "已选择: ",
         notify_positions_cleared = "所有已确认的怪物位置已清除。",
@@ -435,7 +418,7 @@ local translations = {
         notify_auto_farm_closed_independent = "已关闭自动挂机（同步模式关闭，辅助功能保持运行）",
         notify_misc_farm_warning = "请先开启自动挂机（同步模式已开启）",
         notify_collect_movement_mode = "收集移动模式",
-        -- 特殊文本
+        notify_language_restart = "语言已更改，请重启脚本以完全应用新语言。",
         vote_restore_warning = "⚠️ 在首次使用自动投票前请先点击此按钮。",
         casual_title = "休闲: 任务选择",
         casual_desc = "- [ 步骤 1 ] 留在大厅内（不在游戏中）\n- [ 步骤 2 ] 按 Play 并进入 Classic 游戏模式选择界面\n- [ 步骤 3 ] 选择休闲并完成传送\n- [ 步骤 4 ] 运行脚本",
@@ -659,6 +642,7 @@ local translations = {
         notify_auto_farm_closed_independent = "Auto Farm disabled (Sync Mode OFF, aux functions keep running)",
         notify_misc_farm_warning = "Please enable Auto Farm first (Sync Mode is ON)",
         notify_collect_movement_mode = "Collect Movement Mode",
+        notify_language_restart = "Language changed. Please restart the script to fully apply.",
         vote_restore_warning = "⚠️ Please click this button before using auto vote for the first time.",
         casual_title = "Casual: Mission Select",
         casual_desc = "- [ Step 1 ] Stay in the lobby (not in game)\n- [ Step 2 ] Press Play and enter Classic game mode selection\n- [ Step 3 ] Select Casual and complete teleport\n- [ Step 4 ] Run the script",
@@ -670,6 +654,454 @@ local translations = {
         serverhop_progress = "Teleporting to another server...",
         rejoin_progress = "Rejoining server...",
         language_notify_title = "Language",
+    },
+    Russian = {
+        loading = "Загрузка игры...", loaded = "Загружено, запуск через 2с",
+        auto_farm = "Авто-ферма", auto_farm_desc = "Авто-ферма с приоритетом",
+        farm_enabled = "Включено", farm_disabled = "Отключено",
+        sync_mode = "Синхр. ферма", sync_desc = "Доп. функции требуют авто-ферму",
+        sync_on = "Нужна авто-ферма", sync_off = "Доп. функции независимы",
+        position_above = "Сверху", position_under = "Снизу",
+        auto_attack = "Авто-атака", auto_skill = "Авто-скиллы",
+        auto_ready = "Авто-старт", auto_skip_heli = "Пропуск вертолёта",
+        auto_heal = "Авто-лечение", safe_mode = "Безопасный режим",
+        god_mode = "Режим бога", delete_map = "Удалить карту",
+        flush_aura = "Аура смыва", flush_range = "Радиус смыва",
+        attack_speed = "Скорость атаки", skill_delay = "Задержка скиллов",
+        height_offset = "Смещение по высоте", safe_hp = "HP безопасности",
+        god_hp = "HP бога", high_hp_threshold = "Порог высокого HP",
+        esp_enable = "Включить ESP", esp_mob = "ESP монстров",
+        esp_player = "ESP игроков", esp_item = "ESP предметов",
+        esp_highlight = "Подсветка", esp_distance = "Дистанция",
+        esp_health = "Здоровье", esp_name = "Имя",
+        farm_settings = "Настройки фермы", general_settings = "Общие настройки",
+        priority_settings = "Приоритеты", override_settings = "Переопределения",
+        flush_settings = "Настройки смыва",
+        esp_visual = "Визуал ESP", esp_settings = "Настройки ESP",
+        local_player = "Локальный игрок", redeem_codes = "Коды",
+        unlock_gamepass = "Разблокировать Gamepass", shop_weapon = "Оружие",
+        shop_misc = "Предметы",
+        collect_section = "Сбор предметов", collect_settings = "Настройки сбора",
+        vote_system = "Голосование", vote_mode = "Режим голосования",
+        game_mode = "Режим игры",
+        save_settings = "Сохранить настройки", server_status = "Статус сервера",
+        others = "Прочее",
+        reset_wave = "Сброс волны", reset_wave_val = "Значение сброса",
+        bypass_jeffrey = "Обход Джеффри", anti_jeffrey = "Анти-Джеффри",
+        anti_jeffrey_range = "Радиус анти-Джеффри",
+        camera_mode = "Режим камеры", combat_debug = "Отладка боя",
+        anti_afk = "Анти-АФК", bypass_barrier = "Обход барьера",
+        farm_astro = "Фарм Astro", farm_astro_desc = "Избегать монстров, идти в центр по времени",
+        mode_farm = "Режим фермы", movement_farm = "Перемещение",
+        position_farm = "Позиция", misc_farm = "Доп. функции",
+        skill_keys = "Клавиши скиллов",
+        serverhop = "Смена сервера", rejoin = "Перезайти",
+        save_config = "Сохранить конфиг", auto_save = "Автосохранение", delay_save = "Задержка сохранения",
+        reset_positions = "Сбросить позиции",
+        padding_reduce = "Шаг уменьшения", padding_safe = "Мин. безопасный отступ",
+        anti_clip_margin = "Отступ от стены", dmg_threshold = "Порог урона",
+        select_weapon = "Выбрать оружие", buy_weapon = "Купить оружие",
+        buy_weapon_once = "Купить оружие (разово)", select_misc = "Выбрать предмет",
+        buy_misc = "Купить предмет", buy_misc_once = "Купить предмет (разово)",
+        select_request = "Выбрать запрос", auto_request = "Авто-запрос",
+        skill_tree = "Дерево навыков", auto_skill_tree = "Авто-навыки",
+        select_upgrade_titan = "Выбрать улучшение Titan Speaker", upgrade_titan = "Улучшить Titan Speaker",
+        select_upgrade_utcm = "Выбрать улучшение UTCM", upgrade_utcm = "Улучшить UTCM",
+        select_upgrade_tv = "Выбрать улучшение TV", upgrade_tv = "Улучшить TV",
+        gacha_character = "Гача персонажей", gacha_skin = "Гача скинов",
+        auto_gacha_character = "Авто-гача персонажей", auto_gacha_skin = "Авто-гача скинов",
+        use_item = "Использовать предмет", auto_use_item = "Авто-использование",
+        shop_hourly = "Часовой магазин", select_shop_hourly = "Выбрать часовой предмет",
+        item_amount = "Количество", buy_item = "Купить предмет",
+        redeem_selected = "Активировать выбранные", redeem_all = "Активировать все", unlock_selected = "Разблокировать выбранное",
+        vote_info = "Информация о голосовании", restore_vote = "Восстановить голосование",
+        set_vote_mode = "Установить режим", auto_vote_ig = "Авто-голосование (в игре)",
+        casual_info = "Информация о Casual", set_game_mode = "Установить режим",
+        auto_game_mode_lobby = "Авто-режим (Лобби)",
+        info_update = "Обновление: 06.02.2026", info_desc = "• [Добавлено] Сброс волны...",
+        info_title = "Premium Edition", info_desc2 = "Без бэкдоров · Без пэйволов · Все функции",
+        walkspeed = "Скорость ходьбы", jumppower = "Сила прыжка",
+        lock_movement = "Зафиксировать движение", no_clip = "No Clip",
+        fly = "Полёт", fly_speed = "Скорость полёта",
+        infinite_jump = "Бесконечный прыжок", full_bright = "Полная яркость", no_fog = "Без тумана",
+        normal_mode = "Обычный режим", astro_holdout_mode = "Astro Holdout", dark_dimension_mode = "Тёмное измерение",
+        teleport = "Телепорт", tween = "Плавно", above = "Сверху", under = "Снизу",
+        clean = "Зачистка", idgf = "IDGF",
+        collect_mode = "Режим сбора", collect_movement = "Перемещение при сборе",
+        esp_options = "Настройки ESP", esp_items = "Предметы ESP", collect_items = "Предметы сбора",
+        select_language = "Выбрать язык", language_changed = "Язык изменён на",
+        all_skills = "Все",
+        highlight = "Подсветка", distance = "Дистанция", health = "Здоровье", name = "Имя",
+        spin1 = "1 вращение", spin10 = "10 вращений", spin100 = "100 вращений",
+        spin1lucky = "1 удачное", spin10lucky = "10 удачных",
+        jetpack = "Джетпак", overcharge = "Перезарядка", soundbooster = "Усилитель звука",
+        core = "Ядро", upgrade = "Улучшение",
+        shield = "Щит", blaster = "Бластер", lens = "Линза", heat = "Нагрев", armor = "Броня",
+        absorb = "Поглощение", share_overcharge = "Общая перезарядка", astro_arm = "Astro-рука",
+        titan_request = "Запрос Титана", special_titan_request = "Запрос спец. Титана", speaker_request = "Запрос Спикера",
+        headphone = "Наушники", grenade = "Граната", jetpack_item = "Джетпак", lens_item = "Линза",
+        stungun = "Электрошокер", flamethrower = "Огнемёт", harpoon_gun = "Гарпун",
+        shot_gun = "Дробовик", pulse_rifle = "Импульсная винтовка", shot_harpoon_gun = "Гарпунный дробовик",
+        epd = "EPD", small_laser_gun = "Малый лазер",
+        normal = "Нормально", veryhard = "Очень сложно", hard = "Сложно", insane = "Безумие",
+        nightmare = "Кошмар", bossrush = "Босс-раш", darkdimension = "Тёмное измерение",
+        hell = "Ад", thunderstorm = "Гроза", christmas = "Рождество",
+        zombie = "Зомби", astrov2 = "AstroV2", astro = "Astro", visit_100m = "100MVisit",
+        all = "Все", lucky_boost = "LuckyBoost", rare_lucky_boost = "RareLuckyBoost", legendary_lucky_boost = "LegendaryLuckyBoost",
+        luck_potion_I = "Зелье удачи I", luck_potion_II = "Зелье удачи II", luck_potion_III = "Зелье удачи III",
+        s_ember = "S-Ember", bsx2_30 = "BSX2:30", bsx2_60 = "BSX2:60", bsx2_360 = "BSX2:360",
+        flash_drive_1 = "Флешка #1", flash_drive_2 = "Флешка #2", flash_drive_3 = "Флешка #3",
+        flash_drive_4 = "Флешка #4", flash_drive_5 = "Флешка #5", flash_drive_6 = "Флешка #6",
+        master_card_normal = "MasterCard:Normal", master_card_normal_titan = "MasterCard:NormalTitan", master_card_special_titan = "MasterCard:SpecialTitan",
+        select_redeem_codes = "Выбрать коды", select_redeem_codes_desc = "Выберите коды для активации.",
+        select_gamepass = "Выбрать Gamepass", select_gamepass_desc = "Выберите флаги для локальной разблокировки.",
+        fly_movement = "Управление полётом", visual_utility = "Визуал и утилиты",
+        fly_desc = "Включить полёт. W/S вперёд/назад, взгляд вверх/вниз для высоты, A/D в стороны.",
+        auto_gacha = "Авто-гача", shop_upgrade = "Улучшения", shop_request = "Запрос Титана/Спикера",
+        auto_collect = "Авто-сбор", auto_collect_desc_full = "Автоматически собирать выбранные предметы на карте.",
+        language_title = "Язык",
+        tab_info = "Инфо", tab_shop = "Магазин", tab_settings = "Настройки",
+        desc_mode_farm = "Выберите режим фермы.",
+        desc_position_farm = "Выберите позицию персонажа относительно цели.",
+        desc_movement_farm = "Выберите способ перемещения к цели.",
+        desc_misc_farm = "Выберите дополнительные системы для авто-фермы.",
+        desc_sync_mode = "Доп. функции требуют авто-ферму.",
+        desc_farm_astro = "Избегать монстров, идти в центр по времени.",
+        desc_skill_keys = "Выберите клавиши для авто-скиллов.",
+        desc_skill_delay = "Задержка между нажатиями клавиш (сек).",
+        desc_height_offset = "Вертикальное смещение при фарме над/под монстрами.",
+        desc_safe_hp = "Процент HP для отступления в безопасном режиме.",
+        desc_god_hp = "Порог HP для обычного режима бога.",
+        desc_reset_wave_val = "Сброс при достижении указанной волны.",
+        desc_bypass_jeffrey = "Заставляет Джеффри сесть и не мешать.",
+        desc_anti_jeffrey = "Бесплатная функция: создаёт мягкий невидимый барьер.",
+        desc_anti_jeffrey_range = "Дистанция для Анти-Джеффри. По умолчанию 50.",
+        desc_high_hp_threshold = "Макс. HP для приоритета высокого HP.",
+        desc_reset_positions = "Очистить все сохранённые позиции монстров.",
+        desc_flush_range = "Дистанция для активации ауры смыва.",
+        desc_flush_aura = "Автоматически активировать смыв в радиусе.",
+        desc_esp_enable = "Включить все визуальные эффекты ESP.",
+        desc_esp_mob = "Подсветка и метки над врагами.",
+        desc_esp_player = "Подсветка и метки над другими игроками.",
+        desc_esp_item = "Подсветка и метки на предметах.",
+        desc_esp_options = "Выберите дополнительные метки ESP.",
+        desc_esp_items = "Выберите предметы для ESP.",
+        desc_walkspeed = "Установить скорость ходьбы.",
+        desc_jumppower = "Установить силу прыжка.",
+        desc_lock_movement = "Восстанавливать скорость и прыжок при снижении игрой.",
+        desc_no_clip = "Проходить сквозь стены и объекты.",
+        desc_fly_speed = "Настроить скорость полёта.",
+        desc_fly = "Включить полёт. W/S вперёд/назад, взгляд вверх/вниз для высоты, A/D в стороны.",
+        desc_infinite_jump = "Бесконечные прыжки в воздухе.",
+        desc_full_bright = "Полная яркость карты.",
+        desc_no_fog = "Убрать туман.",
+        desc_select_redeem_codes = "Выберите коды для активации.",
+        desc_redeem_selected = "Активировать только выбранные коды.",
+        desc_redeem_all = "Активировать все коды сразу.",
+        desc_select_gamepass = "Выберите пропуски для локальной разблокировки.",
+        desc_unlock_selected = "Разблокировать выбранные пропуски локально.",
+        desc_set_vote_mode = "Выберите режим для авто-голосования.",
+        desc_auto_vote_ig = "Автоматически голосовать за выбранный режим каждый раунд.",
+        desc_set_game_mode = "Выберите режим для автоматического создания.",
+        desc_auto_game_mode_lobby = "Автоматически создавать выбранный режим в лобби.",
+        desc_gacha_character = "Выберите тип вращения для гачи персонажей.",
+        desc_auto_gacha_character = "Авто-гача персонажей.",
+        desc_gacha_skin = "Выберите тип вращения для гачи скинов.",
+        desc_auto_gacha_skin = "Авто-гача скинов.",
+        desc_use_item = "Выберите предмет для авто-использования.",
+        desc_auto_use_item = "Автоматически использовать предмет с задержкой.",
+        desc_select_upgrade_titan = "Выберите улучшения Titan Speaker.",
+        desc_upgrade_titan = "Авто-улучшение Titan Speaker.",
+        desc_select_upgrade_utcm = "Выберите улучшения UTCM.",
+        desc_upgrade_utcm = "Авто-улучшение UTCM.",
+        desc_select_upgrade_tv = "Выберите улучшения TV.",
+        desc_upgrade_tv = "Авто-улучшение TV.",
+        desc_select_weapon = "Выберите оружие для авто-покупки.",
+        desc_buy_weapon = "Авто-покупка оружия в цикле магазина.",
+        desc_buy_weapon_once = "Разовая покупка оружия.",
+        desc_select_misc = "Выберите предмет для авто-покупки.",
+        desc_buy_misc = "Авто-покупка предмета в цикле магазина.",
+        desc_buy_misc_once = "Разовая покупка предмета.",
+        desc_select_request = "Выберите запрос Titan/Speaker.",
+        desc_auto_request = "Авто-запрос при волне 10+.",
+        desc_auto_skill_tree = "Авто-разблокировка недостающих навыков.",
+        desc_select_shop_hourly = "Выберите предметы часового магазина.",
+        desc_item_amount = "Количество для покупки.",
+        desc_buy_item = "Авто-покупка предметов часового магазина.",
+        desc_collect_items = "Выберите предметы для авто-сбора.",
+        desc_collect_mode = "Выберите режим авто-сбора.",
+        desc_collect_movement = "Выберите способ перемещения к предметам.",
+        desc_save_config = "Сохранить все настройки в файл.",
+        desc_auto_save = "Автосохранение с интервалом.",
+        desc_delay_save = "Интервал автосохранения (сек).",
+        desc_serverhop = "Перейти на другой случайный сервер.",
+        desc_rejoin = "Перезайти на текущий сервер.",
+        desc_camera_mode = "Выберите режим камеры.",
+        desc_bypass_barrier = "Попытка обойти невидимый барьер (не работает).",
+        desc_select_language = "Выберите язык интерфейса.",
+        desc_combat_debug = "Вывод отладочных логов атаки/скиллов и кэша монстров.",
+        desc_anti_afk = "Предотвращает кик за бездействие.",
+        notify_save_success = "Конфигурация сохранена!",
+        notify_selected = "Выбрано: ",
+        notify_positions_cleared = "Все позиции монстров очищены.",
+        notify_anti_afk_on = "Анти-АФК включён.",
+        notify_anti_afk_off = "Анти-АФК отключён.",
+        notify_serverhop_fail = "Смена сервера не удалась",
+        notify_no_servers = "Нет доступных серверов.",
+        notify_select_gamepass = "Сначала выберите пропуск!",
+        notify_unlocked = "Разблокировано ",
+        notify_gamepasses = " пропусков!",
+        notify_combat_debug_on = "Логи отладки боя включены.",
+        notify_combat_debug_off = "Логи отладки боя отключены.",
+        notify_farm_astro_on = "Включено. Маршрут Astro запущен.",
+        notify_farm_astro_off = "Отключено. Маршрут Astro остановлен.",
+        notify_farm_astro_conflict = "Отключите авто-ферму перед использованием Farm Astro Token.",
+        notify_astro_clean_mode = "Farm Astro Token не убивает монстров, режим Clean не может собирать предметы. Выберите IDGF.",
+        notify_restoring = "Восстановление...",
+        notify_restore_ready = "Подготовка, восстановление голосования...",
+        notify_restore_wait = "Восстановление голосования, подождите...",
+        notify_restore_complete = "Восстановлено",
+        notify_restore_done = "Голосование восстановлено! Теперь можно использовать авто-голосование.",
+        notify_auto_farm_closed_sync = "Авто-ферма отключена (Синх. режим ВКЛ, доп. функции остановлены)",
+        notify_auto_farm_closed_independent = "Авто-ферма отключена (Синх. режим ВЫКЛ, доп. функции работают)",
+        notify_misc_farm_warning = "Сначала включите авто-ферму (Синх. режим ВКЛ)",
+        notify_collect_movement_mode = "Режим перемещения сбора",
+        notify_language_restart = "Язык изменён. Перезапустите скрипт для полного применения.",
+        vote_restore_warning = "⚠️ Нажмите эту кнопку перед первым использованием авто-голосования.",
+        casual_title = "Casual: Выбор миссии",
+        casual_desc = "- [ Шаг 1 ] Оставайтесь в лобби (не в игре)\n- [ Шаг 2 ] Нажмите Play и войдите в выбор режима Classic\n- [ Шаг 3 ] Выберите Casual и завершите телепорт\n- [ Шаг 4 ] Запустите скрипт",
+        priority_title = "Порядок приоритета",
+        priority_desc = "Прерывание: если атакуется монстр с низким HP, а появляется с более высоким — немедленное переключение",
+        vote_info_desc = "- [ Шаг 1 ] Нажмите Восстановить голосование\n- [ Шаг 2 ] Оставайтесь в лобби (в игре)\n- [ Шаг 3 ] Настройте авто-голосование и ждите",
+        recent_updates_title = "Последние обновления",
+        dyhub_info_title = "Информация DYHUB",
+        serverhop_progress = "Переход на другой сервер...",
+        rejoin_progress = "Перезаход на сервер...",
+        language_notify_title = "Язык",
+    },
+    Portuguese = {
+        loading = "Carregando jogo...", loaded = "Carregado, iniciando em 2s",
+        auto_farm = "Auto Farm", auto_farm_desc = "Farm automático por prioridade",
+        farm_enabled = "Ativado", farm_disabled = "Desativado",
+        sync_mode = "Farm Sincronizado", sync_desc = "Funções auxiliares precisam do Auto Farm",
+        sync_on = "Precisa do Auto Farm", sync_off = "Funções auxiliares independentes",
+        position_above = "Acima", position_under = "Abaixo",
+        auto_attack = "Ataque Automático", auto_skill = "Habilidades Automáticas",
+        auto_ready = "Auto Iniciar", auto_skip_heli = "Pular Helicóptero",
+        auto_heal = "Auto Cura", safe_mode = "Modo Seguro",
+        god_mode = "Modo Deus", delete_map = "Deletar Mapa",
+        flush_aura = "Aura de Descarga", flush_range = "Alcance da Descarga",
+        attack_speed = "Vel. de Ataque", skill_delay = "Atraso de Habilidades",
+        height_offset = "Deslocamento de Altura", safe_hp = "HP Seguro",
+        god_hp = "HP Deus", high_hp_threshold = "Limite de HP Alto",
+        esp_enable = "Ativar ESP", esp_mob = "ESP de Monstros",
+        esp_player = "ESP de Jogadores", esp_item = "ESP de Itens",
+        esp_highlight = "Destaque", esp_distance = "Distância",
+        esp_health = "Vida", esp_name = "Nome",
+        farm_settings = "Config. de Farm", general_settings = "Config. Gerais",
+        priority_settings = "Prioridades", override_settings = "Substituições",
+        flush_settings = "Config. de Descarga",
+        esp_visual = "Visual do ESP", esp_settings = "Config. do ESP",
+        local_player = "Jogador Local", redeem_codes = "Resgatar Códigos",
+        unlock_gamepass = "Desbloquear Gamepass", shop_weapon = "Loja de Armas",
+        shop_misc = "Loja de Itens",
+        collect_section = "Coletar Itens", collect_settings = "Config. de Coleta",
+        vote_system = "Sistema de Voto", vote_mode = "Modo de Voto",
+        game_mode = "Modo de Jogo",
+        save_settings = "Salvar Config.", server_status = "Status do Servidor",
+        others = "Outros",
+        reset_wave = "Resetar Onda", reset_wave_val = "Valor de Reset",
+        bypass_jeffrey = "Burlar Jeffrey", anti_jeffrey = "Anti Jeffrey",
+        anti_jeffrey_range = "Alcance Anti Jeffrey",
+        camera_mode = "Modo de Câmera", combat_debug = "Debug de Combate",
+        anti_afk = "Anti AFK", bypass_barrier = "Burlar Barreira",
+        farm_astro = "Farm Astro", farm_astro_desc = "Evitar monstros, ir ao centro no fim do tempo",
+        mode_farm = "Modo de Farm", movement_farm = "Movimentação",
+        position_farm = "Posição", misc_farm = "Funções Aux.",
+        skill_keys = "Teclas de Habilidade",
+        serverhop = "Trocar Servidor", rejoin = "Reentrar",
+        save_config = "Salvar Config.", auto_save = "Auto Salvar", delay_save = "Intervalo de Salvamento",
+        reset_positions = "Resetar Posições",
+        padding_reduce = "Redução de Passo", padding_safe = "Margem Segura Mínima",
+        anti_clip_margin = "Margem Anti-Clip", dmg_threshold = "Limite de Dano",
+        select_weapon = "Selecionar Arma", buy_weapon = "Comprar Arma",
+        buy_weapon_once = "Comprar Arma (Uma Vez)", select_misc = "Selecionar Item",
+        buy_misc = "Comprar Item", buy_misc_once = "Comprar Item (Uma Vez)",
+        select_request = "Selecionar Solicitação", auto_request = "Solicitação Automática",
+        skill_tree = "Árvore de Habilidades", auto_skill_tree = "Auto Habilidades",
+        select_upgrade_titan = "Selecionar Upgrade Titan Speaker", upgrade_titan = "Melhorar Titan Speaker",
+        select_upgrade_utcm = "Selecionar Upgrade UTCM", upgrade_utcm = "Melhorar UTCM",
+        select_upgrade_tv = "Selecionar Upgrade TV", upgrade_tv = "Melhorar TV",
+        gacha_character = "Gacha de Personagem", gacha_skin = "Gacha de Skin",
+        auto_gacha_character = "Auto Gacha Personagem", auto_gacha_skin = "Auto Gacha Skin",
+        use_item = "Usar Item", auto_use_item = "Auto Usar Item",
+        shop_hourly = "Loja Horária", select_shop_hourly = "Selecionar Item Horário",
+        item_amount = "Quantidade", buy_item = "Comprar Item",
+        redeem_selected = "Resgatar Selecionados", redeem_all = "Resgatar Todos", unlock_selected = "Desbloquear Selecionado",
+        vote_info = "Informação de Voto", restore_vote = "Restaurar Votação",
+        set_vote_mode = "Definir Modo", auto_vote_ig = "Voto Automático (In-Game)",
+        casual_info = "Informação Casual", set_game_mode = "Definir Modo de Jogo",
+        auto_game_mode_lobby = "Modo Automático (Lobby)",
+        info_update = "Atualização: 02/06/2026", info_desc = "• [Adicionado] Reset de Onda...",
+        info_title = "Edição Premium", info_desc2 = "Sem backdoor · Sem paywall · Todas as funções",
+        walkspeed = "Velocidade", jumppower = "Força do Pulo",
+        lock_movement = "Travar Movimento", no_clip = "No Clip",
+        fly = "Voar", fly_speed = "Velocidade de Voo",
+        infinite_jump = "Pulo Infinito", full_bright = "Brilho Máximo", no_fog = "Sem Névoa",
+        normal_mode = "Modo Normal", astro_holdout_mode = "Modo Astro Holdout", dark_dimension_mode = "Modo Dimensão Sombria",
+        teleport = "Teleporte", tween = "Suave", above = "Acima", under = "Abaixo",
+        clean = "Limpar", idgf = "IDGF",
+        collect_mode = "Modo de Coleta", collect_movement = "Movimento de Coleta",
+        esp_options = "Opções ESP", esp_items = "Itens ESP", collect_items = "Itens de Coleta",
+        select_language = "Selecionar Idioma", language_changed = "Idioma alterado para",
+        all_skills = "Todas",
+        highlight = "Destaque", distance = "Distância", health = "Vida", name = "Nome",
+        spin1 = "1 Giro", spin10 = "10 Giros", spin100 = "100 Giros",
+        spin1lucky = "1 Giro da Sorte", spin10lucky = "10 Giros da Sorte",
+        jetpack = "Jetpack", overcharge = "Sobrecarga", soundbooster = "Amplificador de Som",
+        core = "Núcleo", upgrade = "Melhoria",
+        shield = "Escudo", blaster = "Blaster", lens = "Lente", heat = "Calor", armor = "Armadura",
+        absorb = "Absorver", share_overcharge = "Compartilhar Sobrecarga", astro_arm = "Braço Astro",
+        titan_request = "Solicitar Titã", special_titan_request = "Solicitar Titã Especial", speaker_request = "Solicitar Speaker",
+        headphone = "Fone de Ouvido", grenade = "Granada", jetpack_item = "Jetpack", lens_item = "Lente",
+        stungun = "Arma de Choque", flamethrower = "Lança-chamas", harpoon_gun = "Arpão",
+        shot_gun = "Escopeta", pulse_rifle = "Rifle de Pulso", shot_harpoon_gun = "Escopeta de Arpão",
+        epd = "EPD", small_laser_gun = "Laser Pequeno",
+        normal = "Normal", veryhard = "Muito Difícil", hard = "Difícil", insane = "Insano",
+        nightmare = "Pesadelo", bossrush = "Boss Rush", darkdimension = "Dimensão Sombria",
+        hell = "Inferno", thunderstorm = "Tempestade", christmas = "Natal",
+        zombie = "Zumbi", astrov2 = "AstroV2", astro = "Astro", visit_100m = "100MVisit",
+        all = "Todos", lucky_boost = "LuckyBoost", rare_lucky_boost = "RareLuckyBoost", legendary_lucky_boost = "LegendaryLuckyBoost",
+        luck_potion_I = "Poção da Sorte I", luck_potion_II = "Poção da Sorte II", luck_potion_III = "Poção da Sorte III",
+        s_ember = "S-Ember", bsx2_30 = "BSX2:30", bsx2_60 = "BSX2:60", bsx2_360 = "BSX2:360",
+        flash_drive_1 = "PenDrive #1", flash_drive_2 = "PenDrive #2", flash_drive_3 = "PenDrive #3",
+        flash_drive_4 = "PenDrive #4", flash_drive_5 = "PenDrive #5", flash_drive_6 = "PenDrive #6",
+        master_card_normal = "MasterCard:Normal", master_card_normal_titan = "MasterCard:NormalTitan", master_card_special_titan = "MasterCard:SpecialTitan",
+        select_redeem_codes = "Selecionar Códigos", select_redeem_codes_desc = "Selecione os códigos para resgatar.",
+        select_gamepass = "Selecionar Gamepass", select_gamepass_desc = "Selecione os gamepasses para desbloquear localmente.",
+        fly_movement = "Movimento de Voo", visual_utility = "Visual e Utilidades",
+        fly_desc = "Ativar voo. W/S frente/trás, olhar p/ cima/baixo controla altura, A/D laterais.",
+        auto_gacha = "Gacha Automático", shop_upgrade = "Melhorias da Loja", shop_request = "Solicitar Titã/Speaker",
+        auto_collect = "Coleta Automática", auto_collect_desc_full = "Coletar automaticamente os itens selecionados no mapa.",
+        language_title = "Idioma",
+        tab_info = "Info", tab_shop = "Loja", tab_settings = "Config.",
+        desc_mode_farm = "Selecione diferentes modos de farm.",
+        desc_position_farm = "Selecione a posição do personagem em relação ao alvo.",
+        desc_movement_farm = "Selecione como o personagem se move para cada alvo.",
+        desc_misc_farm = "Selecione sistemas extras para executar com o Auto Farm.",
+        desc_sync_mode = "Funções auxiliares precisam do Auto Farm.",
+        desc_farm_astro = "Evitar monstros, ir ao centro no fim do tempo.",
+        desc_skill_keys = "Selecione as teclas de habilidade para o auto skill pressionar.",
+        desc_skill_delay = "Defina o atraso em segundos entre cada pressionamento de tecla.",
+        desc_height_offset = "Ajuste o deslocamento vertical ao farmar acima ou abaixo dos monstros.",
+        desc_safe_hp = "Defina a porcentagem de HP usada antes do Modo Seguro recuar.",
+        desc_god_hp = "Defina o limite de porcentagem de HP para o Modo Deus normal.",
+        desc_reset_wave_val = "Resetar imediatamente se a onda especificada for atingida.",
+        desc_bypass_jeffrey = "Faz o Jeffrey sentar e parar de incomodar.",
+        desc_anti_jeffrey = "Recurso gratuito: Cria uma barreira invisível suave.",
+        desc_anti_jeffrey_range = "Defina a distância usada pelo Anti Jeffrey. Padrão 50 studs.",
+        desc_high_hp_threshold = "Defina a vida máxima necessária para um mob ser prioridade de HP alto.",
+        desc_reset_positions = "Limpar todas as posições de altura de mob salvas, redefinindo para o padrão.",
+        desc_flush_range = "Defina a distância para a Aura de Descarga ativar prompts próximos.",
+        desc_flush_aura = "Ativar automaticamente prompts de descarga dentro do raio definido.",
+        desc_esp_enable = "Ativar todos os efeitos visuais do ESP.",
+        desc_esp_mob = "Exibir destaques e rótulos de informação acima dos mobs inimigos.",
+        desc_esp_player = "Exibir destaques e rótulos de informação acima de outros jogadores.",
+        desc_esp_item = "Exibir destaques e rótulos de informação em itens coletáveis.",
+        desc_esp_options = "Selecione quais rótulos e visuais extras do ESP exibir.",
+        desc_esp_items = "Selecione quais itens coletáveis devem receber ESP de item.",
+        desc_walkspeed = "Defina seu valor de velocidade de caminhada salvo.",
+        desc_jumppower = "Defina seu valor de força de pulo salvo.",
+        desc_lock_movement = "Restaurar velocidade e pulo quando o jogo os reduzir.",
+        desc_no_clip = "Permitir que seu personagem atravesse paredes e partes.",
+        desc_fly_speed = "Ajustar a velocidade de voo enquanto voa.",
+        desc_fly = "Ativar movimento de voo. W/S frente/trás, olhar p/ cima/baixo controla altura, A/D laterais.",
+        desc_infinite_jump = "Permitir pulo contínuo no ar.",
+        desc_full_bright = "Iluminar o mapa; restaura a iluminação original quando desativado.",
+        desc_no_fog = "Remover névoa de distância; restaura as configurações originais quando desativado.",
+        desc_select_redeem_codes = "Selecione os códigos para resgatar.",
+        desc_redeem_selected = "Resgatar apenas os códigos selecionados no menu.",
+        desc_redeem_all = "Resgatar todos os códigos disponíveis de uma vez.",
+        desc_select_gamepass = "Selecione os gamepasses para desbloquear localmente.",
+        desc_unlock_selected = "Desbloquear os gamepasses selecionados localmente gratuitamente.",
+        desc_set_vote_mode = "Selecione o modo de jogo para o voto automático.",
+        desc_auto_vote_ig = "Votar automaticamente no modo selecionado a cada rodada.",
+        desc_set_game_mode = "Selecione o modo de jogo para criar automaticamente.",
+        desc_auto_game_mode_lobby = "Criar automaticamente o modo de jogo selecionado no lobby.",
+        desc_gacha_character = "Selecione o tipo de giro para o gacha de personagem.",
+        desc_auto_gacha_character = "Girar automaticamente o gacha de personagem com a opção selecionada.",
+        desc_gacha_skin = "Selecione o tipo de giro para o gacha de skin.",
+        desc_auto_gacha_skin = "Girar automaticamente o gacha de skin com a opção selecionada.",
+        desc_use_item = "Selecione o item para uso automático.",
+        desc_auto_use_item = "Usar automaticamente o item selecionado com um atraso seguro.",
+        desc_select_upgrade_titan = "Selecione melhorias do Titan Speaker para solicitar.",
+        desc_upgrade_titan = "Solicitar automaticamente as melhorias selecionadas do Titan Speaker.",
+        desc_select_upgrade_utcm = "Selecione melhorias do UTCM para solicitar.",
+        desc_upgrade_utcm = "Solicitar automaticamente as melhorias selecionadas do UTCM.",
+        desc_select_upgrade_tv = "Selecione melhorias da TV para solicitar.",
+        desc_upgrade_tv = "Solicitar automaticamente as melhorias selecionadas da TV.",
+        desc_select_weapon = "Selecione a arma para compra automática.",
+        desc_buy_weapon = "Comprar automaticamente a arma selecionada durante os ciclos da loja.",
+        desc_buy_weapon_once = "Compra única da arma selecionada.",
+        desc_select_misc = "Selecione o item para compra automática.",
+        desc_buy_misc = "Comprar automaticamente o item selecionado durante os ciclos da loja.",
+        desc_buy_misc_once = "Compra única do item selecionado.",
+        desc_select_request = "Selecione a solicitação Titan/Speaker para compra automática.",
+        desc_auto_request = "Solicitar automaticamente Titan/Speaker quando a onda for 10+.",
+        desc_auto_skill_tree = "Desbloquear automaticamente árvores de habilidades faltantes para o personagem atual.",
+        desc_select_shop_hourly = "Selecione os itens fixos da loja horária.",
+        desc_item_amount = "Defina a quantidade de compra para cada item horário selecionado.",
+        desc_buy_item = "Comprar automaticamente os itens selecionados da loja horária em um temporizador.",
+        desc_collect_items = "Selecione itens coletáveis para coleta automática.",
+        desc_collect_mode = "Selecione quando a coleta automática deve reunir itens.",
+        desc_collect_movement = "Selecione como o personagem se move para os coletáveis.",
+        desc_save_config = "Salvar imediatamente todas as configurações atuais no arquivo de configuração.",
+        desc_auto_save = "Salvar automaticamente a configuração no intervalo definido.",
+        desc_delay_save = "Defina o intervalo de salvamento automático em segundos.",
+        desc_serverhop = "Teleportar você para outro servidor aleatório deste jogo.",
+        desc_rejoin = "Reentrar no servidor atual do jogo.",
+        desc_camera_mode = "Selecione como a câmera deve seguir seu personagem.",
+        desc_bypass_barrier = "Tentar burlar a barreira invisível (quebrado).",
+        desc_select_language = "Selecione o idioma da interface.",
+        desc_combat_debug = "Exibir logs de depuração de ataque/habilidade automática e cache de mobs.",
+        desc_anti_afk = "Impedir que o Roblox o expulse por longos períodos de inatividade.",
+        notify_save_success = "Configuração salva com sucesso!",
+        notify_selected = "Selecionado: ",
+        notify_positions_cleared = "Todas as posições de mob confirmadas foram limpas.",
+        notify_anti_afk_on = "Anti-AFK ativado.",
+        notify_anti_afk_off = "Anti-AFK desativado.",
+        notify_serverhop_fail = "Falha ao Trocar Servidor",
+        notify_no_servers = "Nenhum servidor disponível encontrado.",
+        notify_select_gamepass = "Por favor, selecione um gamepass primeiro!",
+        notify_unlocked = "Desbloqueado ",
+        notify_gamepasses = " gamepasses!",
+        notify_combat_debug_on = "Logs de depuração de combate ativados.",
+        notify_combat_debug_off = "Logs de depuração de combate desativados.",
+        notify_farm_astro_on = "Ativado. Rota Astro iniciada.",
+        notify_farm_astro_off = "Desativado. Rota Astro parada.",
+        notify_farm_astro_conflict = "Desative o Auto Farm antes de usar o Farm Astro Token.",
+        notify_astro_clean_mode = "O Farm Astro Token não mata monstros, então o modo Clean não pode coletar itens. Selecione o modo IDGF.",
+        notify_restoring = "Restaurando...",
+        notify_restore_ready = "Preparando, restaurando sistema de votação...",
+        notify_restore_wait = "Restaurando sistema de votação, aguarde...",
+        notify_restore_complete = "Restauração Concluída",
+        notify_restore_done = "Sistema de votação restaurado! Agora você pode usar o modo de voto automático.",
+        notify_auto_farm_closed_sync = "Auto Farm desativado (Modo Sincronizado LIGADO, funções auxiliares paradas)",
+        notify_auto_farm_closed_independent = "Auto Farm desativado (Modo Sincronizado DESLIGADO, funções auxiliares continuam)",
+        notify_misc_farm_warning = "Por favor, ative o Auto Farm primeiro (Modo Sincronizado está LIGADO)",
+        notify_collect_movement_mode = "Modo de Movimento de Coleta",
+        notify_language_restart = "Idioma alterado. Reinicie o script para aplicar completamente.",
+        vote_restore_warning = "⚠️ Por favor, clique neste botão antes de usar o voto automático pela primeira vez.",
+        casual_title = "Casual: Seleção de Missão",
+        casual_desc = "- [ Passo 1 ] Fique no lobby (não no jogo)\n- [ Passo 2 ] Pressione Play e entre na seleção de modo Classic\n- [ Passo 3 ] Selecione Casual e complete o teleporte\n- [ Passo 4 ] Execute o script",
+        priority_title = "Ordem de Prioridade",
+        priority_desc = "Interromper: Se estiver atacando um mob de HP máximo baixo e aparecer um de HP máximo mais alto, mudará imediatamente",
+        vote_info_desc = "- [ Passo 1 ] Clique em Restaurar Sistema de Votação\n- [ Passo 2 ] Fique no lobby (no jogo)\n- [ Passo 3 ] Configure o voto automático e aguarde",
+        recent_updates_title = "Atualizações Recentes",
+        dyhub_info_title = "Informações DYHUB",
+        serverhop_progress = "Teleportando para outro servidor...",
+        rejoin_progress = "Reentrando no servidor...",
+        language_notify_title = "Idioma",
     },
 }
 
@@ -700,7 +1132,6 @@ local function GetOriginalKey(displayValue)
 end
 
 -- ====================== WINDOW ======================
-Players = game:GetService("Players")
 userversion = "至尊版"
 
 Window = WindUI:CreateWindow({
@@ -766,6 +1197,7 @@ VirtualInputManager = game:GetService("VirtualInputManager")
 RunService          = game:GetService("RunService")
 UserInputService    = game:GetService("UserInputService")
 Lighting            = game:GetService("Lighting")
+VirtualUser         = game:GetService("VirtualUser")
 
 -- ====================== PLAYER ======================
 LocalPlayer    = Players.LocalPlayer
@@ -899,6 +1331,8 @@ BoostFPS_Active_dummy  = false
 AutoStartEnabled       = Config:Get("AutoStartEnabled", table.find(MiscOptions, "Auto Start") ~= nil)
 AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
 AutoVoteValue         = Config:Get("AutoVoteValue", "Christmas")
+AutoGameValue         = Config:Get("AutoGameValue", "Normal")
+AutoVoteEnabled       = Config:Get("AutoVoteEnabled", false)
 AutoVoteLoopRunning   = false
 AutoVoteLastFireAt    = 0
 AutoStartLastReadyAt  = 0
@@ -1174,13 +1608,11 @@ function StartAutoVoteLoop()
         AutoVoteLoopRunning = false
     end)
 end
--- ====================== NEW PRIORITY SYSTEM CONFIG ======================
+
+-- ====================== PRIORITY SYSTEM CONFIG ======================
 HighHPThreshold        = Config:Get("HighHPThreshold", 200)
 _currentTargetPriority = 0
 _interruptSignal       = false
-
-VirtualUser = game:GetService("VirtualUser")
-AntiAFK = Config:Get("AntiAfk", true)
 
 AutoBuyWeaponEnabled   = Config:Get("AutoBuyWeaponEnabled", false)
 AutoBuyMiscEnabled     = Config:Get("AutoBuyMiscEnabled", false)
@@ -1444,17 +1876,6 @@ function BreakFarmLockForJeffrey(reason, pauseTime)
     end)
 end
 
-function GetMinJeffreyDistanceAt(pos, forceRefresh)
-    local minDist = math.huge
-    for _, root in ipairs(GetJeffreyRoots(forceRefresh == true)) do
-        if root and root.Parent then
-            local d = (root.Position - pos).Magnitude
-            if d < minDist then minDist = d end
-        end
-    end
-    return minDist
-end
-
 function GetHorizontalDistance(a, b)
     if not a or not b then return math.huge end
     local dx = a.X - b.X
@@ -1523,8 +1944,7 @@ function IsFarmTargetSafeFromJeffrey(mob, forceRefresh)
     return true
 end
 
--- ============================================================
--- =============== BARRIER SAFE ESCAPE SYSTEM ==================
+-- ====================== BARRIER SAFE ESCAPE SYSTEM ======================
 BarrierCacheParts = {}
 BarrierCacheAt = 0
 BarrierCacheTTL = 1.25
@@ -1839,14 +2259,6 @@ function HandleFarmJeffreyEmergency(mob)
     return false
 end
 
-function ShouldFarmRetargetFromJeffrey(mob)
-    return HandleFarmJeffreyEmergency(mob)
-end
-
-function ShouldDarkDimensionRetargetFromJeffrey(mob)
-    return HandleFarmJeffreyEmergency(mob)
-end
-
 function PushAwayFromJeffrey()
     if not AntiJeffreyEnabled then return false end
     RefreshCombatCharacter()
@@ -1913,7 +2325,7 @@ function StartJeffreyGuardLoop()
         AntiJeffreyGuardLoopRunning = false
     end)
 end
--- ============================================================
+
 -- ====================== BYPASS JEFFREY ======================
 function GetBypassJeffreyObject(obj)
     if not obj then return nil end
@@ -2239,7 +2651,6 @@ function GetHighestMob()
     return highestMob
 end
 
--- ============================================================
 -- ====================== PRIORITY SYSTEM =====================
 function GetHelicopter()
     for _, mob in ipairs(GetFarmCandidateMobs(false)) do
@@ -2322,10 +2733,8 @@ function CheckInterrupt(currentPriority)
     end
     return false, currentPriority
 end
--- ============================================================
--- ====================== MOB VISUAL BOUNDS ===================
--- ============================================================
 
+-- ====================== MOB VISUAL BOUNDS ===================
 MobBoundsCache = {}
 MobBoundsCacheAt = {}
 MobBoundsCacheTTL = 0.25
@@ -2343,7 +2752,6 @@ end
 function ComputeMobVisualBounds(mob)
     local minY, maxY = math.huge, -math.huge
     local centerX, centerZ, count = 0, 0, 0
-
     for _, part in ipairs(mob:GetDescendants()) do
         if part:IsA("BasePart") and part.Transparency < 0.9 and part.Size.Y > 0.1 then
             local pos = part.Position
@@ -2355,7 +2763,6 @@ function ComputeMobVisualBounds(mob)
             count   = count + 1
         end
     end
-
     if count == 0 then
         local hrp = mob:FindFirstChild("HumanoidRootPart")
         if hrp then
@@ -2363,7 +2770,6 @@ function ComputeMobVisualBounds(mob)
         end
         return Vector3.new(0, 0, 0), 0, 4
     end
-
     local cx = centerX / count
     local cz = centerZ / count
     local cy = (minY + maxY) * 0.5
@@ -2372,23 +2778,18 @@ end
 
 function GetMobVisualBounds(mob)
     if not mob then return Vector3.new(0, 0, 0), 0, 4 end
-
     local now = tick()
     local cached = MobBoundsCache[mob]
     if cached and MobBoundsCacheAt[mob] and now - MobBoundsCacheAt[mob] <= MobBoundsCacheTTL then
         return cached[1], cached[2], cached[3]
     end
-
     local center, minY, maxY = ComputeMobVisualBounds(mob)
     MobBoundsCache[mob] = { center, minY, maxY }
     MobBoundsCacheAt[mob] = now
     return center, minY, maxY
 end
 
--- ============================================================
 -- ====================== MOB HEIGHT OVERRIDE =================
--- ============================================================
-
 PADDING_REDUCE_STEP    = Config:Get("PaddingReduceStep", 2)
 PADDING_SAFE_MIN       = Config:Get("PaddingSafeMin", -30)
 DMG_THRESHOLD          = Config:Get("DmgThreshold", 40)
@@ -2425,28 +2826,23 @@ function StartDamageChecker(mob)
         local humanoid = mob and mob:FindFirstChild("Humanoid")
         if not humanoid then return end
         if MobConfirmedPadding[mob] ~= nil then return end
-
         MobLastHealth[mob]     = humanoid.Health
         MobHeightOverride[mob] = ClampPaddingToAntiClip(mob, MobHeightOverride[mob] or HeightValue)
-
         local lastDamageTime = tick()
         local noDamageTimer  = 0
         local hitStreak      = 0
         local lastWasHit     = false
         local reducedOnce    = false
-
         while mob and mob.Parent and not IsMobDead(mob) and AutoFarmEnabled do
             task.wait(0.3)
             if MobCheckerCancelled[mob] then break end
             if not mob or not mob.Parent or IsMobDead(mob) then break end
             humanoid = mob:FindFirstChild("Humanoid")
             if not humanoid then break end
-
             local currentHP = humanoid.Health
             local lastHP    = MobLastHealth[mob] or currentHP
             local dmgDealt  = lastHP - currentHP
             local gotHit    = dmgDealt > 0
-
             if gotHit then
                 lastDamageTime = tick()
                 noDamageTimer  = 0
@@ -2473,14 +2869,12 @@ function StartDamageChecker(mob)
                 hitStreak     = 0
                 noDamageTimer = tick() - lastDamageTime
             end
-
             if noDamageTimer >= 3 and not reducedOnce then
                 reducedOnce = true
                 local curPad = GetEffectivePadding(mob)
                 local newPad = ClampPaddingToAntiClip(mob, curPad - PADDING_REDUCE_STEP)
                 if newPad ~= curPad then MobHeightOverride[mob] = newPad end
             end
-
             if noDamageTimer >= 6 then
                 lastDamageTime = tick()
                 reducedOnce    = false
@@ -2488,10 +2882,8 @@ function StartDamageChecker(mob)
                 local newPad   = ClampPaddingToAntiClip(mob, curPad - PADDING_REDUCE_STEP)
                 if newPad ~= curPad then MobHeightOverride[mob] = newPad end
             end
-
             MobLastHealth[mob] = currentHP
         end
-
         if not MobCheckerCancelled[mob] then
             MobHeightOverride[mob] = nil
             MobLastHealth[mob]     = nil
@@ -2509,23 +2901,18 @@ function ResetMobOverride(mob)
     end)
 end
 
--- ============================================================
 -- ====================== TARGET CFRAME =======================
--- ============================================================
 function GetTargetCFrame(mob, position)
     local mobRoot = mob:FindFirstChild("HumanoidRootPart")
     if not mobRoot then return nil end
-
     local padding = GetEffectivePadding(mob)
     local center, minY, maxY = GetMobVisualBounds(mob)
-
     if position == "Above" then
         local safeTargetY = math.max(maxY + padding, maxY + 0.5)
         local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
         local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
         local lookCF      = CFrame.new(targetPos, lookAtPos)
         return lookCF * CFrame.Angles(math.rad(-10), 0, 0)
-
     elseif position == "Under" then
         local safeTargetY = math.min(minY - padding, minY - 0.5)
         local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
@@ -2542,20 +2929,17 @@ end
 function WaitTweenWithTimeout(tween, timeout)
     if not tween then return false end
     timeout = tonumber(timeout) or 2
-
     local completed = false
     local conn
     conn = tween.Completed:Connect(function()
         completed = true
     end)
-
     local startedAt = tick()
     while not completed and tick() - startedAt < timeout do
         if ResetWaveTeleporting then break end
         if not AutoFarmEnabled and not FarmAstroTokenEnabled and not DarkDimensionCollecting then break end
         task.wait(0.03)
     end
-
     if conn then pcall(function() conn:Disconnect() end) end
     if not completed then pcall(function() tween:Cancel() end) end
     return completed
@@ -2564,7 +2948,6 @@ end
 function MoveCharacterToFarmCFrame(cf)
     if ResetWaveTeleporting then return end
     if not Character or not HumanoidRootPart or not cf then return end
-
     local targetCF = GetStableFarmCFrame(cf)
     pcall(function()
         local humanoid = Character:FindFirstChildOfClass("Humanoid")
@@ -2572,7 +2955,6 @@ function MoveCharacterToFarmCFrame(cf)
             humanoid.Sit = false
             humanoid.AutoRotate = false
         end
-
         Character:PivotTo(targetCF)
         HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
         HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
@@ -2583,7 +2965,6 @@ end
 function TeleportToMob(mob)
     local cf = GetTargetCFrame(mob, FarmPosition)
     if not cf then return end
-
     if FarmMode == "Tween" then
         local tweenInfo = TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         local tween = TweenService:Create(HumanoidRootPart, tweenInfo, { CFrame = GetStableFarmCFrame(cf) })
@@ -2597,15 +2978,11 @@ function TeleportToMob(mob)
     end
 end
 
--- ============================================================
 -- =========== DARK DIMENSION / Astro Holdout Mode MOVEMENT ===========
--- ============================================================
-
 function MoveSpecialCharacterCFrame(cf)
     if ResetWaveTeleporting then return false end
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart or not cf then return false end
-
     local ok = pcall(function()
         local humanoid = Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
@@ -2617,14 +2994,12 @@ function MoveSpecialCharacterCFrame(cf)
         HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         StabilizeFarmCamera()
     end)
-
     return ok
 end
 
 function MoveFarmSpecialCFrame(cf, tweenTime)
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart or not cf then return false end
-
     if FarmMode == "Tween" then
         local ok = pcall(function()
             local tween = TweenService:Create(
@@ -2640,7 +3015,6 @@ function MoveFarmSpecialCFrame(cf, tweenTime)
         end)
         return ok
     end
-
     return MoveSpecialCharacterCFrame(cf)
 end
 
@@ -2651,7 +3025,6 @@ function StopFarmLockForSanityCollect(reason)
     FarmForceRetarget = true
     LockActive = false
     _interruptSignal = true
-
     pcall(function()
         RefreshCombatCharacter()
         if Character then
@@ -2666,7 +3039,6 @@ function StopFarmLockForSanityCollect(reason)
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
-
     pcall(function() RunService.Heartbeat:Wait() end)
     task.wait(0.03)
     return DarkDimensionCollectToken
@@ -2702,24 +3074,20 @@ end
 function GetSanityTouchPart(orb)
     if not orb or not orb.Parent then return nil end
     if IsValidSanityTouchPart(orb) then return orb end
-
     local touch = orb:FindFirstChild("TouchInterest", true)
     if touch and touch.Parent and touch.Parent:IsA("BasePart") then
         return touch.Parent
     end
-
     for _, obj in ipairs(orb:GetDescendants()) do
         if IsValidSanityTouchPart(obj) then
             return obj
         end
     end
-
     return nil
 end
 
 function ScanSanityOrbContainer(container, bestPart, bestDist)
     if not container then return bestPart, bestDist end
-
     if container.Name == "OrbSanity" then
         local directPart = GetSanityTouchPart(container)
         if directPart then
@@ -2730,7 +3098,6 @@ function ScanSanityOrbContainer(container, bestPart, bestDist)
             end
         end
     end
-
     for _, obj in ipairs(container:GetDescendants()) do
         if obj.Name == "OrbSanity" then
             local part = GetSanityTouchPart(obj)
@@ -2743,33 +3110,27 @@ function ScanSanityOrbContainer(container, bestPart, bestDist)
             end
         end
     end
-
     return bestPart, bestDist
 end
 
 function GetNearestSanityOrbPart()
     RefreshCombatCharacter()
     if not HumanoidRootPart then return nil end
-
     local bestPart, bestDist = nil, math.huge
     local living = workspace:FindFirstChild("Living")
     bestPart, bestDist = ScanSanityOrbContainer(living, bestPart, bestDist)
-
     if not bestPart and tick() - (DarkDimensionOrbSearchCooldown or 0) > 0.4 then
         DarkDimensionOrbSearchCooldown = tick()
         bestPart, bestDist = ScanSanityOrbContainer(workspace, bestPart, bestDist)
     end
-
     return bestPart
 end
 
 function TouchSanityOrb(part)
     RefreshCombatCharacter()
     if not part or not part.Parent or not HumanoidRootPart then return false end
-
     local touchCF = part.CFrame + Vector3.new(0, 2, 0)
     MoveSpecialCharacterCFrame(touchCF)
-
     local ok = pcall(function()
         if firetouchinterest and HasSanityTouchInterest(part) then
             for _ = 1, 3 do
@@ -2784,7 +3145,6 @@ function TouchSanityOrb(part)
             task.wait(0.2)
         end
     end)
-
     return ok
 end
 
@@ -2821,12 +3181,9 @@ end
 
 function HandleDarkDimensionSanity()
     if FarmTargetMode ~= "Dark Dimension Mode" or DarkDimensionCollecting or not AutoFarmEnabled then return false end
-
     local sanity = GetSanityTransparency()
     if not sanity or sanity >= DarkDimensionLowValue then return false end
-
     local collectToken = StopFarmLockForSanityCollect("低理智值")
-
     local didCollect = false
     pcall(function()
         while AutoFarmEnabled and FarmTargetMode == "Dark Dimension Mode" and DarkDimensionCollectToken == collectToken do
@@ -2835,17 +3192,14 @@ function HandleDarkDimensionSanity()
             LockActive = false
             FarmCollecting = true
             FarmForceRetarget = true
-
             sanity = GetSanityTransparency()
             if not sanity then break end
             if sanity >= DarkDimensionSafeValue then break end
-
             local part = GetNearestSanityOrbPart()
             if not part then
                 WarnDarkDimensionMissingOrb()
                 break
             end
-
             if MoveToSanityOrb(part) then
                 task.wait(1.25)
                 if DarkDimensionCollectToken ~= collectToken then break end
@@ -2853,7 +3207,6 @@ function HandleDarkDimensionSanity()
                 TouchSanityOrb(part)
                 didCollect = true
             end
-
             local waited = 0
             repeat
                 task.wait(0.12)
@@ -2862,7 +3215,6 @@ function HandleDarkDimensionSanity()
             until not AutoFarmEnabled or FarmTargetMode ~= "Dark Dimension Mode" or not sanity or sanity >= DarkDimensionSafeValue or not part.Parent or not HasSanityTouchInterest(part) or waited >= 3
         end
     end)
-
     if DarkDimensionCollectToken == collectToken then
         DarkDimensionCollecting = false
         FarmCollecting = false
@@ -2878,68 +3230,43 @@ function HandleDarkDimensionSanity()
             FarmForceRetarget = false
         end
     end
-
     return didCollect
 end
 
 function DoAstroModeFinalDoor()
     if FarmTargetMode ~= "Astro Holdout Mode" or AstroModeFinalRunning then return false end
-
     local now = tick()
     if now - AstroModeLastFinalAt < 2 then return false end
     AstroModeLastFinalAt = now
     AstroModeFinalRunning = true
-
     local ok = pcall(function()
         RefreshCombatCharacter()
         if not Character or not HumanoidRootPart then return end
         LockActive = false
         WaitingRespawn = true
         FarmForceRetarget = true
-
         MoveCharacterToFarmCFrame(AstroModeDoorTopCF)
         task.wait(0.12)
-
         if FarmMode == "Tween" then
             MoveFarmSpecialCFrame(AstroModeDoorBottomCF, 0.45)
         else
             MoveCharacterToFarmCFrame(AstroModeDoorBottomCF)
         end
-
         task.wait(0.15)
         FarmForceRetarget = false
     end)
-
     AstroModeFinalRunning = false
     return ok
 end
 
-function LockToMob(mob)
-    LockActive = true
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if not AutoFarmEnabled or IsMobDead(mob) or not LockActive or FarmForceRetarget or (IsAntiJeffreyEscapePauseActive and IsAntiJeffreyEscapePauseActive()) then
-            connection:Disconnect()
-            LockActive = false
-            return
-        end
-        if not Character or not HumanoidRootPart then return end
-        local cf = GetTargetCFrame(mob, FarmPosition)
-        if cf then
-            MoveCharacterToFarmCFrame(cf)
-        end
-    end)
-end
 -- ====================== AUTO LOOPS ======================
 function RefreshCombatCharacter()
     if not Character or not Character.Parent then
         Character = LocalPlayer.Character
     end
-
     if Character and (not HumanoidRootPart or HumanoidRootPart.Parent ~= Character) then
         HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
     end
-
     Client = LocalPlayer
     return Character, HumanoidRootPart
 end
@@ -2950,33 +3277,27 @@ function SafeGetPriorityMob()
         CombatDebug("CombatCharacter", "角色或 HumanoidRootPart 未就绪.", 4)
         return nil, nil, nil, 0
     end
-
     local ok, mob, mobType, extraData, priority = pcall(function()
         return GetPriorityMob()
     end)
-
     if ok then
         if mob then
             return mob, mobType, extraData, priority
         end
-
         if tick() - MobCacheLastRebuild > 0.6 then
             InvalidateMobCache("优先级返回 nil")
             local ok2, mob2, mobType2, extraData2, priority2 = pcall(function()
                 RebuildMobCache()
                 return GetPriorityMob()
             end)
-
             if ok2 and mob2 then
                 CombatDebug("PriorityRecovered", "缓存重建后恢复优先级怪物: " .. tostring(mob2.Name), 3)
                 return mob2, mobType2, extraData2, priority2
             end
         end
-
         CombatDebug("PriorityNoMob", "尚未找到有效怪物.", 4)
         return nil, nil, nil, 0
     end
-
     CombatDebug("PriorityError", "GetPriorityMob 失败: " .. tostring(mob), 3, true)
     warn("[DYHUB] GetPriorityMob 失败:", tostring(mob))
     InvalidateMobCache("优先级错误")
@@ -2986,7 +3307,6 @@ end
 function StartAutoAttack()
     if AutoAttackLoopRunning then return end
     AutoAttackLoopRunning = true
-
     task.spawn(function()
         while AutoAttackEnabled do
             if FarmCollecting then
@@ -3014,7 +3334,6 @@ function StartAutoAttack()
                 task.wait(0.25)
             end
         end
-
         AutoAttackLoopRunning = false
     end)
 end
@@ -3022,7 +3341,6 @@ end
 function StartAutoSkill()
     if AutoSkillLoopRunning then return end
     AutoSkillLoopRunning = true
-
     task.spawn(function()
         while AutoSkillEnabled do
             if FarmCollecting then
@@ -3035,17 +3353,14 @@ function StartAutoSkill()
                 local mob = SafeGetPriorityMob()
                 if mob then
                     WaitingRespawn = false
-
                     local keysToPress = {}
                     if table.find(SelectedSkills, "All") then
                         keysToPress = skillList
                     else
                         keysToPress = SelectedSkills
                     end
-
                     for _, key in ipairs(keysToPress) do
                         if not AutoSkillEnabled or not IsMiscFarmAllowed() or FarmCollecting or (IsAntiJeffreyEscapePauseActive and IsAntiJeffreyEscapePauseActive()) or (IsDarkDimensionSanityLow and IsDarkDimensionSanityLow()) then break end
-
                         local keyCode = Enum.KeyCode[key]
                         if keyCode then
                             pcall(function()
@@ -3068,7 +3383,6 @@ function StartAutoSkill()
             end
             task.wait(0.05)
         end
-
         AutoSkillLoopRunning = false
     end)
 end
@@ -3107,7 +3421,6 @@ function SaveAndBoostFPS()
     BoostFPS_Active = true
     BoostFPS_OriginalData = {}
     BoostFPS_LightingData = {}
-
     local Lighting = game:GetService("Lighting")
     BoostFPS_LightingData = {
         Brightness        = Lighting.Brightness,
@@ -3131,11 +3444,9 @@ function SaveAndBoostFPS()
             end
         end)
     end
-
     pcall(function()
         for _, obj in ipairs(workspace:GetDescendants()) do
             if IsLivingDescendant(obj) then continue end
-
             if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") or obj:IsA("SpecialMesh") then
                 if not IsLivingDescendant(obj) then
                     if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
@@ -3162,7 +3473,6 @@ function SaveAndBoostFPS()
             end
         end
     end)
-
     BoostFPS_RestoreConnection = workspace.DescendantAdded:Connect(function(obj)
         if not BoostFPS_Active then return end
         if IsLivingDescendant(obj) then return end
@@ -3181,19 +3491,16 @@ function SaveAndBoostFPS()
             end
         end)
     end)
-
     print("[DYHUB] 删除地图: 开启")
 end
 
 function RestoreBoostFPS()
     if not BoostFPS_Active then return end
     BoostFPS_Active = false
-
     if BoostFPS_RestoreConnection then
         BoostFPS_RestoreConnection:Disconnect()
         BoostFPS_RestoreConnection = nil
     end
-
     local Lighting = game:GetService("Lighting")
     pcall(function()
         if BoostFPS_LightingData.Brightness        ~= nil then Lighting.Brightness        = BoostFPS_LightingData.Brightness end
@@ -3208,7 +3515,6 @@ function RestoreBoostFPS()
             end)
         end
     end
-
     for obj, data in pairs(BoostFPS_OriginalData) do
         pcall(function()
             if not obj or not obj.Parent then return end
@@ -3221,7 +3527,6 @@ function RestoreBoostFPS()
             if data.TextureId  ~= nil then obj.TextureId = data.TextureId end
         end)
     end
-
     BoostFPS_OriginalData = {}
     BoostFPS_LightingData = {}
     print("[DYHUB] 删除地图: 关闭 (已恢复)")
@@ -3282,40 +3587,31 @@ function ForceGodModeOnce(reason)
     local ok, result = pcall(function()
         local char = LocalPlayer.Character
         if not char then return false end
-
         local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
         if not humanoid then return false end
         if IsCharacterDeadForGodMode(char, humanoid) then return false end
-
         local destroyed = false
-
         local head = char:FindFirstChild("Head")
         if head then
             head:Destroy()
             destroyed = true
         end
-
         task.wait(0.05)
-
         if IsCharacterDeadForGodMode(char, humanoid) then
             CombatDebug("GodMode", "触发一次: " .. tostring(reason or "手动"), 2)
             return true
         end
-
         local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
         if torso then
             torso:Destroy()
             destroyed = true
         end
-
         if not destroyed and not IsCharacterDeadForGodMode(char, humanoid) then
             humanoid.Health = 0
         end
-
         CombatDebug("GodMode", "触发一次: " .. tostring(reason or "手动"), 2)
         return true
     end)
-
     return ok and result == true
 end
 
@@ -3329,18 +3625,14 @@ end
 task.spawn(function()
     while true do
         task.wait(0.1)
-
         if GodModeEnabled and not FarmAstroGodModePaused and IsMiscFarmAllowed() and not ShouldBlockFarmAstroGodModePercent() then
             pcall(function()
                 local char = LocalPlayer.Character
                 if not char then return end
-
                 local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
                 if not humanoid then return end
                 if humanoid.MaxHealth <= 0 then return end
-
                 local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
-
                 if hpPercent < GodModeValue then
                     ForceGodModeOnce("HP 低于上帝模式阈值")
                 end
@@ -3407,24 +3699,19 @@ function stopNoBarrier()
     end
 end
 
--- ============================================================
 -- ====================== AUTO START MODE ======================
 function FireGetReady(delayBefore)
     if delayBefore == nil then delayBefore = 0 end
     if delayBefore > 0 then task.wait(delayBefore) end
-
     local now = tick()
     if now - (AutoStartLastReadyAt or 0) < 0.85 then return false end
     AutoStartLastReadyAt = now
-
     if AutoVoteinGameEnabled then
         FireAutoVote(true)
         task.wait(0.2)
     end
-
     local remote = GetRemote("GetReadyRemote")
     if not remote then return false end
-
     local ok, err = pcall(function()
         remote:FireServer("1", true)
         task.wait(0.2)
@@ -3436,7 +3723,6 @@ function FireGetReady(delayBefore)
         task.wait(0.2)
         remote:FireServer("1", true)
     end)
-
     if not ok then warn("[DYHUB] GetReadyRemote 失败:", err) end
     return ok
 end
@@ -3446,11 +3732,8 @@ function SetupAutoStartOnly(enabled)
         AutoStartConnection:Disconnect()
         AutoStartConnection = nil
     end
-
     if not enabled then return end
-
     FireGetReady(0)
-
     AutoStartConnection = LocalPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         if AutoStartEnabled then
@@ -3489,25 +3772,19 @@ function TeleportToIdle(force)
     WaitingRespawn = true
     IdlePosition = GetDYHUBWaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
     UpdateDYHUBWaitingPartCollision()
-
     if not Character or not Character.Parent or not HumanoidRootPart then return end
-
     local now = tick()
-
     if not force and IsNearIdlePosition() then
         IdlePositionReached = true
         StopIdleVelocity()
         return
     end
-
     if not force and (now - LastIdleTeleportAt) < IdleTeleportCooldown then
         StopIdleVelocity()
         return
     end
-
     LastIdleTeleportAt = now
     IdlePositionReached = true
-
     pcall(function()
         Character:PivotTo(IdlePosition)
         HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
@@ -3577,12 +3854,10 @@ function ActivateAllFlushPrompts()
     local now = tick()
     if now - (LastFlushPromptActivateAllAt or 0) < 0.35 then return end
     LastFlushPromptActivateAllAt = now
-
     pcall(function()
         if FlushPromptCacheDirty or tick() - (FlushPromptCacheLastScan or 0) > (FlushPromptCacheTTL or 8) then
             RebuildFlushPromptCache()
         end
-
         for prompt in pairs(FlushPromptCache) do
             if prompt and prompt.Parent and IsFlushPrompt(prompt) then
                 ActivateProximityPrompt(prompt)
@@ -3592,6 +3867,7 @@ function ActivateAllFlushPrompts()
         end
     end)
 end
+
 -- ============================================================
 -- ====================== COLLECT SYSTEM ======================
 -- ============================================================
@@ -3675,7 +3951,6 @@ function FindNewCollectItems()
     if CollectCacheDirty or tick() - CollectLastFullScan > 5 then
         RebuildCollectCache()
     end
-
     local found = {}
     for obj, _ in pairs(CollectCandidateCache) do
         if not obj or not obj.Parent or not IsCollectTarget(obj.Name) then
@@ -3702,10 +3977,8 @@ end
 function MoveToItem(itemRoot)
     RefreshCombatCharacter()
     if not itemRoot or not Character or not HumanoidRootPart then return false end
-
     local targetCF = GetItemTargetCFrame(itemRoot)
     if not targetCF then return false end
-
     if CollectMovementMode == "Teleport" then
         pcall(function()
             Character:PivotTo(targetCF)
@@ -3714,7 +3987,6 @@ function MoveToItem(itemRoot)
         end)
         return true
     end
-
     local ok = pcall(function()
         local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = targetCF })
         tween:Play()
@@ -3732,7 +4004,6 @@ function MoveToItem(itemRoot)
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end)
     end)
-
     return ok
 end
 
@@ -3779,14 +4050,11 @@ function CollectSingleItem(obj)
     if IsItemGone(obj) then return end
     local itemRoot = GetItemRootPart(obj)
     if not itemRoot then return end
-
     MoveToItem(itemRoot)
-
     local timeout = 0
     while AutoCollectEnabled and not IsItemGone(obj) and timeout < 8 do
         itemRoot = GetItemRootPart(obj)
         if not itemRoot then break end
-
         if timeout == 0 or timeout % 0.3 < 0.16 then
             local targetCF = GetItemTargetCFrame(itemRoot)
             pcall(function()
@@ -3797,12 +4065,10 @@ function CollectSingleItem(obj)
                 end
             end)
         end
-
         ActivateItemPrompts(obj)
         task.wait(0.15)
         timeout = timeout + 0.15
     end
-
     KnownCollectItems[obj] = true
 end
 
@@ -3820,7 +4086,6 @@ function StartAutoCollectLoop()
                 task.wait(1)
                 continue
             end
-
             if #SelectedCollectItems > 0 then
                 local itemsToCollect = FindNewCollectItems()
                 if #itemsToCollect > 0 then
@@ -3831,7 +4096,6 @@ function StartAutoCollectLoop()
                             if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
                         end
                         EndCollectPause()
-
                     elseif CollectMode == "Clean" then
                         local waitedClean = 0
                         while not AllMobsDead() and AutoCollectEnabled do
@@ -3840,7 +4104,6 @@ function StartAutoCollectLoop()
                             if waitedClean >= 120 then break end
                         end
                         if not AutoCollectEnabled then break end
-
                         if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
                         BeginCollectPause()
                         for _, obj in ipairs(FindNewCollectItems()) do
@@ -3849,7 +4112,6 @@ function StartAutoCollectLoop()
                         end
                         EndCollectPause()
                         if AutoSkipHeliEnabled then TriggerAutoSkipHeli(true) end
-
                         if not IsPlayerHPFull() and AutoFillUpEnabled then
                             local fw = 0
                             while not IsPlayerHPFull() and AutoFillUpEnabled and AutoCollectEnabled do
@@ -3885,7 +4147,6 @@ end)
 FARM_ASTRO_TOKEN_IMAGE = "rbxassetid://104487529937663"
 FARM_ASTRO_TOP_A       = CFrame.new(-680, 167, 505)
 FARM_ASTRO_TOP_B       = CFrame.new(495, 167, 505)
-
 FARM_ASTRO_LOW_A       = CFrame.new(-680, -15, -555)
 FARM_ASTRO_LOW_B       = CFrame.new(500, -15, -555)
 FARM_ASTRO_TIMER_TOP_CF = CFrame.new(-23.3435822, 67, 0.341766357)
@@ -3997,7 +4258,6 @@ function PauseFarmAstroGodModeForTimer()
     if not IsFarmAstroGodModeSelected() then return false end
     if FarmAstroGodModePaused then return true end
     if tick() < FarmAstroTokenTimerIgnoreUntil then return false end
-
     local timerValue = GetFarmAstroTimerValue()
     UpdateFarmAstroWaveTimerArmed(timerValue)
     if timerValue ~= nil and timerValue <= 10 and FarmAstroWaveTimerArmed == true then
@@ -4006,7 +4266,6 @@ function PauseFarmAstroGodModeForTimer()
         CombatDebug("FarmAstroGodSync", "上帝模式百分比在波次计时器 " .. tostring(timerValue) .. " 处暂停", 2, false)
         return true
     end
-
     return false
 end
 
@@ -4023,7 +4282,6 @@ function ResumeFarmAstroGodModeAfterRespawn(reason)
     FarmAstroLastReviveTimer = nil
     FarmAstroWaveTimerArmed = false
     FarmAstroLastWaveTimer = nil
-
     if wasPaused and IsFarmAstroGodModeSelected() then
         CombatDebug("FarmAstroGodSync", "上帝模式在 " .. tostring(reason or "重生") .. " 后恢复", 2, false)
         task.defer(function()
@@ -4082,10 +4340,8 @@ function CheckFarmAstroReviveGodModeOnce()
         FarmAstroLastReviveTimer = nil
         return
     end
-
     local reviveTimer = GetFarmAstroReviveTimerValue()
     UpdateFarmAstroReviveTimerArmed(reviveTimer)
-
     if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
         if not FarmAstroReviveGodTriggered then
             if ForceGodModeOnce("农场 Astro 复活计时器") then
@@ -4106,10 +4362,8 @@ function CheckFarmAstroBottomGodMode()
     if not FarmAstroTokenEnabled or not ShouldBlockFarmAstroGodModePercent() then return end
     if not FarmAstroFinalLockActive then return end
     if FarmAstroBottomGodTriggered then return end
-
     local reviveTimer = GetFarmAstroReviveTimerValue()
     UpdateFarmAstroReviveTimerArmed(reviveTimer)
-
     if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
         if ForceGodModeOnce("农场 Astro 底部锁定复活计时器") then
             FarmAstroBottomGodTriggered = true
@@ -4132,7 +4386,6 @@ function FarmAstroRuntimeChecks()
     CheckFarmAstroBottomGodMode()
 end
 
-
 function GetFarmAstroCharacter()
     local char = LocalPlayer.Character or Character
     if (not char or not char.Parent) and workspace:FindFirstChild("Living") then
@@ -4147,7 +4400,6 @@ end
 
 function CreateFarmAstroTokenPart()
     if FarmAstroTokenPart and FarmAstroTokenPart.Parent then return FarmAstroTokenPart end
-
     local part = Instance.new("Part")
     part.Name = "farm_astro_token"
     part.Size = Vector3.new(10, 1, 10)
@@ -4159,7 +4411,6 @@ function CreateFarmAstroTokenPart()
     part.Transparency = 1
     part.CFrame = FARM_ASTRO_TOP_A
     part.Parent = workspace
-
     for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
         local decal = Instance.new("Decal")
         decal.Name = "farm_astro_token_image"
@@ -4168,7 +4419,6 @@ function CreateFarmAstroTokenPart()
         decal.Transparency = 0
         decal.Parent = part
     end
-
     FarmAstroTokenPart = part
     return part
 end
@@ -4198,10 +4448,8 @@ end
 
 function MoveFarmAstroToTimerSafe()
     if FarmAstroFinalLockActive then return end
-
     CancelFarmAstroTween()
     CreateFarmAstroTokenPart()
-
     FarmAstroTokenTimerHold = false
     FarmAstroTimerDropping = true
     FarmAstroFinalLockActive = false
@@ -4210,13 +4458,11 @@ function MoveFarmAstroToTimerSafe()
     FarmAstroLastReviveTimer = nil
     FarmAstroWaveTimerArmed = false
     FarmAstroLastWaveTimer = nil
-
     pcall(function()
         if FarmAstroTokenPart and FarmAstroTokenPart.Parent then
             FarmAstroTokenPart.CFrame = FARM_ASTRO_TIMER_BOTTOM_CF * FARM_ASTRO_TIMER_PART_OFFSET
         end
     end)
-
     pcall(function()
         local char, hrp, hum = GetFarmAstroCharacter()
         if not char or not hrp then return end
@@ -4225,12 +4471,10 @@ function MoveFarmAstroToTimerSafe()
             hum.PlatformStand = false
             hum.AutoRotate = true
         end
-
         char:PivotTo(FARM_ASTRO_TIMER_TOP_CF)
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
-
     pcall(function()
         local char, hrp, hum = GetFarmAstroCharacter()
         if not char or not hrp then return end
@@ -4250,7 +4494,6 @@ function MoveFarmAstroToTimerSafe()
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
-
     FarmAstroTimerDropping = false
     FarmAstroTokenTimerHold = true
     FarmAstroFinalLockActive = true
@@ -4260,20 +4503,16 @@ end
 function WaitFarmAstroRespawnAfterTimer()
     MoveFarmAstroToTimerSafe()
     local lockStartedAt = tick()
-
     while FarmAstroTokenEnabled do
         FarmAstroRuntimeChecks()
         if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
             HoldFarmAstroBottomLockOnce()
         end
-
         if tick() - lockStartedAt >= 0.25 and IsFarmAstroTimerResetForNextWave() then
             break
         end
-
         task.wait(0.1)
     end
-
     FarmAstroTokenTimerHold = false
     FarmAstroFinalLockActive = false
     FarmAstroTimerDropping = false
@@ -4296,7 +4535,6 @@ function RebuildFarmAstroNoClipParts(char)
     FarmAstroNoClipChar = char
     FarmAstroNoClipPartsAt = tick()
     if not char then return end
-
     pcall(function()
         for _, obj in ipairs(char:GetDescendants()) do
             if obj:IsA("BasePart") then
@@ -4311,7 +4549,6 @@ function ApplyFarmAstroNoClipToCharacter(char)
     if FarmAstroNoClipChar ~= char or tick() - (FarmAstroNoClipPartsAt or 0) > 1.25 then
         RebuildFarmAstroNoClipParts(char)
     end
-
     for i = #FarmAstroNoClipParts, 1, -1 do
         local obj = FarmAstroNoClipParts[i]
         if obj and obj.Parent then
@@ -4369,14 +4606,12 @@ function TweenFarmAstroTokenTo(cf, duration)
         return "timer_end"
     end
     CancelFarmAstroTween()
-
     FarmAstroTokenTween = TweenService:Create(
         FarmAstroTokenPart,
         TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
         { CFrame = cf }
     )
     FarmAstroTokenTween:Play()
-
     while FarmAstroTokenEnabled do
         FarmAstroRuntimeChecks()
         if IsFarmAstroTimerEnding() then
@@ -4390,12 +4625,10 @@ function TweenFarmAstroTokenTo(cf, duration)
         if not FarmAstroTokenTween or FarmAstroTokenTween.PlaybackState ~= Enum.PlaybackState.Playing then break end
         task.wait(0.05)
     end
-
     if not FarmAstroTokenEnabled then
         CancelFarmAstroTween()
         return false
     end
-
     FarmAstroTokenTween = nil
     pcall(function() FarmAstroTokenPart.CFrame = cf end)
     return true
@@ -4410,7 +4643,6 @@ function StartFarmAstroToken()
         NotifyFarmAstroAutoFarm()
         return
     end
-
     FarmAstroTokenRunning = true
     NeedNoClip = true
     LockActive = false
@@ -4423,46 +4655,37 @@ function StartFarmAstroToken()
     StartFarmAstroNoClip()
     CheckFarmAstroCollectMode()
     HandleMiscOptions(MiscOptions)
-
     task.spawn(function()
         while FarmAstroTokenEnabled do
             if FarmAstroTokenPauseCollect then
                 repeat task.wait(0.2) until not FarmAstroTokenPauseCollect or not FarmAstroTokenEnabled
             end
             if not FarmAstroTokenEnabled then break end
-
             FarmAstroRuntimeChecks()
-
             if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
                 WaitFarmAstroRespawnAfterTimer()
                 continue
             end
-
             if IsFarmAstroTimerEnding() then
                 WaitFarmAstroRespawnAfterTimer()
                 continue
             end
-
             CreateFarmAstroTokenPart()
             FarmAstroTokenPart.CFrame = FARM_ASTRO_TOP_A
             FarmAstroSnapCharacterToPart()
-
             local topResult = TweenFarmAstroTokenTo(FARM_ASTRO_TOP_B, FARM_ASTRO_TWEEN_TIME)
             if topResult == "timer_end" then
                 WaitFarmAstroRespawnAfterTimer()
                 continue
             end
             if not topResult then break end
-
             if FarmAstroTokenPauseCollect then continue end
             if IsFarmAstroTimerEnding() then
                 WaitFarmAstroRespawnAfterTimer()
                 continue
             end
-
             FarmAstroTokenPart.CFrame = FARM_ASTRO_LOW_A
             FarmAstroSnapCharacterToPart()
-
             local lowResult = TweenFarmAstroTokenTo(FARM_ASTRO_LOW_B, FARM_ASTRO_TWEEN_TIME)
             if lowResult == "timer_end" then
                 WaitFarmAstroRespawnAfterTimer()
@@ -4470,7 +4693,6 @@ function StartFarmAstroToken()
             end
             if not lowResult then break end
         end
-
         CancelFarmAstroTween()
         StopFarmAstroNoClip()
         if FarmAstroTokenPart then pcall(function() FarmAstroTokenPart:Destroy() end) end
@@ -4524,7 +4746,7 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
+-- ====================== MAIN FARM LOOP ======================
 -- ============================================================
 FarmLoopToken = FarmLoopToken or 0
 
@@ -4533,7 +4755,6 @@ function StartFarmLoop()
     FarmLoopRunning = true
     FarmLoopToken = (FarmLoopToken or 0) + 1
     local thisFarmLoopToken = FarmLoopToken
-
     task.spawn(function()
         local ok, err = pcall(function()
             task.spawn(function()
@@ -4558,10 +4779,8 @@ function StartFarmLoop()
                     task.wait(0.35)
                 end
             end)
-
             while AutoFarmEnabled and FarmLoopToken == thisFarmLoopToken do
                 RefreshCombatCharacter()
-
                 if ResetWaveTeleporting then
                     LockActive = false
                     FarmForceRetarget = true
@@ -4569,40 +4788,32 @@ function StartFarmLoop()
                     task.wait(0.12)
                     continue
                 end
-
                 if not Character or not HumanoidRootPart then
                     task.wait(0.5)
                     continue
                 end
-
                 if FarmCollecting then
                     task.wait(0.2)
                     continue
                 end
-
                 if FarmTargetMode == "Dark Dimension Mode" and HandleDarkDimensionSanity() then
                     task.wait(0.1)
                     continue
                 end
-
                 if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(nil) then
                     task.wait(0.12)
                     continue
                 end
-
                 local mob, mobType, extraData, priority = SafeGetPriorityMob()
-
                 if mob and ValidateFarmTargetBeforeMove and not ValidateFarmTargetBeforeMove(mob, "预目标门") then
                     task.wait(0.18)
                     continue
                 end
-
                 if mob then
                     if FarmTargetMode == "Astro Holdout Mode" then AstroModeFinalRunning = false end
                     WaitingRespawn = false
                     IdlePositionReached = false
                     _currentTargetPriority = priority
-
                     if mobType == "GiantST" and extraData then
                         if ValidateFarmTargetBeforeMove and not ValidateFarmTargetBeforeMove(mob, "巨型目标门") then
                             task.wait(0.18)
@@ -4617,7 +4828,6 @@ function StartFarmLoop()
                             task.wait(0.12)
                             continue
                         end
-
                         local giantLockConn
                         giantLockConn = RunService.Heartbeat:Connect(function()
                             if IsMobDead(mob) or not mob.Parent or not AutoFarmEnabled or FarmCollecting or FarmForceRetarget or (IsAntiJeffreyEscapePauseActive and IsAntiJeffreyEscapePauseActive()) or IsDarkDimensionSanityLow() or (IsFarmJeffreyAvoidActive and IsFarmJeffreyAvoidActive() and IsMobBlockedByJeffrey(mob, GetFarmTargetDangerRange and GetFarmTargetDangerRange() or 70)) then
@@ -4629,20 +4839,15 @@ function StartFarmLoop()
                                 MoveCharacterToFarmCFrame(lockCF)
                             end
                         end)
-
                         repeat
                             task.wait(0.2)
                             if HandleDarkDimensionSanityEmergency and HandleDarkDimensionSanityEmergency() then break end
                             if FarmCollecting or FarmForceRetarget then break end
-                            if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(mob) then
-                                break
-                            end
+                            if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(mob) then break end
                             ActivateProximityPrompt(extraData)
                             ActivateAllFlushPrompts()
                         until IsMobDead(mob) or not mob.Parent or not AutoFarmEnabled
-
                         if giantLockConn then pcall(function() giantLockConn:Disconnect() end) end
-
                     else
                         if SafeModeEnabled and GetPlayerHealthPercent() < SafeValue then
                             local mobRoot = mob:FindFirstChild("HumanoidRootPart")
@@ -4676,7 +4881,6 @@ function StartFarmLoop()
                                 ClearMobBoundsCache(mob)
                                 continue
                             end
-
                             LockActive = true
                             local lockConn
                             lockConn = RunService.Heartbeat:Connect(function()
@@ -4691,22 +4895,17 @@ function StartFarmLoop()
                                     MoveCharacterToFarmCFrame(cf)
                                 end
                             end)
-
                             repeat
                                 task.wait(0.15)
                                 if HandleDarkDimensionSanityEmergency and HandleDarkDimensionSanityEmergency() then break end
                                 if FarmCollecting or FarmForceRetarget then break end
-                                if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(mob) then
-                                    break
-                                end
-
+                                if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(mob) then break end
                                 local shouldInterrupt, newPriority = CheckInterrupt(priority)
                                 if shouldInterrupt then
                                     _interruptSignal = true
                                     break
                                 end
                             until IsMobDead(mob) or not AutoFarmEnabled
-
                             if lockConn then pcall(function() lockConn:Disconnect() end) end
                             LockActive = false
                             if ResetWaveTeleporting then
@@ -4720,7 +4919,6 @@ function StartFarmLoop()
                             ClearMobBoundsCache(mob)
                         end
                     end
-
                 else
                     _currentTargetPriority = 0
                     if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(nil) then
@@ -4740,16 +4938,13 @@ function StartFarmLoop()
                     until ResetWaveTeleporting or FarmCollecting or SafeGetPriorityMob() ~= nil or not AutoFarmEnabled
                     WaitingRespawn = false
                 end
-
                 task.wait(0.12)
             end
         end)
-
         if not ok then
             warn("[DYHUB] 农场循环错误:", tostring(err))
             CombatDebug("FarmLoopError", tostring(err), 3, true)
         end
-
         WaitingRespawn = false
         FarmCollecting = false
         if ResetWaveTeleporting then
@@ -4762,7 +4957,6 @@ function StartFarmLoop()
         end
         _currentTargetPriority = 0
         FarmLoopRunning = false
-
         if AutoFarmEnabled and not ResetWaveTeleporting then
             task.delay(0.5, function()
                 if AutoFarmEnabled and not ResetWaveTeleporting then StartFarmLoop() end
@@ -4771,35 +4965,28 @@ function StartFarmLoop()
     end)
 end
 
-
 -- ====================== RESET WAVE SYSTEM ======================
 function GetResetWaveLabel()
     local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
-
     local wavesGui = playerGui:FindFirstChild("WavesGui")
     if not wavesGui then return nil end
-
     local frame = wavesGui:FindFirstChild("Frame")
     if not frame then return nil end
-
     return frame:FindFirstChild("TextLabel")
 end
 
 function GetCurrentResetWave()
     local label = GetResetWaveLabel()
     if not label then return nil end
-
     local ok, textValue = pcall(function()
         return tostring(label.Text or "")
     end)
     if not ok then return nil end
-
     local waveText = textValue:match("[Ww]ave%s*=?%s*(%d+)")
     if not waveText then
         waveText = textValue:match("(%d+)")
     end
-
     return tonumber(waveText)
 end
 
@@ -4825,12 +5012,10 @@ function IsResetWaveCharacterReady()
     if not Character or not Character.Parent or not HumanoidRootPart or not HumanoidRootPart.Parent then
         return false
     end
-
     local humanoid = Character:FindFirstChildOfClass("Humanoid") or Character:FindFirstChild("Humanoid")
     if humanoid and humanoid.Health <= 0 then
         return false
     end
-
     return true
 end
 
@@ -4842,7 +5027,6 @@ function BreakFarmLockForResetWave()
     _interruptSignal = true
     WaitingRespawn = false
     _currentTargetPriority = 0
-
     pcall(function()
         RefreshCombatCharacter()
         if Character then
@@ -4858,17 +5042,14 @@ function BreakFarmLockForResetWave()
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
-
     pcall(function() RunService.Heartbeat:Wait() end)
 end
 
 function HoldResetWavePosition(token)
     local holdUntil = tick() + (ResetWaveHoldTime or 2)
-
     while ResetWaveEnabled and ResetWaveTeleporting and token == ResetWaveToken and tick() < holdUntil do
         if not IsMiscFarmAllowed() then return false end
         if not IsResetWaveCharacterReady() then return false end
-
         pcall(function()
             local humanoid = Character:FindFirstChildOfClass("Humanoid") or Character:FindFirstChild("Humanoid")
             if humanoid then
@@ -4876,25 +5057,20 @@ function HoldResetWavePosition(token)
                 humanoid.PlatformStand = false
                 humanoid.AutoRotate = true
             end
-
             NeedNoClip = true
             Character:PivotTo(ResetWaveTargetCF)
             HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
             StabilizeFarmCamera()
         end)
-
         task.wait(0.1)
     end
-
     return ResetWaveEnabled and token == ResetWaveToken and IsResetWaveCharacterReady()
 end
 
 function FinishResetWaveTeleport(token, completed, currentWave, targetWave)
     if token ~= ResetWaveToken then return end
-
     ResetWaveTeleporting = false
-
     if completed then
         ResetWaveLastTriggeredWave = currentWave
         ResetWaveLastTriggeredKey = GetResetWaveTriggerKey(currentWave, targetWave)
@@ -4902,11 +5078,9 @@ function FinishResetWaveTeleport(token, completed, currentWave, targetWave)
     else
         ClearResetWaveTrigger("传送中断")
     end
-
     FarmForceRetarget = false
     _interruptSignal = false
     LockActive = false
-
     if completed and ResetWaveEnabled and AutoFarmEnabled and StartFarmLoop then
         task.defer(function()
             if ResetWaveEnabled and AutoFarmEnabled and not ResetWaveTeleporting then
@@ -4918,45 +5092,34 @@ end
 
 function TeleportResetWave(currentWave, targetWave, force, reason)
     if ResetWaveTeleporting then return false end
-
     local now = tick()
     if not force and now - (ResetWaveLastTeleportAt or 0) < 0.6 then return false end
     ResetWaveLastTeleportAt = now
-
     currentWave = tonumber(currentWave) or GetCurrentResetWave()
     targetWave = tonumber(targetWave) or GetResetWaveTargetValue()
     if not currentWave or currentWave < targetWave then return false end
-
     ResetWaveToken = (ResetWaveToken or 0) + 1
     local token = ResetWaveToken
-
     BreakFarmLockForResetWave()
-
     local ok, completed = pcall(function()
         if not IsResetWaveCharacterReady() then return false end
-
         pcall(function()
             NeedNoClip = true
             Character:PivotTo(ResetWaveTargetCF)
             HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end)
-
         return HoldResetWavePosition(token)
     end)
-
     FinishResetWaveTeleport(token, ok and completed == true, currentWave, targetWave)
     return ok and completed == true
 end
 
 function EvaluateResetWaveNow(reason, force)
     if not ResetWaveEnabled or not IsMiscFarmAllowed() or ResetWaveTeleporting then return false end
-
     local currentWave = GetCurrentResetWave()
     local targetWave = GetResetWaveTargetValue()
-
     if currentWave == nil then return false end
-
     if currentWave >= targetWave then
         local key = GetResetWaveTriggerKey(currentWave, targetWave)
         if force or ResetWaveLastTriggeredKey ~= key then
@@ -4965,33 +5128,28 @@ function EvaluateResetWaveNow(reason, force)
     else
         ClearResetWaveTrigger("波次低于目标")
     end
-
     return false
 end
 
 function StartResetWaveLoop()
     if ResetWaveLoopRunning then return end
     ResetWaveLoopRunning = true
-
     task.spawn(function()
         while ResetWaveEnabled do
             pcall(function()
                 EvaluateResetWaveNow("循环", false)
             end)
-
             task.wait(ResetWaveTeleporting and 0.1 or 0.25)
         end
-
         ResetWaveLoopRunning = false
     end)
 end
+
 -- ====================== MISC OPTIONS HANDLER ======================
 function HandleMiscOptions(selectedOptions)
     selectedOptions = selectedOptions or {}
     MiscOptions = selectedOptions
-
     local canRun = IsMiscFarmAllowed()
-
     local hasAutoAttack = table.find(selectedOptions, "Auto Attack") ~= nil
     if hasAutoAttack and canRun then
         AutoAttackEnabled = true
@@ -4999,7 +5157,6 @@ function HandleMiscOptions(selectedOptions)
     else
         AutoAttackEnabled = false
     end
-
     local hasAutoSkill = table.find(selectedOptions, "Auto Skill") ~= nil
     if hasAutoSkill and canRun then
         AutoSkillEnabled = true
@@ -5007,7 +5164,6 @@ function HandleMiscOptions(selectedOptions)
     else
         AutoSkillEnabled = false
     end
-
     local hasAutoSkipHeli = table.find(selectedOptions, "Auto Skip Helicopter")
     if hasAutoSkipHeli and canRun then
         if not AutoSkipHeliEnabled then AutoSkipHeliEnabled = true; TriggerAutoSkipHeli(true) end
@@ -5015,17 +5171,14 @@ function HandleMiscOptions(selectedOptions)
         if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
         AutoSkipHeliEnabled = false
     end
-
     local hasBoostFPS = table.find(selectedOptions, "Delete Map")
     if hasBoostFPS and canRun then
         if not BoostFPS_Active then SaveAndBoostFPS() end
     elseif BoostFPS_Active then
         RestoreBoostFPS()
     end
-
     SafeModeEnabled = table.find(selectedOptions, "Safe Mode") ~= nil and canRun
     GodModeEnabled  = table.find(selectedOptions, "God Mode") ~= nil and canRun
-
     local hasResetWave = table.find(selectedOptions, "Reset Wave")
     if hasResetWave and canRun then
         if not ResetWaveEnabled then
@@ -5042,14 +5195,12 @@ function HandleMiscOptions(selectedOptions)
         ResetWaveToken = (ResetWaveToken or 0) + 1
         ClearResetWaveTrigger("disabled")
     end
-
     local hasAutoStart = table.find(selectedOptions, "Auto Start")
     if hasAutoStart and canRun then
         if not AutoStartEnabled then StartAutoStart() end
     else
         if AutoStartEnabled then StopAutoStart() end
     end
-
     local hasAutoFillUp = table.find(selectedOptions, "Auto Fill Up")
     if hasAutoFillUp and canRun then
         if not AutoFillUpEnabled then AutoFillUpEnabled = true; StartAutoFillUpLoop() end
@@ -5057,7 +5208,6 @@ function HandleMiscOptions(selectedOptions)
         AutoFillUpEnabled = false
         FillUpRunning = false
     end
-
     Config:Set("MiscOptions", selectedOptions)
     Config:Set("AutoStartEnabled", hasAutoStart ~= nil)
     Config:Save()
@@ -5066,16 +5216,13 @@ end
 -- ====================== CHARACTER RESPAWN HANDLER ======================
 LocalPlayer.CharacterAdded:Connect(function(char)
     local keepFarmAstroBottomLock = ShouldKeepFarmAstroFinalLock and ShouldKeepFarmAstroFinalLock()
-
     Character        = char
     HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
     Client           = LocalPlayer
     FarmAstroTokenRespawnCounter = FarmAstroTokenRespawnCounter + 1
-
     ResetWaveToken = (ResetWaveToken or 0) + 1
     ResetWaveTeleporting = false
     ClearResetWaveTrigger("角色重生")
-
     if keepFarmAstroBottomLock then
         FarmAstroTokenTimerHold = true
         FarmAstroFinalLockActive = true
@@ -5107,7 +5254,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         ResumeFarmAstroGodModeAfterRespawn("角色重生")
         if FarmAstroTokenEnabled then CancelFarmAstroTween() end
     end
-
     JeffreyCacheAt = 0
     UpdateDYHUBWaitingPartCollision()
     MobHeightOverride   = {}
@@ -5174,7 +5320,8 @@ AutoFarmToggle = Main:Toggle({
                 WindUI:Notify({ Title = T("auto_farm"), Content = T("notify_auto_farm_closed_independent"), Duration = 3, Icon = "unlink" })
             end
         end
-        Config:Set("AutoFarmEnabled", state); Config:Save()
+        Config:Set("AutoFarmEnabled", state)
+        Config:Save()
     end
 })
 
@@ -5199,8 +5346,15 @@ Main:Dropdown({
         Config:Save()
         InvalidateMobCache("farm target mode changed")
         FarmForceRetarget = true
-        if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
-        task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
+        if AutoFarmEnabled then
+            StartFarmLoop()
+            StartJeffreyGuardLoop()
+        end
+        task.delay(0.4, function()
+            if not IsAntiJeffreyEscapePauseActive() then
+                FarmForceRetarget = false
+            end
+        end)
         WindUI:Notify({ Title = T("mode_farm"), Content = T("notify_selected") .. tostring(value), Duration = 2, Icon = "target" })
     end
 })
@@ -5215,8 +5369,13 @@ Main:Dropdown({
     Value = FarmPosition == "Above" and T("position_above") or T("position_under"),
     Callback = function(value)
         local key = GetOriginalKey(value)
-        if key == "position_above" then FarmPosition = "Above" elseif key == "position_under" then FarmPosition = "Under" end
-        Config:Set("FarmPosition", FarmPosition); Config:Save()
+        if key == "position_above" then
+            FarmPosition = "Above"
+        elseif key == "position_under" then
+            FarmPosition = "Under"
+        end
+        Config:Set("FarmPosition", FarmPosition)
+        Config:Save()
     end
 })
 
@@ -5228,9 +5387,15 @@ Main:Dropdown({
     Value = FarmMode == "Teleport" and T("teleport") or T("tween"),
     Callback = function(value)
         local key = GetOriginalKey(value)
-        if key == "teleport" then FarmMode = "Teleport" elseif key == "tween" then FarmMode = "Tween"
-        else FarmMode = NormalizeFarmMode(value) end
-        Config:Set("FarmMode", FarmMode); Config:Save()
+        if key == "teleport" then
+            FarmMode = "Teleport"
+        elseif key == "tween" then
+            FarmMode = "Tween"
+        else
+            FarmMode = NormalizeFarmMode(value)
+        end
+        Config:Set("FarmMode", FarmMode)
+        Config:Save()
         WindUI:Notify({ Title = T("movement_farm"), Content = T("notify_selected") .. tostring(value), Duration = 2, Icon = "mouse-pointer-click" })
     end
 })
@@ -5286,11 +5451,9 @@ FarmAstroTokenToggle = Main:Toggle({
             end)
             return
         end
-
         FarmAstroTokenEnabled = state
         Config:Set("FarmAstroTokenEnabled", state)
         Config:Save()
-
         if state then
             StartFarmAstroToken()
             WindUI:Notify({
@@ -5329,7 +5492,8 @@ SkillDropdown = Main:Dropdown({
             end
         end
         SelectedSkills = cleaned
-        Config:Set("SelectedSkills", cleaned); Config:Save()
+        Config:Set("SelectedSkills", cleaned)
+        Config:Save()
     end
 })
 
@@ -5338,7 +5502,11 @@ SkillDelaySlider = Main:Slider({
     Desc = T("desc_skill_delay"),
     Value = { Min = 1, Max = 60, Default = SkillDelay },
     Step = 1,
-    Callback = function(value) SkillDelay = value; Config:Set("SkillDelay", value); Config:Save() end
+    Callback = function(value)
+        SkillDelay = value
+        Config:Set("SkillDelay", value)
+        Config:Save()
+    end
 })
 
 FarmHeightSlider = Main:Slider({
@@ -5347,9 +5515,13 @@ FarmHeightSlider = Main:Slider({
     Value = { Min = -150, Max = 150, Default = HeightValue },
     Step = 1,
     Callback = function(value)
-        HeightValue = value; Config:Set("HeightValue", value); Config:Save()
+        HeightValue = value
+        Config:Set("HeightValue", value)
+        Config:Save()
         for mob, _ in pairs(MobHeightOverride) do
-            if MobConfirmedPadding[mob] == nil then MobHeightOverride[mob] = nil end
+            if MobConfirmedPadding[mob] == nil then
+                MobHeightOverride[mob] = nil
+            end
         end
     end
 })
@@ -5359,7 +5531,11 @@ Main:Slider({
     Desc = T("desc_safe_hp"),
     Value = { Min = 1, Max = 99, Default = SafeValue },
     Step = 1,
-    Callback = function(value) SafeValue = value; Config:Set("SafeValue", value); Config:Save() end
+    Callback = function(value)
+        SafeValue = value
+        Config:Set("SafeValue", value)
+        Config:Save()
+    end
 })
 
 Main:Slider({
@@ -5384,7 +5560,6 @@ Main:Slider({
         ClearResetWaveTrigger("滑条更改")
         Config:Set("ResetWaveValue", ResetWaveValue)
         Config:Save()
-
         if ResetWaveEnabled and IsMiscFarmAllowed() then
             StartResetWaveLoop()
             task.defer(function()
@@ -5419,7 +5594,10 @@ AntiJeffreyToggle = Main:Toggle({
         AntiJeffreyEnabled = state
         Config:Set("AntiJeffreyEnabled", state)
         Config:Save()
-        if state then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
+        if state then
+            StartAntiJeffreyLoop()
+            StartJeffreyGuardLoop()
+        end
     end
 })
 
@@ -5435,8 +5613,14 @@ Main:Slider({
     end
 })
 
-if AntiJeffreyEnabled then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
-if BypassJeffreyEnabled then StartBypassJeffreyLoop(); ScanBypassJeffreys(true) end
+if AntiJeffreyEnabled then
+    StartAntiJeffreyLoop()
+    StartJeffreyGuardLoop()
+end
+if BypassJeffreyEnabled then
+    StartBypassJeffreyLoop()
+    ScanBypassJeffreys(true)
+end
 
 -- ====================== UI: PRIORITY SETTINGS ======================
 Main:Section({ Title = T("priority_settings"), Icon = "list-ordered" })
@@ -5469,8 +5653,13 @@ PaddingReduceInput = Main:Input({
     Placeholder = "默认: 2",
     Callback = function(text)
         local num = tonumber(text)
-        if num then PADDING_REDUCE_STEP = num; Config:Set("PaddingReduceStep", num); Config:Save()
-        else warn("输入了无效数字！") end
+        if num then
+            PADDING_REDUCE_STEP = num
+            Config:Set("PaddingReduceStep", num)
+            Config:Save()
+        else
+            warn("输入了无效数字！")
+        end
     end
 })
 
@@ -5480,8 +5669,13 @@ PaddingSafeInput = Main:Input({
     Placeholder = "默认: -30",
     Callback = function(text)
         local num = tonumber(text)
-        if num then PADDING_SAFE_MIN = num; Config:Set("PaddingSafeMin", num); Config:Save()
-        else warn("输入了无效数字！") end
+        if num then
+            PADDING_SAFE_MIN = num
+            Config:Set("PaddingSafeMin", num)
+            Config:Save()
+        else
+            warn("输入了无效数字！")
+        end
     end
 })
 
@@ -5491,7 +5685,9 @@ Main:Slider({
     Value = { Min = -10, Max = 10, Default = ANTI_CLIP_MARGIN },
     Step = 1,
     Callback = function(value)
-        ANTI_CLIP_MARGIN = value; Config:Set("AntiClipMargin", value); Config:Save()
+        ANTI_CLIP_MARGIN = value
+        Config:Set("AntiClipMargin", value)
+        Config:Save()
     end
 })
 
@@ -5501,7 +5697,9 @@ Main:Slider({
     Value = { Min = 1, Max = 500, Default = DMG_THRESHOLD },
     Step = 1,
     Callback = function(value)
-        DMG_THRESHOLD = value; Config:Set("DmgThreshold", value); Config:Save()
+        DMG_THRESHOLD = value
+        Config:Set("DmgThreshold", value)
+        Config:Save()
     end
 })
 
@@ -5515,6 +5713,7 @@ Main:Button({
     end
 })
 
+-- ====================== UI: FLUSH SETTINGS ======================
 Main:Section({ Title = T("flush_settings"), Icon = "toilet" })
 
 Flushaura      = Config:Get("flushaura", false)
@@ -5525,7 +5724,11 @@ Main:Slider({
     Desc = T("desc_flush_range"),
     Value = { Min = 1, Max = 15, Default = FlushAuraValue },
     Step = 1,
-    Callback = function(value) FlushAuraValue = value; Config:Set("FlushAuraValue", value); Config:Save() end
+    Callback = function(value)
+        FlushAuraValue = value
+        Config:Set("FlushAuraValue", value)
+        Config:Save()
+    end
 })
 
 Main:Toggle({
@@ -5533,7 +5736,9 @@ Main:Toggle({
     Desc = T("desc_flush_aura"),
     Value = Flushaura,
     Callback = function(enabled)
-        Flushaura = enabled; Config:Set("flushaura", enabled); Config:Save()
+        Flushaura = enabled
+        Config:Set("flushaura", enabled)
+        Config:Save()
         if enabled then
             task.spawn(function()
                 while Flushaura do
@@ -5563,6 +5768,7 @@ Main:Toggle({
         end
     end
 })
+
 -- ============================================================
 -- ====================== ESP SYSTEM =========================
 -- ============================================================
@@ -5606,16 +5812,27 @@ function CreateESPLabel(parent, labelText)
     local existing = parent:FindFirstChild("DYHUB_ESP_LABEL")
     if existing then existing:Destroy() end
     local billboard = Instance.new("BillboardGui")
-    billboard.Name = "DYHUB_ESP_LABEL"; billboard.Size = UDim2.new(0, 120, 0, 40)
-    billboard.StudsOffset = Vector3.new(0, 3, 0); billboard.AlwaysOnTop = true
-    billboard.ResetOnSpawn = false; billboard.Adornee = parent; billboard.Parent = parent
-    local frame = Instance.new("Frame"); frame.BackgroundTransparency = 1
-    frame.Size = UDim2.fromScale(1, 1); frame.Parent = billboard
-    local label = Instance.new("TextLabel"); label.BackgroundTransparency = 1
-    label.Size = UDim2.fromScale(1, 1); label.Font = Enum.Font.GothamBold
-    label.TextSize = 11; label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextStrokeTransparency = 0.4; label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    label.Text = labelText; label.Parent = frame
+    billboard.Name = "DYHUB_ESP_LABEL"
+    billboard.Size = UDim2.new(0, 120, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.ResetOnSpawn = false
+    billboard.Adornee = parent
+    billboard.Parent = parent
+    local frame = Instance.new("Frame")
+    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.fromScale(1, 1)
+    frame.Parent = billboard
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.fromScale(1, 1)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 11
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0.4
+    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    label.Text = labelText
+    label.Parent = frame
     return billboard, label
 end
 
@@ -5623,19 +5840,28 @@ function CreateHighlight(model, outlineColor, fillColor, fillTransparency)
     local existing = model:FindFirstChild("DYHUB_ESP_HIGHLIGHT")
     if existing then existing:Destroy() end
     local hl = Instance.new("Highlight")
-    hl.Name = "DYHUB_ESP_HIGHLIGHT"; hl.OutlineColor = outlineColor
-    hl.FillColor = fillColor; hl.FillTransparency = fillTransparency or 0.9
-    hl.OutlineTransparency = 0; hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Adornee = model; hl.Parent = model
+    hl.Name = "DYHUB_ESP_HIGHLIGHT"
+    hl.OutlineColor = outlineColor
+    hl.FillColor = fillColor
+    hl.FillTransparency = fillTransparency or 0.9
+    hl.OutlineTransparency = 0
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee = model
+    hl.Parent = model
     return hl
 end
 
 function RemoveESP(model)
     pcall(function()
-        local hl = model:FindFirstChild("DYHUB_ESP_HIGHLIGHT"); if hl then hl:Destroy() end
-        local hb = model:FindFirstChild("DYHUB_ESP_LABEL"); if hb then hb:Destroy() end
+        local hl = model:FindFirstChild("DYHUB_ESP_HIGHLIGHT")
+        if hl then hl:Destroy() end
+        local hb = model:FindFirstChild("DYHUB_ESP_LABEL")
+        if hb then hb:Destroy() end
         local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp then local lb = hrp:FindFirstChild("DYHUB_ESP_LABEL"); if lb then lb:Destroy() end end
+        if hrp then
+            local lb = hrp:FindFirstChild("DYHUB_ESP_LABEL")
+            if lb then lb:Destroy() end
+        end
     end)
 end
 
@@ -5649,11 +5875,15 @@ function BuildLabelText(model, showName, showHealth, showDistance)
     if showName then table.insert(parts, model.Name) end
     if showHealth then
         local humanoid = model:FindFirstChild("Humanoid")
-        if humanoid then table.insert(parts, "❤ " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)) end
+        if humanoid then
+            table.insert(parts, "❤ " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth))
+        end
     end
     if showDistance then
         local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp and HumanoidRootPart then table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - hrp.Position).Magnitude) .. "m") end
+        if hrp and HumanoidRootPart then
+            table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - hrp.Position).Magnitude) .. "m")
+        end
     end
     return table.concat(parts, "\n")
 end
@@ -5663,7 +5893,9 @@ function BuildItemLabelText(obj, showName, showDistance)
     if showName then table.insert(parts, obj.Name) end
     if showDistance then
         local root = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")) or (obj:IsA("BasePart") and obj or nil)
-        if root and HumanoidRootPart then table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - root.Position).Magnitude) .. "m") end
+        if root and HumanoidRootPart then
+            table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - root.Position).Magnitude) .. "m")
+        end
     end
     return table.concat(parts, "\n")
 end
@@ -5680,50 +5912,73 @@ end
 
 function ApplyMobESP(mob)
     if not mob or not mob.Parent then return end
-    local hrp = mob:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    local hrp = mob:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
     local settings = GetESPSettings()
-    if settings.highlight then CreateHighlight(mob, Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 255, 255), 0.9) end
+    if settings.highlight then
+        CreateHighlight(mob, Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 255, 255), 0.9)
+    end
     if settings.name or settings.health or settings.distance then
         local _, label = CreateESPLabel(hrp, "")
         task.spawn(function()
             while mob and mob.Parent and ESP.Enabled and ESP.MobEnabled do
                 local humanoid = mob:FindFirstChild("Humanoid")
                 if not humanoid or humanoid.Health <= 0 then break end
-                if not IsInRange(hrp) then label.Visible = false; task.wait(0.5)
-                else label.Visible = true; label.Text = BuildLabelText(mob, settings.name, settings.health, settings.distance); task.wait(0.35) end
+                if not IsInRange(hrp) then
+                    label.Visible = false
+                    task.wait(0.5)
+                else
+                    label.Visible = true
+                    label.Text = BuildLabelText(mob, settings.name, settings.health, settings.distance)
+                    task.wait(0.35)
+                end
             end
-            RemoveESP(mob); ESP._mobHighlights[mob] = nil
+            RemoveESP(mob)
+            ESP._mobHighlights[mob] = nil
         end)
     end
     ESP._mobHighlights[mob] = true
 end
 
 function ScanMobs()
-    local livingFolder = workspace:FindFirstChild("Living"); if not livingFolder then return end
+    local livingFolder = workspace:FindFirstChild("Living")
+    if not livingFolder then return end
     for _, mob in ipairs(livingFolder:GetChildren()) do
         if IsValidMob(mob) and not ESP._mobHighlights[mob] then
             local hrp = mob:FindFirstChild("HumanoidRootPart")
-            if hrp and IsInRange(hrp) then ApplyMobESP(mob) end
+            if hrp and IsInRange(hrp) then
+                ApplyMobESP(mob)
+            end
         end
     end
 end
 
 function ApplyPlayerESP(playerChar)
     if not playerChar or not playerChar.Parent then return end
-    local hrp = playerChar:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    local hrp = playerChar:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
     if playerChar == LocalPlayer.Character then return end
     local settings = GetESPSettings()
-    if settings.highlight then CreateHighlight(playerChar, Color3.fromRGB(50, 255, 50), Color3.fromRGB(255, 255, 255), 0.9) end
+    if settings.highlight then
+        CreateHighlight(playerChar, Color3.fromRGB(50, 255, 50), Color3.fromRGB(255, 255, 255), 0.9)
+    end
     if settings.name or settings.health or settings.distance then
         local _, label = CreateESPLabel(hrp, "")
         task.spawn(function()
             while playerChar and playerChar.Parent and ESP.Enabled and ESP.PlayerEnabled do
                 local humanoid = playerChar:FindFirstChild("Humanoid")
                 if not humanoid or humanoid.Health <= 0 then break end
-                if not IsInRange(hrp) then label.Visible = false; task.wait(0.5)
-                else label.Visible = true; label.Text = BuildLabelText(playerChar, settings.name, settings.health, settings.distance); task.wait(0.35) end
+                if not IsInRange(hrp) then
+                    label.Visible = false
+                    task.wait(0.5)
+                else
+                    label.Visible = true
+                    label.Text = BuildLabelText(playerChar, settings.name, settings.health, settings.distance)
+                    task.wait(0.35)
+                end
             end
-            RemoveESP(playerChar); ESP._playerHighlights[playerChar] = nil
+            RemoveESP(playerChar)
+            ESP._playerHighlights[playerChar] = nil
         end)
     end
     ESP._playerHighlights[playerChar] = true
@@ -5735,32 +5990,48 @@ function ScanPlayers()
             local char = player.Character
             if not ESP._playerHighlights[char] then
                 local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
+                if hrp and IsInRange(hrp) then
+                    ApplyPlayerESP(char)
+                end
             end
         end
     end
 end
 
 function GetItemRoot(obj)
-    if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
-    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then return obj end
+    if obj:IsA("Model") then
+        return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then
+        return obj
+    end
     return nil
 end
 
 function ApplyItemESP(obj)
     if not obj or not obj.Parent then return end
-    local root = GetItemRoot(obj); if not root then return end
+    local root = GetItemRoot(obj)
+    if not root then return end
     local settings = GetESPSettings()
-    if settings.highlight then CreateHighlight(obj, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 255, 255), 0.9) end
+    if settings.highlight then
+        CreateHighlight(obj, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 255, 255), 0.9)
+    end
     if settings.name or settings.distance then
         local _, label = CreateESPLabel(root, "")
         task.spawn(function()
             while obj and obj.Parent and ESP.Enabled and ESP.ItemEnabled do
-                local currentRoot = GetItemRoot(obj); if not currentRoot then break end
-                if not IsInRange(currentRoot) then label.Visible = false; task.wait(0.5)
-                else label.Visible = true; label.Text = BuildItemLabelText(obj, settings.name, settings.distance); task.wait(0.5) end
+                local currentRoot = GetItemRoot(obj)
+                if not currentRoot then break end
+                if not IsInRange(currentRoot) then
+                    label.Visible = false
+                    task.wait(0.5)
+                else
+                    label.Visible = true
+                    label.Text = BuildItemLabelText(obj, settings.name, settings.distance)
+                    task.wait(0.5)
+                end
             end
-            RemoveESP(obj); ESP._itemHighlights[obj] = nil
+            RemoveESP(obj)
+            ESP._itemHighlights[obj] = nil
         end)
     end
     ESP._itemHighlights[obj] = true
@@ -5771,7 +6042,9 @@ function ScanItems()
     for _, obj in ipairs(workspace:GetDescendants()) do
         if not ESP._itemHighlights[obj] and IsESPItemTarget(obj.Name, ESP.SelectedItems) then
             local root = GetItemRoot(obj)
-            if root and IsInRange(root) then ApplyItemESP(obj) end
+            if root and IsInRange(root) then
+                ApplyItemESP(obj)
+            end
         end
     end
 end
@@ -5788,7 +6061,10 @@ end
 ESPConnection = nil
 
 function StartESPLoop()
-    if ESPConnection then ESPConnection:Disconnect(); ESPConnection = nil end
+    if ESPConnection then
+        ESPConnection:Disconnect()
+        ESPConnection = nil
+    end
     local lastMobScan, lastPlayerScan, lastItemScan = 0, 0, 0
     ESPConnection = RunService.Heartbeat:Connect(function()
         if not ESP.Enabled then return end
@@ -5809,7 +6085,10 @@ function StartESPLoop()
 end
 
 function StopESPLoop()
-    if ESPConnection then ESPConnection:Disconnect(); ESPConnection = nil end
+    if ESPConnection then
+        ESPConnection:Disconnect()
+        ESPConnection = nil
+    end
     ClearAllESP()
 end
 
@@ -5818,7 +6097,9 @@ workspace.DescendantAdded:Connect(function(obj)
     task.wait(0.1)
     if IsESPItemTarget(obj.Name, ESP.SelectedItems) and not ESP._itemHighlights[obj] then
         local root = GetItemRoot(obj)
-        if root and IsInRange(root) then ApplyItemESP(obj) end
+        if root and IsInRange(root) then
+            ApplyItemESP(obj)
+        end
     end
 end)
 
@@ -5828,7 +6109,9 @@ Players.PlayerAdded:Connect(function(player)
         task.wait(1)
         if not ESP._playerHighlights[char] then
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
+            if hrp and IsInRange(hrp) then
+                ApplyPlayerESP(char)
+            end
         end
     end)
 end)
@@ -5841,7 +6124,9 @@ function WatchLivingFolder()
             task.wait(0.2)
             if IsValidMob(obj) and not ESP._mobHighlights[obj] then
                 local hrp = obj:FindFirstChild("HumanoidRootPart")
-                if hrp and IsInRange(hrp) then ApplyMobESP(obj) end
+                if hrp and IsInRange(hrp) then
+                    ApplyMobESP(obj)
+                end
             end
         end)
     end
@@ -5850,7 +6135,9 @@ end
 task.spawn(function()
     if not workspace:FindFirstChild("Living") then
         workspace.ChildAdded:Connect(function(child)
-            if child.Name == "Living" then WatchLivingFolder() end
+            if child.Name == "Living" then
+                WatchLivingFolder()
+            end
         end)
     else
         WatchLivingFolder()
@@ -5861,38 +6148,63 @@ end)
 Main4:Section({ Title = T("esp_visual"), Icon = "eye" })
 
 EspEnableToggle = Main4:Toggle({
-    Title = T("esp_enable"), Value = ESP.Enabled,
+    Title = T("esp_enable"),
+    Value = ESP.Enabled,
     Desc = T("desc_esp_enable"),
     Callback = function(state)
-        ESP.Enabled = state; Config:Set("EspEnabled", state); Config:Save()
-        if state then StartESPLoop() else StopESPLoop() end
+        ESP.Enabled = state
+        Config:Set("EspEnabled", state)
+        Config:Save()
+        if state then
+            StartESPLoop()
+        else
+            StopESPLoop()
+        end
     end
 })
 
 EspMobToggle = Main4:Toggle({
-    Title = T("esp_mob"), Value = ESP.MobEnabled,
+    Title = T("esp_mob"),
+    Value = ESP.MobEnabled,
     Desc = T("desc_esp_mob"),
     Callback = function(state)
-        ESP.MobEnabled = state; Config:Set("EspMobEnabled", state); Config:Save()
-        if not state then for mob, _ in pairs(ESP._mobHighlights) do RemoveESP(mob) end; ESP._mobHighlights = {} end
+        ESP.MobEnabled = state
+        Config:Set("EspMobEnabled", state)
+        Config:Save()
+        if not state then
+            for mob, _ in pairs(ESP._mobHighlights) do RemoveESP(mob) end
+            ESP._mobHighlights = {}
+        end
     end
 })
 
 EspPlayerToggle = Main4:Toggle({
-    Title = T("esp_player"), Value = ESP.PlayerEnabled,
+    Title = T("esp_player"),
+    Value = ESP.PlayerEnabled,
     Desc = T("desc_esp_player"),
     Callback = function(state)
-        ESP.PlayerEnabled = state; Config:Set("EspPlayerEnabled", state); Config:Save()
-        if not state then for char, _ in pairs(ESP._playerHighlights) do RemoveESP(char) end; ESP._playerHighlights = {} end
+        ESP.PlayerEnabled = state
+        Config:Set("EspPlayerEnabled", state)
+        Config:Save()
+        if not state then
+            for char, _ in pairs(ESP._playerHighlights) do RemoveESP(char) end
+            ESP._playerHighlights = {}
+        end
     end
 })
 
 EspItemToggle = Main4:Toggle({
-    Title = T("esp_item"), Value = ESP.ItemEnabled,
+    Title = T("esp_item"),
+    Value = ESP.ItemEnabled,
     Desc = T("desc_esp_item"),
     Callback = function(state)
-        ESP.ItemEnabled = state; Config:Set("EspItemEnabled", state); Config:Save()
-        if not state then for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end; ESP._itemHighlights = {} end
+        ESP.ItemEnabled = state
+        Config:Set("EspItemEnabled", state)
+        Config:Save()
+        if not state then
+            for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
+            ESP._itemHighlights = {}
+        end
     end
 })
 
@@ -5908,15 +6220,24 @@ EspSettingsDropdown = Main4:Dropdown({
         local cleaned = {}
         for _, v in ipairs(value) do
             local key = GetOriginalKey(v)
-            if key == "highlight" then table.insert(cleaned, "Highlight")
-            elseif key == "distance" then table.insert(cleaned, "Distance")
-            elseif key == "health" then table.insert(cleaned, "Health")
-            elseif key == "name" then table.insert(cleaned, "Name")
-            else table.insert(cleaned, v) end
+            if key == "highlight" then
+                table.insert(cleaned, "Highlight")
+            elseif key == "distance" then
+                table.insert(cleaned, "Distance")
+            elseif key == "health" then
+                table.insert(cleaned, "Health")
+            elseif key == "name" then
+                table.insert(cleaned, "Name")
+            else
+                table.insert(cleaned, v)
+            end
         end
         ESP.Settings = cleaned
-        Config:Set("EspSettings", cleaned); Config:Save()
-        if ESP.Enabled then ClearAllESP() end
+        Config:Set("EspSettings", cleaned)
+        Config:Save()
+        if ESP.Enabled then
+            ClearAllESP()
+        end
     end,
 })
 
@@ -5927,10 +6248,14 @@ EspItemDropdown = Main4:Dropdown({
     Values = ESP.ItemList,
     Value = ESP.SelectedItems,
     Callback = function(value)
-        ESP.SelectedItems = value or {}; Config:Set("EspSelectedItems", value); Config:Save()
+        ESP.SelectedItems = value or {}
+        Config:Set("EspSelectedItems", value)
+        Config:Save()
         for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
         ESP._itemHighlights = {}
-        if ESP.Enabled and ESP.ItemEnabled then pcall(ScanItems) end
+        if ESP.Enabled and ESP.ItemEnabled then
+            pcall(ScanItems)
+        end
     end,
 })
 
@@ -5956,6 +6281,7 @@ LastVisualApply = 0
 FullBrightOriginal = nil
 NoFogOriginal = nil
 
+-- ====================== 移动速度/跳跃辅助函数 ======================
 function GetLocalHumanoid()
     local char = LocalPlayer.Character
     if not char then return nil end
@@ -5971,17 +6297,14 @@ end
 function updatePlayerStats(force)
     local humanoid = GetLocalHumanoid()
     if not humanoid then return end
-
     pcall(function()
         if humanoid.UseJumpPower ~= nil then
             humanoid.UseJumpPower = true
         end
     end)
-
     if force or humanoid.WalkSpeed ~= WSValue then
         humanoid.WalkSpeed = WSValue
     end
-
     if force or humanoid.JumpPower ~= JPValue then
         humanoid.JumpPower = JPValue
     end
@@ -5989,28 +6312,33 @@ end
 
 function ProtectMovementStats()
     if not LockMovementStats then return end
-
     local now = tick()
     if now - LastMovementStatApply < MovementStatInterval then return end
     LastMovementStatApply = now
-
     local humanoid = GetLocalHumanoid()
     if not humanoid then return end
-
     pcall(function()
         if humanoid.UseJumpPower ~= nil then
             humanoid.UseJumpPower = true
         end
     end)
-
     if humanoid.WalkSpeed < WSValue then
         humanoid.WalkSpeed = WSValue
     end
-
     if humanoid.JumpPower < JPValue then
         humanoid.JumpPower = JPValue
     end
 end
+
+-- ====================== 完整的新版飞行系统 ======================
+FlyCtrl = { f = 0, b = 0, l = 0, r = 0 }
+FlyLastCtrl = { f = 0, b = 0, l = 0, r = 0 }
+FlyMaxSpeed = 50
+FlyCurrentSpeed = 0
+FlyTpWalking = false
+FlyNowe = false
+FlySpeeds = 1
+FlyHeartbeatConnection = nil
 
 function CleanupFlyForces()
     if FlyBodyGyro then
@@ -6023,28 +6351,14 @@ function CleanupFlyForces()
     end
 end
 
--- 新的飞行系统变量
-FlyCtrl = { f = 0, b = 0, l = 0, r = 0 }
-FlyLastCtrl = { f = 0, b = 0, l = 0, r = 0 }
-FlyMaxSpeed = 50
-FlyCurrentSpeed = 0
-FlyTpWalking = false
-FlyInputConnections = {}
-FlyHeartbeatConnection = nil
-FlyNowe = false
-FlySpeeds = 1
-
 function StartFly()
     local humanoid = GetLocalHumanoid()
     local char = LocalPlayer.Character
     if not humanoid or not char then return end
-
     StopFly()
-
     FlyEnabled = true
     FlyNowe = true
-
-    -- 禁用所有Humanoid状态
+    -- 禁用所有 Humanoid 状态
     humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
     humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
     humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
@@ -6061,8 +6375,7 @@ function StartFly()
     humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics, false)
     humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
     humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-
-    -- 启动tpwalking
+    -- 启动 tpwalking
     FlyTpWalking = false
     for i = 1, FlySpeeds do
         spawn(function()
@@ -6080,11 +6393,10 @@ function StartFly()
     game.Players.LocalPlayer.Character.Animate.Disabled = true
     local Char = game.Players.LocalPlayer.Character
     local Hum = Char:FindFirstChildOfClass("Humanoid") or Char:FindFirstChildOfClass("AnimationController")
-    for i,v in next, Hum:GetPlayingAnimationTracks() do
+    for i, v in next, Hum:GetPlayingAnimationTracks() do
         v:AdjustSpeed(0)
     end
-
-    -- 根据R6/R15启动飞行循环
+    -- 根据 R6/R15 启动飞行循环
     if humanoid.RigType == Enum.HumanoidRigType.R6 then
         StartR6FlyLoop(char)
     else
@@ -6105,16 +6417,13 @@ function StartR6FlyLoop(char)
     FlyBodyGyro = bg
     FlyBodyVelocity = bv
     plr.Character.Humanoid.PlatformStand = true
-
     FlyHeartbeatConnection = game:GetService("RunService").RenderStepped:Connect(function()
         if not FlyEnabled then return end
         if game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 then return end
-
         local ctrl = FlyCtrl
         local lastctrl = FlyLastCtrl
         local maxspeed = FlyMaxSpeed
         local speed = FlyCurrentSpeed
-
         if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
             speed = speed + 0.5 + (speed / maxspeed)
             if speed > maxspeed then speed = maxspeed end
@@ -6123,7 +6432,6 @@ function StartR6FlyLoop(char)
             if speed < 0 then speed = 0 end
         end
         FlyCurrentSpeed = speed
-
         if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
             bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.LookVector * (ctrl.f + ctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l + ctrl.r, (ctrl.f + ctrl.b) * 0.2, 0).p) - workspace.CurrentCamera.CoordinateFrame.p)) * speed
             FlyLastCtrl = { f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r }
@@ -6149,16 +6457,13 @@ function StartR15FlyLoop(char)
     FlyBodyGyro = bg
     FlyBodyVelocity = bv
     plr.Character.Humanoid.PlatformStand = true
-
     FlyHeartbeatConnection = game:GetService("RunService").RenderStepped:Connect(function()
         if not FlyEnabled then return end
         if game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 then return end
-
         local ctrl = FlyCtrl
         local lastctrl = FlyLastCtrl
         local maxspeed = FlyMaxSpeed
         local speed = FlyCurrentSpeed
-
         if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
             speed = speed + 0.5 + (speed / maxspeed)
             if speed > maxspeed then speed = maxspeed end
@@ -6167,7 +6472,6 @@ function StartR15FlyLoop(char)
             if speed < 0 then speed = 0 end
         end
         FlyCurrentSpeed = speed
-
         if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
             bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.LookVector * (ctrl.f + ctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l + ctrl.r, (ctrl.f + ctrl.b) * 0.2, 0).p) - workspace.CurrentCamera.CoordinateFrame.p)) * speed
             FlyLastCtrl = { f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r }
@@ -6187,14 +6491,11 @@ function StopFly()
     FlyCtrl = { f = 0, b = 0, l = 0, r = 0 }
     FlyLastCtrl = { f = 0, b = 0, l = 0, r = 0 }
     FlyNowe = false
-
     CleanupFlyForces()
-
     if FlyHeartbeatConnection then
         FlyHeartbeatConnection:Disconnect()
         FlyHeartbeatConnection = nil
     end
-
     local humanoid = GetLocalHumanoid()
     if humanoid then
         humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
@@ -6215,7 +6516,6 @@ function StopFly()
         humanoid.PlatformStand = false
         humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
     end
-
     local char = LocalPlayer.Character
     if char then
         char.Animate.Disabled = false
@@ -6243,7 +6543,38 @@ function UpdateFlySpeeds(newSpeeds)
     end
 end
 
--- 原有的全亮/去雾等保持不变
+-- 键盘输入监听（用于飞行控制）
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if not FlyEnabled then return end
+    local key = input.KeyCode
+    if key == Enum.KeyCode.W then
+        FlyCtrl.f = 1
+    elseif key == Enum.KeyCode.S then
+        FlyCtrl.b = -1
+    elseif key == Enum.KeyCode.A then
+        FlyCtrl.l = -1
+    elseif key == Enum.KeyCode.D then
+        FlyCtrl.r = 1
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if not FlyEnabled then return end
+    local key = input.KeyCode
+    if key == Enum.KeyCode.W then
+        FlyCtrl.f = 0
+    elseif key == Enum.KeyCode.S then
+        FlyCtrl.b = 0
+    elseif key == Enum.KeyCode.A then
+        FlyCtrl.l = 0
+    elseif key == Enum.KeyCode.D then
+        FlyCtrl.r = 0
+    end
+end)
+
+-- ====================== 全亮与去雾的完整实现 ======================
 function CaptureFullBrightOriginal()
     if FullBrightOriginal then return end
     FullBrightOriginal = {
@@ -6343,7 +6674,6 @@ end
 
 RunService.Heartbeat:Connect(function()
     ProtectMovementStats()
-
     local now = tick()
     if now - LastVisualApply >= 1 then
         LastVisualApply = now
@@ -6410,7 +6740,9 @@ Main2:Toggle({
         LockMovementStats = state
         Config:Set("LockMovementStats", state)
         Config:Save()
-        if state then updatePlayerStats(true) end
+        if state then
+            updatePlayerStats(true)
+        end
     end
 })
 
@@ -6418,7 +6750,11 @@ nocliptoggle = Main2:Toggle({
     Title = T("no_clip"),
     Value = NoClip,
     Desc = T("desc_no_clip"),
-    Callback = function(state) NoClip = state; Config:Set("NoClip", state); Config:Save() end
+    Callback = function(state)
+        NoClip = state
+        Config:Set("NoClip", state)
+        Config:Save()
+    end
 })
 
 Main2:Section({ Title = T("fly_movement"), Icon = "plane" })
@@ -6433,7 +6769,9 @@ Main2:Slider({
         FlySpeeds = value
         Config:Set("FlySpeed", value)
         Config:Save()
-        if FlyEnabled then UpdateFlySpeeds(value) end
+        if FlyEnabled then
+            UpdateFlySpeeds(value)
+        end
     end
 })
 
@@ -6445,7 +6783,11 @@ Main2:Toggle({
         FlyEnabled = state
         Config:Set("FlyEnabled", state)
         Config:Save()
-        if state then StartFly() else StopFly() end
+        if state then
+            StartFly()
+        else
+            StopFly()
+        end
     end
 })
 
@@ -6470,7 +6812,11 @@ Main2:Toggle({
         FullBrightEnabled = state
         Config:Set("FullBrightEnabled", state)
         Config:Save()
-        if state then ApplyFullBright() else RestoreFullBright() end
+        if state then
+            ApplyFullBright()
+        else
+            RestoreFullBright()
+        end
     end
 })
 
@@ -6482,7 +6828,11 @@ Main2:Toggle({
         NoFogEnabled = state
         Config:Set("NoFogEnabled", state)
         Config:Save()
-        if state then ApplyNoFog() else RestoreNoFog() end
+        if state then
+            ApplyNoFog()
+        else
+            RestoreNoFog()
+        end
     end
 })
 
@@ -6494,8 +6844,13 @@ CodeDropdown = Main2:Dropdown({
     Title = T("select_redeem_codes"),
     Desc = T("desc_select_redeem_codes"),
     Multi = true,
-    Values = GlobalTables.redeemCodes, Value = SelectedCodes,
-    Callback = function(value) SelectedCodes = value or {}; Config:Set("SelectedCodes", value); Config:Save() end,
+    Values = GlobalTables.redeemCodes,
+    Value = SelectedCodes,
+    Callback = function(value)
+        SelectedCodes = value or {}
+        Config:Set("SelectedCodes", value)
+        Config:Save()
+    end,
 })
 
 Main2:Button({
@@ -6503,7 +6858,13 @@ Main2:Button({
     Desc = T("desc_redeem_selected"),
     Callback = function()
         for _, code in ipairs(SelectedCodes or {}) do
-            pcall(function() local remote = GetRemote("RedeemCode"); if remote then remote:FireServer(code) end; task.wait(0.2) end)
+            pcall(function()
+                local remote = GetRemote("RedeemCode")
+                if remote then
+                    remote:FireServer(code)
+                end
+                task.wait(0.2)
+            end)
         end
     end,
 })
@@ -6513,7 +6874,13 @@ Main2:Button({
     Desc = T("desc_redeem_all"),
     Callback = function()
         for _, code in ipairs(GlobalTables.redeemCodes or {}) do
-            pcall(function() local remote = GetRemote("RedeemCode"); if remote then remote:FireServer(code) end; task.wait(0.5) end)
+            pcall(function()
+                local remote = GetRemote("RedeemCode")
+                if remote then
+                    remote:FireServer(code)
+                end
+                task.wait(0.5)
+            end)
         end
     end,
 })
@@ -6534,11 +6901,17 @@ GamepassDropdown = Main2:Dropdown({
         local cleaned = {}
         for _, v in ipairs(value) do
             local key = GetOriginalKey(v)
-            if key == "all" then table.insert(cleaned, "All")
-            elseif key == "lucky_boost" then table.insert(cleaned, "LuckyBoost")
-            elseif key == "rare_lucky_boost" then table.insert(cleaned, "RareLuckyBoost")
-            elseif key == "legendary_lucky_boost" then table.insert(cleaned, "LegendaryLuckyBoost")
-            else table.insert(cleaned, v) end
+            if key == "all" then
+                table.insert(cleaned, "All")
+            elseif key == "lucky_boost" then
+                table.insert(cleaned, "LuckyBoost")
+            elseif key == "rare_lucky_boost" then
+                table.insert(cleaned, "RareLuckyBoost")
+            elseif key == "legendary_lucky_boost" then
+                table.insert(cleaned, "LegendaryLuckyBoost")
+            else
+                table.insert(cleaned, v)
+            end
         end
         GlobalTables.Gamepassts = cleaned
         SelectedGamepass = cleaned
@@ -6560,14 +6933,19 @@ Main2:Button({
         local toUnlock = {}
         for _, v in ipairs(GlobalTables.Gamepassts) do
             if v == "All" then
-                toUnlock = {"LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost"}
+                toUnlock = { "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" }
                 break
             else
                 table.insert(toUnlock, v)
             end
         end
         if #toUnlock == 0 then
-            WindUI:Notify({ Title = T("unlock_gamepass"), Content = T("notify_select_gamepass"), Duration = 3, Icon = "alert-triangle" })
+            WindUI:Notify({
+                Title = T("unlock_gamepass"),
+                Content = T("notify_select_gamepass"),
+                Duration = 3,
+                Icon = "alert-triangle"
+            })
             return
         end
         local successCount = 0
@@ -6592,499 +6970,6 @@ Main2:Button({
         })
     end,
 })
--- ====================== UI: GAMEMODE TAB ======================
-GlobalTables2 = {
-    Votes2 = {
-        "Normal", "VeryHard", "Hard", "Insane", "Nightmare", "BossRush",
-        "DarkDimension", "Hell", "ThunderStorm", "Christmas", "Zombie",
-        "AstroV2", "Astro", "100MVisit"
-    }
-}
-
-Main7:Section({ Title = T("vote_info"), TextXAlignment = "Center", TextSize = 17 })
-Main7:Divider()
-Main7:Paragraph({
-    Title = T("auto_vote_ig"),
-    Desc = T("vote_info_desc"),
-    Image = "rbxassetid://104487529937663",
-    ImageSize = 30,
-})
-Main7:Divider()
-Main7:Section({ Title = T("vote_mode"), Icon = "gamepad-2" })
-
-Main7:Button({
-    Title = T("restore_vote"),
-    Desc = T("vote_restore_warning"),
-    Callback = function()
-        pcall(function()
-            ReplicatedStorage.GetReadyRemote:FireServer("1", true)
-            task.wait(0.5)
-            ReplicatedStorage.GetReadyRemote:FireServer("1", false)
-            task.wait(0.5)
-            ReplicatedStorage.GetReadyRemote:FireServer("2", false)
-            task.wait(0.5)
-            ReplicatedStorage.GetReadyRemote:FireServer("3", false)
-            task.wait(0.5)
-            ReplicatedStorage.GetReadyRemote:FireServer("1", true)
-        end)
-        WindUI:Notify({
-            Title = T("notify_restoring"),
-            Content = T("notify_restore_ready"),
-            Duration = 6,
-            Icon = "loader-circle"
-        })
-        task.wait(6)
-        pcall(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = CFrame.new(-220, -10, -600)
-            end
-        end)
-        WindUI:Notify({
-            Title = T("notify_restoring"),
-            Content = T("notify_restore_wait"),
-            Duration = 10,
-            Icon = "loader-circle"
-        })
-        task.wait(10)
-        WindUI:Notify({
-            Title = T("notify_restore_complete"),
-            Content = T("notify_restore_done"),
-            Duration = 5,
-            Icon = "check"
-        })
-    end
-})
-
-local voteModeMap = {
-    normal = "Normal", veryhard = "VeryHard", hard = "Hard", insane = "Insane",
-    nightmare = "Nightmare", bossrush = "BossRush", darkdimension = "DarkDimension",
-    hell = "Hell", thunderstorm = "ThunderStorm", christmas = "Christmas",
-    zombie = "Zombie", astrov2 = "AstroV2", astro = "Astro", visit_100m = "100MVisit",
-}
-
-GameModeDropdown2 = Main7:Dropdown({
-    Title = T("set_vote_mode"),
-    Desc = T("desc_set_vote_mode"),
-    Values = { T("normal"), T("veryhard"), T("hard"), T("insane"), T("nightmare"), T("bossrush"), T("darkdimension"), T("hell"), T("thunderstorm"), T("christmas"), T("zombie"), T("astrov2"), T("astro"), T("visit_100m") },
-    Multi = false,
-    Value = AutoVoteValue == "Normal" and T("normal") or AutoVoteValue == "VeryHard" and T("veryhard") or AutoVoteValue == "Hard" and T("hard") or AutoVoteValue == "Insane" and T("insane") or AutoVoteValue == "Nightmare" and T("nightmare") or AutoVoteValue == "BossRush" and T("bossrush") or AutoVoteValue == "DarkDimension" and T("darkdimension") or AutoVoteValue == "Hell" and T("hell") or AutoVoteValue == "ThunderStorm" and T("thunderstorm") or AutoVoteValue == "Christmas" and T("christmas") or AutoVoteValue == "Zombie" and T("zombie") or AutoVoteValue == "AstroV2" and T("astrov2") or AutoVoteValue == "Astro" and T("astro") or AutoVoteValue == "100MVisit" and T("visit_100m") or T("christmas"),
-    Callback = function(value)
-        local key = GetOriginalKey(value)
-        AutoVoteValue = voteModeMap[key] or value
-        Config:Set("AutoVoteValue", AutoVoteValue)
-        Config:Save()
-        print("[DYHUB] 投票模式已选择:", tostring(AutoVoteValue))
-    end
-})
-
-AutoVoteIGToggle = Main7:Toggle({
-    Title = T("auto_vote_ig"),
-    Desc = T("desc_auto_vote_ig"),
-    Value = AutoVoteinGameEnabled,
-    Callback = function(enabled)
-        AutoVoteinGameEnabled = enabled
-        Config:Set("AutoVoteinGameEnabled", enabled)
-        Config:Save()
-        if enabled then
-            if AutoStartEnabled and IsMiscFarmAllowed() then
-                FireGetReady(0)
-            else
-                FireAutoVote(true)
-            end
-            StartAutoVoteLoop()
-        else
-            print("[DYHUB] 自动投票模式已禁用")
-        end
-    end
-})
-
-if AutoVoteinGameEnabled then
-    StartAutoVoteLoop()
-end
-
-Main7:Divider()
-Main7:Section({ Title = T("casual_info"), TextXAlignment = "Center", TextSize = 17 })
-Main7:Divider()
-Main7:Paragraph({
-    Title = T("casual_title"),
-    Desc = T("casual_desc"),
-    Image = "rbxassetid://104487529937663",
-    ImageSize = 30,
-})
-Main7:Divider()
-Main7:Section({ Title = T("game_mode"), Icon = "gamepad-2" })
-
-GameModeDropdown = Main7:Dropdown({
-    Title = T("set_game_mode"),
-    Desc = T("desc_set_game_mode"),
-    Values = { T("normal"), T("veryhard"), T("hard"), T("insane"), T("nightmare"), T("bossrush"), T("darkdimension"), T("hell"), T("thunderstorm"), T("christmas"), T("zombie"), T("astrov2"), T("astro"), T("visit_100m") },
-    Multi = false,
-    Value = AutoGameValue == "Normal" and T("normal") or AutoGameValue == "VeryHard" and T("veryhard") or AutoGameValue == "Hard" and T("hard") or AutoGameValue == "Insane" and T("insane") or AutoGameValue == "Nightmare" and T("nightmare") or AutoGameValue == "BossRush" and T("bossrush") or AutoGameValue == "DarkDimension" and T("darkdimension") or AutoGameValue == "Hell" and T("hell") or AutoGameValue == "ThunderStorm" and T("thunderstorm") or AutoGameValue == "Christmas" and T("christmas") or AutoGameValue == "Zombie" and T("zombie") or AutoGameValue == "AstroV2" and T("astrov2") or AutoGameValue == "Astro" and T("astro") or AutoGameValue == "100MVisit" and T("visit_100m") or T("normal"),
-    Callback = function(value)
-        local key = GetOriginalKey(value)
-        AutoGameValue = voteModeMap[key] or value
-        Config:Set("AutoGameValue", AutoGameValue); Config:Save()
-        print("[DYHUB] 游戏模式已选择: " .. tostring(AutoGameValue))
-    end
-})
-
--- PLAY SYSTEM（加载时自动导航至 Classic/Casual）
-DELAY = 1
-
-function click_btn(btn)
-    if btn and (btn:IsA("ImageButton") or btn:IsA("TextButton")) then
-        pcall(function()
-            if firesignal then
-                firesignal(btn.MouseButton1Click)
-                firesignal(btn.Activated)
-            else
-                btn:Activate()
-            end
-        end)
-    end
-end
-
-function notify(title, content, icon)
-    WindUI:Notify({
-        Title = title,
-        Content = content,
-        Duration = 3,
-        Icon = "check"
-    })
-end
-
---// PLAY SYSTEM
-task.spawn(function()
-    local playBtn =
-        workspace:FindFirstChild("ForGui") and
-        workspace.ForGui:FindFirstChild("SurfaceGui") and
-        workspace.ForGui.SurfaceGui:FindFirstChild("Frame") and
-        workspace.ForGui.SurfaceGui.Frame:FindFirstChild("Play")
-
-    if playBtn then
-        notify("自动 Play", "检测到 Play 按钮，自动开始...")
-        task.wait(DELAY)
-
-        local playGui = pg:FindFirstChild("Play")
-
-        if not (playGui and playGui.Enabled) then
-            click_btn(playBtn)
-            notify("自动 Play", "已按下 Play 按钮")
-        else
-            notify("自动 Play", "Play GUI 已打开")
-        end
-    end
-
-    task.wait(DELAY)
-
-    local playGui = pg:FindFirstChild("Play")
-    if not (playGui and playGui.Enabled) then
-        return
-    end
-
-    local classicBtn = playGui:FindFirstChild("Classic")
-
-    if classicBtn then
-        notify("自动 Play", "正在选择 Classic 模式...")
-        task.wait(DELAY)
-        click_btn(classicBtn)
-    end
-
-    task.wait(DELAY)
-
-    local modeGui = pg:FindFirstChild("mode select2")
-
-    if modeGui and modeGui.Enabled then
-        local diffBtn =
-            modeGui:FindFirstChild("MainFrame") and
-            modeGui.MainFrame:FindFirstChild("DiffMode")
-
-        if diffBtn then
-            notify("自动 Play", "正在选择难度...")
-            task.wait(DELAY)
-            click_btn(diffBtn)
-        end
-    end
-end)
-
---// NEW LOBBY SYSTEM
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-
-        local loadingGui = pg:FindFirstChild("LoadingScreen")
-
-        if loadingGui then
-            notify("大厅系统", "正在移除 LoadingScreen...")
-            pcall(function()
-                loadingGui:Destroy()
-            end)
-        end
-
-        local lobby = pg:FindFirstChild("Lobby")
-
-        if lobby and lobby.Enabled then
-            notify("大厅系统", "检测到大厅，准备自动设置...")
-
-            local btn =
-                lobby:FindFirstChild("MainFrame") and
-                lobby.MainFrame:FindFirstChild("Frame") and
-                lobby.MainFrame.Frame:FindFirstChild("Create") and
-                lobby.MainFrame.Frame.Create:FindFirstChild("TrackQuestButton")
-
-            if btn and btn.Visible then
-                notify("大厅系统", "正在按下 TrackQuestButton...")
-                click_btn(btn)
-
-                task.wait(0.5)
-
-                if AutoVoteEnabled then
-                    notify("大厅系统", "正在创建游戏模式...")
-
-                    ReplicatedStorage.MainHandler:FireServer({
-                        [1] = "StartSolo",
-                        [2] = AutoGameValue
-                    })
-
-                    notify("大厅系统", "游戏模式创建成功！")
-                else
-                    notify("大厅系统", "请配合自动游戏模式使用！")
-                end
-
-                break
-            end
-        end
-    end
-end)
-
---// AUTO GAME MODE TOGGLE
-AutoVoteToggle = Main7:Toggle({
-    Title = T("auto_game_mode_lobby"),
-    Desc = T("desc_auto_game_mode_lobby"),
-    Value = AutoVoteEnabled,
-
-    Callback = function(enabled)
-        AutoVoteEnabled = enabled
-
-        Config:Set("AutoVoteEnabled", enabled)
-        Config:Save()
-
-        if enabled then
-            notify("自动游戏模式", "已启用")
-        else
-            notify("自动游戏模式", "已禁用", "x")
-        end
-    end
-})
-
-
--- ====================== REQUEST / SKILL TREE HELPERS ======================
-RequestWaveNotifyAt = 0
-AutoSkillTreeNotifyAt = 0
-
-function SafeWindNotify(title, content, duration, icon)
-    if WindUI and WindUI.Notify then
-        pcall(function()
-            WindUI:Notify({
-                Title = tostring(title or "DYHUB"),
-                Content = tostring(content or ""),
-                Duration = duration or 3,
-                Icon = icon or "info"
-            })
-        end)
-    end
-end
-
-function GetCurrentWaveText()
-    local ok, result = pcall(function()
-        local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
-        if not playerGui then return nil end
-
-        local wavesGui = playerGui:FindFirstChild("WavesGui")
-        if not wavesGui then return nil end
-
-        local frame = wavesGui:FindFirstChild("Frame")
-        if not frame then return nil end
-
-        local label = frame:FindFirstChild("TextLabel")
-        if not label then return nil end
-
-        return tostring(label.Text or "")
-    end)
-
-    if ok then return result end
-    return nil
-end
-
-function GetCurrentWaveNumber()
-    local text = GetCurrentWaveText()
-    if not text then return nil end
-
-    local numberText = tostring(text):match("(%d+)")
-    if not numberText then return nil end
-
-    return tonumber(numberText)
-end
-
-function IsRequestWaveReady()
-    local wave = GetCurrentWaveNumber()
-    return wave ~= nil and wave >= 10
-end
-
-function NotifyRequestWaveNotReady()
-    local now = tick()
-    if now - RequestWaveNotifyAt < 4 then return end
-    RequestWaveNotifyAt = now
-
-    if GetCurrentWaveNumber() == nil then
-        SafeWindNotify("自动请求", "暂时无法请求。波次 UI 未就绪。", 3, "triangle-alert")
-    else
-        SafeWindNotify("自动请求", "暂时无法请求。需要波次 10 或更高。", 3, "triangle-alert")
-    end
-end
-
-function GetCurrentCharacterValue()
-    local ok, result = pcall(function()
-        local playerValues = LocalPlayer and LocalPlayer:FindFirstChild("PlayerValues")
-        if not playerValues then return nil end
-
-        local charValue = playerValues:FindFirstChild("Character")
-        if not charValue then return nil end
-
-        return tostring(charValue.Value or "")
-    end)
-
-    if ok then return result end
-    return nil
-end
-
-function GetSkillTreeUIFolder()
-    local characterName = GetCurrentCharacterValue()
-    if not characterName or characterName == "" then return nil, characterName end
-
-    local ok, result = pcall(function()
-        local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
-        if not playerGui then return nil end
-
-        local skillGui = playerGui:FindFirstChild("003-A")
-        if not skillGui then return nil end
-
-        local main = skillGui:FindFirstChild("Main")
-        if not main then return nil end
-
-        local scrolling = main:FindFirstChild("ScrollingFrame")
-        if not scrolling then return nil end
-
-        local direct = scrolling:FindFirstChild("Skills " .. characterName)
-        if direct then return direct end
-
-        local loweredName = characterName:lower()
-        for _, child in ipairs(scrolling:GetChildren()) do
-            local childName = tostring(child.Name or ""):lower()
-            if childName:find("skills", 1, true) and childName:find(loweredName, 1, true) then
-                return child
-            end
-        end
-
-        return nil
-    end)
-
-    if ok then return result, characterName end
-    return nil, characterName
-end
-
-function HasOwnedSkillTree(skillName)
-    local folder = LocalPlayer and LocalPlayer:FindFirstChild("SkillTreesFolder")
-    if not folder then return false end
-
-    if folder:FindFirstChild(skillName) then return true end
-
-    local loweredName = tostring(skillName or ""):lower()
-    for _, child in ipairs(folder:GetChildren()) do
-        if tostring(child.Name or ""):lower() == loweredName then
-            return true
-        end
-    end
-
-    return false
-end
-
-function IsSkillTreeBuyObject(obj)
-    if not obj or not obj.Name then return false end
-
-    local loweredName = tostring(obj.Name):lower()
-    if loweredName == "" then return false end
-    if loweredName:find("layout", 1, true) then return false end
-    if loweredName:find("padding", 1, true) then return false end
-    if loweredName:find("stroke", 1, true) then return false end
-    if loweredName:find("corner", 1, true) then return false end
-
-    if obj:IsA("GuiObject") or obj:IsA("Folder") or obj:IsA("Model") then
-        return true
-    end
-
-    return false
-end
-
-function GetSkillTreesRemote()
-    local remote = GetRemote("skilltrees")
-    if remote then return remote end
-
-    pcall(function()
-        remote = ReplicatedStorage:FindFirstChild("SkillTrees") or ReplicatedStorage:FindFirstChild("SkillTree") or ReplicatedStorage:WaitForChild("skilltrees", 2)
-    end)
-
-    return remote
-end
-
-function NotifyAutoSkillTree(message)
-    local now = tick()
-    if now - AutoSkillTreeNotifyAt < 5 then return end
-    AutoSkillTreeNotifyAt = now
-    SafeWindNotify("自动技能树", tostring(message or "技能树未就绪。"), 3, "triangle-alert")
-end
-
-function FireAutoSkillTrees()
-    local remote = GetSkillTreesRemote()
-    if not remote then
-        NotifyAutoSkillTree("未找到技能树远程事件。")
-        return false
-    end
-
-    local folder, characterName = GetSkillTreeUIFolder()
-    if not characterName or characterName == "" then
-        NotifyAutoSkillTree("无法读取你当前的角色。")
-        return false
-    end
-
-    if not folder then
-        NotifyAutoSkillTree("未找到 " .. tostring(characterName) .. " 的技能树 UI。")
-        return false
-    end
-
-    local fired = 0
-    for _, skillObj in ipairs(folder:GetChildren()) do
-        if IsSkillTreeBuyObject(skillObj) and not HasOwnedSkillTree(skillObj.Name) then
-            local remoteArg = tostring(skillObj.Name):lower()
-            local ok, err = pcall(function()
-                remote:FireServer(remoteArg)
-            end)
-
-            if ok then
-                fired = fired + 1
-                print("[DYHUB] 自动技能树已触发:", remoteArg)
-            else
-                warn("[DYHUB] 自动技能树失败:", remoteArg, err)
-            end
-
-            task.wait(0.35)
-        end
-    end
-
-    return true
-end
-
 
 -- ====================== UI: SHOP SYSTEMS ======================
 Main5:Section({ Title = T("auto_gacha"), Icon = "sparkles" })
@@ -7133,21 +7018,15 @@ _G.__DYHUB_ShopSystems = function()
     local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
 
     local function EnsureList(value, fallback)
-        if type(value) == "table" then
-            return value
-        end
-        if value ~= nil then
-            return { value }
-        end
+        if type(value) == "table" then return value end
+        if value ~= nil then return { value } end
         return fallback or {}
     end
 
     local function WaitWhileEnabled(seconds, enabledFn)
         local elapsed = 0
         while elapsed < seconds do
-            if enabledFn and not enabledFn() then
-                return false
-            end
+            if enabledFn and not enabledFn() then return false end
             task.wait(0.5)
             elapsed = elapsed + 0.25
         end
@@ -7157,16 +7036,8 @@ _G.__DYHUB_ShopSystems = function()
     local function FireShopRemote(remoteName, ...)
         local remote = GetRemote(remoteName)
         if not remote then return false end
-
-        local args = { ... }
-        local ok, err = pcall(function()
-            remote:FireServer(unpack(args))
-        end)
-
-        if not ok then
-            warn("[DYHUB] 商店远程事件失败:", tostring(remoteName), err)
-        end
-
+        local ok, err = pcall(function() remote:FireServer(...) end)
+        if not ok then warn("[DYHUB] 商店远程事件失败:", tostring(remoteName), err) end
         return ok
     end
 
@@ -7515,11 +7386,8 @@ _G.__DYHUB_ShopSystems = function()
             autoRequestEnabled = enabled
             Config:Set("AutoRequestEnabled", enabled)
             Config:Save()
-
             if enabled then
-                if not IsRequestWaveReady() then
-                    NotifyRequestWaveNotReady()
-                end
+                if not IsRequestWaveReady() then NotifyRequestWaveNotReady() end
                 StartAutoSyncedShopLoop()
             end
         end
@@ -7535,33 +7403,22 @@ _G.__DYHUB_ShopSystems = function()
             autoSkillTreeEnabled = enabled
             Config:Set("AutoSkillTreeEnabled", enabled)
             Config:Save()
-
-            if enabled then
-                StartAutoSyncedShopLoop()
-            end
+            if enabled then StartAutoSyncedShopLoop() end
         end
     })
 
     local autoSyncedShopRunning = false
 
     local function IsHeavySyncedShopEnabled()
-        return autoBuyWeaponEnabled
-            or autoBuyMiscEnabled
-            or upgradeTitanSpeakerEnabled
-            or upgradeUTCMEnabled
-            or upgradeTVEnabled
+        return autoBuyWeaponEnabled or autoBuyMiscEnabled or upgradeTitanSpeakerEnabled or upgradeUTCMEnabled or upgradeTVEnabled
     end
 
     local function IsAnySyncedShopEnabled()
-        return IsHeavySyncedShopEnabled()
-            or autoRequestEnabled
-            or autoSkillTreeEnabled
+        return IsHeavySyncedShopEnabled() or autoRequestEnabled or autoSkillTreeEnabled
     end
 
     local function GetSyncedShopPreDelay()
-        if not IsHeavySyncedShopEnabled() and (autoRequestEnabled or autoSkillTreeEnabled) then
-            return 0
-        end
+        if not IsHeavySyncedShopEnabled() and (autoRequestEnabled or autoSkillTreeEnabled) then return 0 end
         return 30
     end
 
@@ -7574,123 +7431,58 @@ _G.__DYHUB_ShopSystems = function()
     end
 
     local function FireSyncedShopBatch()
-        if autoBuyWeaponEnabled and autoBuyWeaponValue then
-            FireShopRemote("ShopSystem", "Buy", autoBuyWeaponValue)
-            task.wait(0.35)
-        end
-
-        if autoBuyMiscEnabled and autoBuyMiscValue then
-            FireShopRemote("ShopSystem", "Buy", autoBuyMiscValue)
-            task.wait(0.35)
-        end
-
+        if autoBuyWeaponEnabled and autoBuyWeaponValue then FireShopRemote("ShopSystem", "Buy", autoBuyWeaponValue); task.wait(0.35) end
+        if autoBuyMiscEnabled and autoBuyMiscValue then FireShopRemote("ShopSystem", "Buy", autoBuyMiscValue); task.wait(0.35) end
         if autoRequestEnabled and selectedRequestItem then
-            if IsRequestWaveReady() then
-                FireShopRemote("ShopSystem", "Buy", selectedRequestItem)
-            else
-                NotifyRequestWaveNotReady()
-            end
+            if IsRequestWaveReady() then FireShopRemote("ShopSystem", "Buy", selectedRequestItem) else NotifyRequestWaveNotReady() end
             task.wait(0.35)
         end
-
-        if autoSkillTreeEnabled then
-            FireAutoSkillTrees()
-            task.wait(0.35)
-        end
-
-        if upgradeTitanSpeakerEnabled then
-            for _, upgradeName in ipairs(selectedTitanSpeakerUpgrades or {}) do
-                FireShopRemote("ChangeUpgradedTitanSpeaker", upgradeName)
-                task.wait(0.35)
-            end
-        end
-
-        if upgradeUTCMEnabled then
-            for _, upgradeName in ipairs(selectedUTCMUpgrades or {}) do
-                FireShopRemote("ForUpgradeUTCM", upgradeName)
-                task.wait(0.35)
-            end
-        end
-
-        if upgradeTVEnabled then
-            for _, upgradeName in ipairs(selectedTVUpgrades or {}) do
-                FireShopRemote("ForUpgradeTV", upgradeName)
-                task.wait(0.35)
-            end
-        end
+        if autoSkillTreeEnabled then FireAutoSkillTrees(); task.wait(0.35) end
+        if upgradeTitanSpeakerEnabled then for _, upgradeName in ipairs(selectedTitanSpeakerUpgrades or {}) do FireShopRemote("ChangeUpgradedTitanSpeaker", upgradeName); task.wait(0.35) end end
+        if upgradeUTCMEnabled then for _, upgradeName in ipairs(selectedUTCMUpgrades or {}) do FireShopRemote("ForUpgradeUTCM", upgradeName); task.wait(0.35) end end
+        if upgradeTVEnabled then for _, upgradeName in ipairs(selectedTVUpgrades or {}) do FireShopRemote("ForUpgradeTV", upgradeName); task.wait(0.35) end end
     end
 
     StartAutoSyncedShopLoop = function()
         if autoSyncedShopRunning then return end
         autoSyncedShopRunning = true
-
         task.spawn(function()
             local firstCycle = true
-
             while IsAnySyncedShopEnabled() do
-                if not firstCycle then
-                    if not WaitWhileEnabled(GetSyncedShopPreDelay(), IsAnySyncedShopEnabled) then break end
-                end
+                if not firstCycle then if not WaitWhileEnabled(GetSyncedShopPreDelay(), IsAnySyncedShopEnabled) then break end end
                 firstCycle = false
-
                 local shouldSyncHeli = ShouldShopSyncWithHeli()
-                if shouldSyncHeli then
-                    TriggerAutoSkipHeli(false)
-                    task.wait(0.5)
-                end
-
+                if shouldSyncHeli then TriggerAutoSkipHeli(false); task.wait(0.5) end
                 FireSyncedShopBatch()
-
-                if shouldSyncHeli then
-                    task.wait(0.5)
-                    TriggerAutoSkipHeli(true)
-                end
-
+                if shouldSyncHeli then task.wait(0.5); TriggerAutoSkipHeli(true) end
                 if not WaitWhileEnabled(GetSyncedShopPostDelay(), IsAnySyncedShopEnabled) then break end
             end
-
             autoSyncedShopRunning = false
         end)
     end
+
     -- ====================== 商店每小时系统 ======================
     Main5:Section({ Title = T("shop_hourly"), Icon = "clock" })
 
     local ShopHourlyFixedItems = {
-        "LuckPotionI",
-        "LuckPotionII",
-        "LuckPotionIII",
-        "S-Ember",
-        "BSX2:30",
-        "BSX2:60",
-        "BSX2:360",
-        "FlashDrive#1",
-        "FlashDrive#2",
-        "FlashDrive#3",
-        "FlashDrive#4",
-        "FlashDrive#5",
-        "FlashDrive#6",
-        "MasterCard:Normal",
-        "MasterCard:NormalTitan",
-        "MasterCard:SpecialTitan",
+        "LuckPotionI", "LuckPotionII", "LuckPotionIII", "S-Ember",
+        "BSX2:30", "BSX2:60", "BSX2:360",
+        "FlashDrive#1", "FlashDrive#2", "FlashDrive#3", "FlashDrive#4", "FlashDrive#5", "FlashDrive#6",
+        "MasterCard:Normal", "MasterCard:NormalTitan", "MasterCard:SpecialTitan",
     }
 
     local function GetShopHourlyItems()
         local results = {}
-        for _, itemName in ipairs(ShopHourlyFixedItems) do
-            table.insert(results, itemName)
-        end
+        for _, itemName in ipairs(ShopHourlyFixedItems) do table.insert(results, itemName) end
         return results
     end
 
     local ShopHourlyAllowed = {}
-    for _, itemName in ipairs(ShopHourlyFixedItems) do
-        ShopHourlyAllowed[itemName] = true
-    end
+    for _, itemName in ipairs(ShopHourlyFixedItems) do ShopHourlyAllowed[itemName] = true end
 
     local function SanitizeShopHourlySelection(values, fallback)
         local clean = {}
         local seen = {}
-
         for _, itemName in ipairs(EnsureList(values, fallback or {})) do
             itemName = tostring(itemName or "")
             if ShopHourlyAllowed[itemName] and not seen[itemName] then
@@ -7698,7 +7490,6 @@ _G.__DYHUB_ShopSystems = function()
                 table.insert(clean, itemName)
             end
         end
-
         if #clean == 0 and type(fallback) == "table" then
             for _, itemName in ipairs(fallback) do
                 itemName = tostring(itemName or "")
@@ -7709,7 +7500,6 @@ _G.__DYHUB_ShopSystems = function()
                 end
             end
         end
-
         return clean
     end
 
@@ -7719,14 +7509,11 @@ _G.__DYHUB_ShopSystems = function()
     local buyItemHourlyEnabled      = Config:Get("BuyItemHourlyEnabled", false)
     local buyItemHourlyRunning      = false
 
-    local function IsBuyItemHourlyEnabled()
-        return buyItemHourlyEnabled
-    end
+    local function IsBuyItemHourlyEnabled() return buyItemHourlyEnabled end
 
     local function FireShopHourlyBatch()
         local amount = tonumber(shopHourlyItemAmount) or 1
         amount = math.max(1, math.floor(amount))
-
         for _, itemName in ipairs(selectedShopHourlyItems or {}) do
             if itemName and itemName ~= "" then
                 FireShopRemote("BuyItemFromShopHourly", itemName, amount)
@@ -7738,21 +7525,14 @@ _G.__DYHUB_ShopSystems = function()
     local function StartBuyItemHourlyLoop()
         if buyItemHourlyRunning then return end
         buyItemHourlyRunning = true
-
         task.spawn(function()
             local firstCycle = true
-
             while buyItemHourlyEnabled do
-                if not firstCycle then
-                    if not WaitWhileEnabled(30, IsBuyItemHourlyEnabled) then break end
-                end
+                if not firstCycle then if not WaitWhileEnabled(30, IsBuyItemHourlyEnabled) then break end end
                 firstCycle = false
-
                 FireShopHourlyBatch()
-
                 if not WaitWhileEnabled(10, IsBuyItemHourlyEnabled) then break end
             end
-
             buyItemHourlyRunning = false
         end)
     end
@@ -7825,7 +7605,9 @@ AutoCollectToggle = Main6:Toggle({
     Title = T("auto_collect"), Value = AutoCollectEnabled,
     Desc = T("auto_collect_desc_full"),
     Callback = function(state)
-        AutoCollectEnabled = state; Config:Set("AutoCollectEnabled", state); Config:Save()
+        AutoCollectEnabled = state
+        Config:Set("AutoCollectEnabled", state)
+        Config:Save()
         if state then
             KnownCollectItems = {}
             CollectCandidateCache = {}
@@ -7844,7 +7626,9 @@ Main6:Section({ Title = T("collect_settings"), Icon = "settings" })
 CollectItemDropdown = Main6:Dropdown({
     Title = T("collect_items"),
     Desc = T("desc_collect_items"),
-    Values = CollectItems, Multi = true, Value = SelectedCollectItems,
+    Values = CollectItems,
+    Multi = true,
+    Value = SelectedCollectItems,
     Callback = function(values)
         SelectedCollectItems = values or {}
         CollectCandidateCache = {}
@@ -7889,6 +7673,248 @@ CollectMovementDropdown = Main6:Dropdown({
     end
 })
 
+-- ====================== UI: GAMEMODE TAB ======================
+GlobalTables2 = {
+    Votes2 = {
+        "Normal", "VeryHard", "Hard", "Insane", "Nightmare", "BossRush",
+        "DarkDimension", "Hell", "ThunderStorm", "Christmas", "Zombie",
+        "AstroV2", "Astro", "100MVisit"
+    }
+}
+
+Main7:Section({ Title = T("vote_info"), TextXAlignment = "Center", TextSize = 17 })
+Main7:Divider()
+Main7:Paragraph({
+    Title = T("auto_vote_ig"),
+    Desc = T("vote_info_desc"),
+    Image = "rbxassetid://104487529937663",
+    ImageSize = 30,
+})
+Main7:Divider()
+Main7:Section({ Title = T("vote_mode"), Icon = "gamepad-2" })
+
+Main7:Button({
+    Title = T("restore_vote"),
+    Desc = T("vote_restore_warning"),
+    Callback = function()
+        pcall(function()
+            ReplicatedStorage.GetReadyRemote:FireServer("1", true)
+            task.wait(0.5)
+            ReplicatedStorage.GetReadyRemote:FireServer("1", false)
+            task.wait(0.5)
+            ReplicatedStorage.GetReadyRemote:FireServer("2", false)
+            task.wait(0.5)
+            ReplicatedStorage.GetReadyRemote:FireServer("3", false)
+            task.wait(0.5)
+            ReplicatedStorage.GetReadyRemote:FireServer("1", true)
+        end)
+        WindUI:Notify({
+            Title = T("notify_restoring"),
+            Content = T("notify_restore_ready"),
+            Duration = 6,
+            Icon = "loader-circle"
+        })
+        task.wait(6)
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(-220, -10, -600)
+            end
+        end)
+        WindUI:Notify({
+            Title = T("notify_restoring"),
+            Content = T("notify_restore_wait"),
+            Duration = 10,
+            Icon = "loader-circle"
+        })
+        task.wait(10)
+        WindUI:Notify({
+            Title = T("notify_restore_complete"),
+            Content = T("notify_restore_done"),
+            Duration = 5,
+            Icon = "check"
+        })
+    end
+})
+
+local voteModeMap = {
+    normal = "Normal", veryhard = "VeryHard", hard = "Hard", insane = "Insane",
+    nightmare = "Nightmare", bossrush = "BossRush", darkdimension = "DarkDimension",
+    hell = "Hell", thunderstorm = "ThunderStorm", christmas = "Christmas",
+    zombie = "Zombie", astrov2 = "AstroV2", astro = "Astro", visit_100m = "100MVisit",
+}
+
+GameModeDropdown2 = Main7:Dropdown({
+    Title = T("set_vote_mode"),
+    Desc = T("desc_set_vote_mode"),
+    Values = { T("normal"), T("veryhard"), T("hard"), T("insane"), T("nightmare"), T("bossrush"), T("darkdimension"), T("hell"), T("thunderstorm"), T("christmas"), T("zombie"), T("astrov2"), T("astro"), T("visit_100m") },
+    Multi = false,
+    Value = AutoVoteValue == "Normal" and T("normal") or AutoVoteValue == "VeryHard" and T("veryhard") or AutoVoteValue == "Hard" and T("hard") or AutoVoteValue == "Insane" and T("insane") or AutoVoteValue == "Nightmare" and T("nightmare") or AutoVoteValue == "BossRush" and T("bossrush") or AutoVoteValue == "DarkDimension" and T("darkdimension") or AutoVoteValue == "Hell" and T("hell") or AutoVoteValue == "ThunderStorm" and T("thunderstorm") or AutoVoteValue == "Christmas" and T("christmas") or AutoVoteValue == "Zombie" and T("zombie") or AutoVoteValue == "AstroV2" and T("astrov2") or AutoVoteValue == "Astro" and T("astro") or AutoVoteValue == "100MVisit" and T("visit_100m") or T("christmas"),
+    Callback = function(value)
+        local key = GetOriginalKey(value)
+        AutoVoteValue = voteModeMap[key] or value
+        Config:Set("AutoVoteValue", AutoVoteValue)
+        Config:Save()
+        print("[DYHUB] 投票模式已选择:", tostring(AutoVoteValue))
+    end
+})
+
+AutoVoteIGToggle = Main7:Toggle({
+    Title = T("auto_vote_ig"),
+    Desc = T("desc_auto_vote_ig"),
+    Value = AutoVoteinGameEnabled,
+    Callback = function(enabled)
+        AutoVoteinGameEnabled = enabled
+        Config:Set("AutoVoteinGameEnabled", enabled)
+        Config:Save()
+        if enabled then
+            if AutoStartEnabled and IsMiscFarmAllowed() then
+                FireGetReady(0)
+            else
+                FireAutoVote(true)
+            end
+            StartAutoVoteLoop()
+        else
+            print("[DYHUB] 自动投票模式已禁用")
+        end
+    end
+})
+
+if AutoVoteinGameEnabled then
+    StartAutoVoteLoop()
+end
+
+Main7:Divider()
+Main7:Section({ Title = T("casual_info"), TextXAlignment = "Center", TextSize = 17 })
+Main7:Divider()
+Main7:Paragraph({
+    Title = T("casual_title"),
+    Desc = T("casual_desc"),
+    Image = "rbxassetid://104487529937663",
+    ImageSize = 30,
+})
+Main7:Divider()
+Main7:Section({ Title = T("game_mode"), Icon = "gamepad-2" })
+
+GameModeDropdown = Main7:Dropdown({
+    Title = T("set_game_mode"),
+    Desc = T("desc_set_game_mode"),
+    Values = { T("normal"), T("veryhard"), T("hard"), T("insane"), T("nightmare"), T("bossrush"), T("darkdimension"), T("hell"), T("thunderstorm"), T("christmas"), T("zombie"), T("astrov2"), T("astro"), T("visit_100m") },
+    Multi = false,
+    Value = AutoGameValue == "Normal" and T("normal") or AutoGameValue == "VeryHard" and T("veryhard") or AutoGameValue == "Hard" and T("hard") or AutoGameValue == "Insane" and T("insane") or AutoGameValue == "Nightmare" and T("nightmare") or AutoGameValue == "BossRush" and T("bossrush") or AutoGameValue == "DarkDimension" and T("darkdimension") or AutoGameValue == "Hell" and T("hell") or AutoGameValue == "ThunderStorm" and T("thunderstorm") or AutoGameValue == "Christmas" and T("christmas") or AutoGameValue == "Zombie" and T("zombie") or AutoGameValue == "AstroV2" and T("astrov2") or AutoGameValue == "Astro" and T("astro") or AutoGameValue == "100MVisit" and T("visit_100m") or T("normal"),
+    Callback = function(value)
+        local key = GetOriginalKey(value)
+        AutoGameValue = voteModeMap[key] or value
+        Config:Set("AutoGameValue", AutoGameValue)
+        Config:Save()
+        print("[DYHUB] 游戏模式已选择: " .. tostring(AutoGameValue))
+    end
+})
+
+-- PLAY SYSTEM
+DELAY = 1
+
+function click_btn(btn)
+    if btn and (btn:IsA("ImageButton") or btn:IsA("TextButton")) then
+        pcall(function()
+            if firesignal then
+                firesignal(btn.MouseButton1Click)
+                firesignal(btn.Activated)
+            else
+                btn:Activate()
+            end
+        end)
+    end
+end
+
+function notify(title, content, icon)
+    WindUI:Notify({
+        Title = title,
+        Content = content,
+        Duration = 3,
+        Icon = "check"
+    })
+end
+
+task.spawn(function()
+    local playBtn =
+        workspace:FindFirstChild("ForGui") and
+        workspace.ForGui:FindFirstChild("SurfaceGui") and
+        workspace.ForGui.SurfaceGui:FindFirstChild("Frame") and
+        workspace.ForGui.SurfaceGui.Frame:FindFirstChild("Play")
+    if playBtn then
+        notify("自动 Play", "检测到 Play 按钮，自动开始...")
+        task.wait(DELAY)
+        local playGui = pg:FindFirstChild("Play")
+        if not (playGui and playGui.Enabled) then
+            click_btn(playBtn)
+            notify("自动 Play", "已按下 Play 按钮")
+        else
+            notify("自动 Play", "Play GUI 已打开")
+        end
+    end
+    task.wait(DELAY)
+    local playGui = pg:FindFirstChild("Play")
+    if not (playGui and playGui.Enabled) then return end
+    local classicBtn = playGui:FindFirstChild("Classic")
+    if classicBtn then
+        notify("自动 Play", "正在选择 Classic 模式...")
+        task.wait(DELAY)
+        click_btn(classicBtn)
+    end
+    task.wait(DELAY)
+    local modeGui = pg:FindFirstChild("mode select2")
+    if modeGui and modeGui.Enabled then
+        local diffBtn = modeGui:FindFirstChild("MainFrame") and modeGui.MainFrame:FindFirstChild("DiffMode")
+        if diffBtn then
+            notify("自动 Play", "正在选择难度...")
+            task.wait(DELAY)
+            click_btn(diffBtn)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        local loadingGui = pg:FindFirstChild("LoadingScreen")
+        if loadingGui then
+            notify("大厅系统", "正在移除 LoadingScreen...")
+            pcall(function() loadingGui:Destroy() end)
+        end
+        local lobby = pg:FindFirstChild("Lobby")
+        if lobby and lobby.Enabled then
+            notify("大厅系统", "检测到大厅，准备自动设置...")
+            local btn = lobby:FindFirstChild("MainFrame") and lobby.MainFrame:FindFirstChild("Frame") and lobby.MainFrame.Frame:FindFirstChild("Create") and lobby.MainFrame.Frame.Create:FindFirstChild("TrackQuestButton")
+            if btn and btn.Visible then
+                notify("大厅系统", "正在按下 TrackQuestButton...")
+                click_btn(btn)
+                task.wait(0.5)
+                if AutoVoteEnabled then
+                    notify("大厅系统", "正在创建游戏模式...")
+                    ReplicatedStorage.MainHandler:FireServer({ [1] = "StartSolo", [2] = AutoGameValue })
+                    notify("大厅系统", "游戏模式创建成功！")
+                else
+                    notify("大厅系统", "请配合自动游戏模式使用！")
+                end
+                break
+            end
+        end
+    end
+end)
+
+AutoVoteToggle = Main7:Toggle({
+    Title = T("auto_game_mode_lobby"),
+    Desc = T("desc_auto_game_mode_lobby"),
+    Value = AutoVoteEnabled,
+    Callback = function(enabled)
+        AutoVoteEnabled = enabled
+        Config:Set("AutoVoteEnabled", enabled)
+        Config:Save()
+        if enabled then notify("自动游戏模式", "已启用") else notify("自动游戏模式", "已禁用", "x") end
+    end
+})
+
 -- ====================== UI: SETTING TAB ======================
 Main3:Section({ Title = T("save_settings"), Icon = "save" })
 
@@ -7920,17 +7946,29 @@ end
 Main3:Toggle({
     Title = T("auto_save"), Value = AutoSaveEnabled,
     Desc = T("desc_auto_save"),
-    Callback = function(state) AutoSaveEnabled = state; Config:Set("AutoSaveEnabled", state); Config:Save(); RestartAutoSave() end
+    Callback = function(state)
+        AutoSaveEnabled = state
+        Config:Set("AutoSaveEnabled", state)
+        Config:Save()
+        RestartAutoSave()
+    end
 })
 
 Main3:Input({
     Title = T("delay_save"),
     Desc = T("desc_delay_save"),
-    Default = tostring(AutoSaveDelay), Placeholder = "默认: 15",
+    Default = tostring(AutoSaveDelay),
+    Placeholder = "默认: 15",
     Callback = function(text)
         local num = tonumber(text)
-        if num and num >= 1 then AutoSaveDelay = num; Config:Set("AutoSaveDelay", num); Config:Save(); RestartAutoSave()
-        else warn("[DYHUB] 无效的延迟值！") end
+        if num and num >= 1 then
+            AutoSaveDelay = num
+            Config:Set("AutoSaveDelay", num)
+            Config:Save()
+            RestartAutoSave()
+        else
+            warn("[DYHUB] 无效的延迟值！")
+        end
     end
 })
 
@@ -7995,7 +8033,9 @@ NoBarrierToggle = Main3:Toggle({
     Title = T("bypass_barrier"), Value = noBarrierActive,
     Desc = T("desc_bypass_barrier"),
     Callback = function(value)
-        noBarrierActive = value; Config:Set("NoBarrier", value); Config:Save()
+        noBarrierActive = value
+        Config:Set("NoBarrier", value)
+        Config:Save()
         if value then startNoBarrier() else stopNoBarrier() end
     end
 })
@@ -8005,7 +8045,7 @@ Main3:Section({ Title = T("language_title"), Icon = "globe" })
 Main3:Dropdown({
     Title = T("select_language"),
     Desc = T("desc_select_language"),
-    Values = { "Chinese", "English" },
+    Values = { "Chinese", "English", "Russian", "Portuguese" },
     Multi = false,
     Value = currentLanguage,
     Callback = function(value)
@@ -8013,7 +8053,19 @@ Main3:Dropdown({
         Config:Set("Language", value)
         Config:Save()
         BuildReverseTranslation()
-        WindUI:Notify({ Title = T("language_notify_title"), Content = T("language_changed") .. " " .. value, Duration = 2 })
+        WindUI:Notify({
+            Title = T("language_notify_title"),
+            Content = T("language_changed") .. " " .. value,
+            Duration = 2
+        })
+        task.delay(2.5, function()
+            WindUI:Notify({
+                Title = T("language_notify_title"),
+                Content = T("notify_language_restart"),
+                Duration = 5,
+                Icon = "alert-triangle"
+            })
+        end)
     end
 })
 
@@ -8039,44 +8091,23 @@ AntiAFKDisabledConnections = false
 
 function StartAntiAFK()
     AntiAFK = true
-
     if getconnections and not AntiAFKDisabledConnections then
         pcall(function()
             for _, connection in pairs(getconnections(LocalPlayer.Idled)) do
-                if connection.Disable then
-                    connection:Disable()
-                elseif connection.Disconnect then
-                    connection:Disconnect()
-                end
+                if connection.Disable then connection:Disable() elseif connection.Disconnect then connection:Disconnect() end
             end
         end)
         AntiAFKDisabledConnections = true
     end
-
-    if AntiAFKConnection then
-        AntiAFKConnection:Disconnect()
-        AntiAFKConnection = nil
-    end
-
+    if AntiAFKConnection then AntiAFKConnection:Disconnect(); AntiAFKConnection = nil end
     AntiAFKConnection = LocalPlayer.Idled:Connect(function()
         if not AntiAFK then return end
-        pcall(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
+        pcall(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
     end)
-
-    if AntiAFKThread then
-        pcall(function() task.cancel(AntiAFKThread) end)
-        AntiAFKThread = nil
-    end
-
+    if AntiAFKThread then pcall(function() task.cancel(AntiAFKThread) end); AntiAFKThread = nil end
     AntiAFKThread = task.spawn(function()
         while AntiAFK do
-            pcall(function()
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton2(Vector2.new())
-            end)
+            pcall(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
             task.wait(60)
         end
         AntiAFKThread = nil
@@ -8085,16 +8116,8 @@ end
 
 function StopAntiAFK()
     AntiAFK = false
-
-    if AntiAFKConnection then
-        AntiAFKConnection:Disconnect()
-        AntiAFKConnection = nil
-    end
-
-    if AntiAFKThread then
-        pcall(function() task.cancel(AntiAFKThread) end)
-        AntiAFKThread = nil
-    end
+    if AntiAFKConnection then AntiAFKConnection:Disconnect(); AntiAFKConnection = nil end
+    if AntiAFKThread then pcall(function() task.cancel(AntiAFKThread) end); AntiAFKThread = nil end
 end
 
 antiafk = Main3:Toggle({
@@ -8125,38 +8148,28 @@ function ApplySavedConfigOnStartup()
     if FullBrightEnabled then ApplyFullBright() end
     if NoFogEnabled then ApplyNoFog() end
     if FlyEnabled then StartFly() end
-
     if FarmAstroTokenEnabled and AutoFarmEnabled then
         FarmAstroTokenEnabled = false
         Config:Set("FarmAstroTokenEnabled", false)
         Config:Save()
         NotifyFarmAstroAutoFarm()
     end
-
     if AutoFarmEnabled then
         StartFarmLoop()
         StartJeffreyGuardLoop()
     end
-
     if FarmAstroTokenEnabled then
         StartFarmAstroToken()
     end
-
     HandleMiscOptions(MiscOptions)
-
     if noBarrierActive then startNoBarrier() end
-
-    if ESP.Enabled then
-        StartESPLoop()
-    end
-
+    if ESP.Enabled then StartESPLoop() end
     if AutoCollectEnabled then
         KnownCollectItems = {}
         CollectCandidateCache = {}
         CollectCacheDirty = true
         StartAutoCollectLoop()
     end
-
     if AutoStartEnabled and IsMiscFarmAllowed() then
         SetupAutoStartOnly(true)
     elseif AutoStartEnabled then
