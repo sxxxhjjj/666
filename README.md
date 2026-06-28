@@ -369,6 +369,65 @@ GameModeMap = {
     ["1亿访问"] = "100MVisit",
 }
 
+-- ====================== SHOP UPGRADE MAPS ======================
+TitanSpeakerUpgradeDisplayNames = { "喷气背包", "过载", "音波增幅器", "核心", "升级" }
+TitanSpeakerUpgradeMap = {
+    ["喷气背包"] = "Jetpack",
+    ["过载"] = "OverCharge",
+    ["音波增幅器"] = "SoundBooster",
+    ["核心"] = "Core",
+    ["升级"] = "Upgrade",
+}
+
+UTCMUpgradeDisplayNames = { "护盾", "冲击波", "透镜", "热度", "护甲" }
+UTCMUpgradeMap = {
+    ["护盾"] = "Shield",
+    ["冲击波"] = "Blaster",
+    ["透镜"] = "Lens",
+    ["热度"] = "Heat",
+    ["护甲"] = "Armor",
+}
+
+TVUpgradeDisplayNames = { "吸收", "共享过载", "护盾", "Astro 臂" }
+TVUpgradeMap = {
+    ["吸收"] = "Absorb",
+    ["共享过载"] = "ShareOverCharge",
+    ["护盾"] = "Shield",
+    ["Astro 臂"] = "AstroArm",
+}
+
+-- ====================== SHOP HOURLY MAP ======================
+ShopHourlyDisplayNames = {
+    "幸运药水 I", "幸运药水 II", "幸运药水 III", "S-余烬",
+    "BSX2:30", "BSX2:60", "BSX2:360",
+    "闪存驱动器#1", "闪存驱动器#2", "闪存驱动器#3", "闪存驱动器#4", "闪存驱动器#5", "闪存驱动器#6",
+    "大师卡：普通", "大师卡：普通泰坦", "大师卡：特殊泰坦",
+}
+ShopHourlyMap = {
+    ["幸运药水 I"] = "LuckPotionI",
+    ["幸运药水 II"] = "LuckPotionII",
+    ["幸运药水 III"] = "LuckPotionIII",
+    ["S-余烬"] = "S-Ember",
+    ["BSX2:30"] = "BSX2:30",
+    ["BSX2:60"] = "BSX2:60",
+    ["BSX2:360"] = "BSX2:360",
+    ["闪存驱动器#1"] = "FlashDrive#1",
+    ["闪存驱动器#2"] = "FlashDrive#2",
+    ["闪存驱动器#3"] = "FlashDrive#3",
+    ["闪存驱动器#4"] = "FlashDrive#4",
+    ["闪存驱动器#5"] = "FlashDrive#5",
+    ["闪存驱动器#6"] = "FlashDrive#6",
+    ["大师卡：普通"] = "MasterCard:Normal",
+    ["大师卡：普通泰坦"] = "MasterCard:NormalTitan",
+    ["大师卡：特殊泰坦"] = "MasterCard:SpecialTitan",
+}
+
+-- ====================== USE ITEM MAP ======================
+UseItemDisplayNames = { "礼物" }
+UseItemMap = {
+    ["礼物"] = "Presents",
+}
+
 -- 工具函数：根据显示名称获取英文值
 function GetEnglishValue(map, displayName)
     return map[displayName] or displayName
@@ -6172,23 +6231,7 @@ end)
 Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
 
 _G.__DYHUB_ShopSystems = function()
-    local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
-
-    local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
-    local autoGachaSkinEnabled      = Config:Get("AutoGachaSkinEnabled", false)
-    local selectedGachaCharacterArg = Config:Get("SelectedGachaCharacterArg", "1次抽奖")
-    local selectedGachaSkinArg      = Config:Get("SelectedGachaSkinArg", "1次抽奖")
-    local characterGachaRunning     = false
-    local skinGachaRunning          = false
-
-    local autoUseItemEnabled        = Config:Get("AutoUseItemEnabled", false)
-    local selectedUseItem           = Config:Get("SelectedUseItem", "Presents")
-    local useItemRunning            = false
-
-    local selectedRequestItem       = Config:Get("SelectedRequestItem", "泰坦请求")
-    local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
-    local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
-
+    -- ====================== 辅助工具 ======================
     local function EnsureList(value, fallback)
         if type(value) == "table" then return value end
         if value ~= nil then return { value } end
@@ -6208,16 +6251,9 @@ _G.__DYHUB_ShopSystems = function()
     local function FireShopRemote(remoteName, ...)
         local remote = GetRemote(remoteName)
         if not remote then return false end
-
         local args = { ... }
-        local ok, err = pcall(function()
-            remote:FireServer(unpack(args))
-        end)
-
-        if not ok then
-            warn("[DYHUB] 商店远程失败:", tostring(remoteName), err)
-        end
-
+        local ok, err = pcall(function() remote:FireServer(unpack(args)) end)
+        if not ok then warn("[DYHUB] 商店远程失败:", tostring(remoteName), err) end
         return ok
     end
 
@@ -6225,6 +6261,61 @@ _G.__DYHUB_ShopSystems = function()
         return AutoSkipHeliEnabled and IsMiscFarmAllowed()
     end
 
+    -- ====================== 扭蛋系统 ======================
+    local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
+
+    local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
+    local autoGachaSkinEnabled      = Config:Get("AutoGachaSkinEnabled", false)
+    local selectedGachaCharacterArg = Config:Get("SelectedGachaCharacterArg", "1次抽奖")
+    local selectedGachaSkinArg      = Config:Get("SelectedGachaSkinArg", "1次抽奖")
+    local characterGachaRunning     = false
+    local skinGachaRunning          = false
+
+    local autoUseItemEnabled        = Config:Get("AutoUseItemEnabled", false)
+    local selectedUseItem           = Config:Get("SelectedUseItem", "Presents")
+    local useItemRunning            = false
+
+    local selectedRequestItem       = Config:Get("SelectedRequestItem", "泰坦请求")
+    local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
+    local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
+
+    -- 将存储的英文转换为中文显示（使用物品）
+    local function GetUseItemDisplay(english)
+        for k, v in pairs(UseItemMap) do
+            if v == english then return k end
+        end
+        return english
+    end
+
+    local function GetTitanSpeakerDisplay(english)
+        for k, v in pairs(TitanSpeakerUpgradeMap) do
+            if v == english then return k end
+        end
+        return english
+    end
+
+    local function GetUTCMDisplay(english)
+        for k, v in pairs(UTCMUpgradeMap) do
+            if v == english then return k end
+        end
+        return english
+    end
+
+    local function GetTVDisplay(english)
+        for k, v in pairs(TVUpgradeMap) do
+            if v == english then return k end
+        end
+        return english
+    end
+
+    local function GetShopHourlyDisplay(english)
+        for k, v in pairs(ShopHourlyMap) do
+            if v == english then return k end
+        end
+        return english
+    end
+
+    -- ====================== 自动扭蛋循环 ======================
     local function StartAutoGachaCharacter()
         if characterGachaRunning then return end
         characterGachaRunning = true
@@ -6256,7 +6347,8 @@ _G.__DYHUB_ShopSystems = function()
         useItemRunning = true
         task.spawn(function()
             while autoUseItemEnabled do
-                if selectedUseItem == "Presents" then
+                local english = UseItemMap[selectedUseItem] or selectedUseItem
+                if english == "Presents" then
                     FireShopRemote("GachaCapsule")
                 end
                 task.wait(1.5)
@@ -6265,6 +6357,7 @@ _G.__DYHUB_ShopSystems = function()
         end)
     end
 
+    -- ====================== UI：角色扭蛋 ======================
     Main5:Dropdown({
         Title = "角色扭蛋",
         Desc = "选择角色扭蛋使用的抽奖类型。",
@@ -6315,17 +6408,22 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
+    -- ====================== 自动使用物品 ======================
     Main5:Section({ Title = "自动使用物品", Icon = "package-open" })
+
+    -- 获取存储英文对应的中文显示
+    local useItemDisplayValue = GetUseItemDisplay(selectedUseItem)
 
     Main5:Dropdown({
         Title = "使用物品",
         Desc = "选择自动使用物品将激活的物品。",
-        Values = { "Presents" },
+        Values = UseItemDisplayNames,
         Multi = false,
-        Value = selectedUseItem,
+        Value = useItemDisplayValue,
         Callback = function(value)
-            selectedUseItem = value or "Presents"
-            Config:Set("SelectedUseItem", value)
+            local english = UseItemMap[value] or value
+            selectedUseItem = english
+            Config:Set("SelectedUseItem", english)
             Config:Save()
         end
     })
@@ -6342,32 +6440,45 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    -- ====================== SYNC SHOP BUY / UPGRADE SYSTEM ======================
+    -- ====================== 商店升级系统 ======================
     Main5:Section({ Title = "商店升级", Icon = "arrow-big-up-dash" })
-
-    local titanSpeakerUpgradeValues = { "Jetpack", "OverCharge", "SoundBooster", "Core", "Upgrade" }
-    local utcmUpgradeValues         = { "Shield", "Blaster", "Lens", "Heat", "Armor" }
-    local tvUpgradeValues           = { "Absorb", "ShareOverCharge", "Shield", "AstroArm" }
 
     local selectedTitanSpeakerUpgrades = EnsureList(Config:Get("SelectedTitanSpeakerUpgrades", { "Jetpack" }), { "Jetpack" })
     local selectedUTCMUpgrades         = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
     local selectedTVUpgrades           = EnsureList(Config:Get("SelectedTVUpgrades", { "Absorb" }), { "Absorb" })
 
+    -- 转换为中文显示
+    local titanDisplay = {}
+    for _, v in ipairs(selectedTitanSpeakerUpgrades) do
+        table.insert(titanDisplay, GetTitanSpeakerDisplay(v))
+    end
+    local utcmDisplay = {}
+    for _, v in ipairs(selectedUTCMUpgrades) do
+        table.insert(utcmDisplay, GetUTCMDisplay(v))
+    end
+    local tvDisplay = {}
+    for _, v in ipairs(selectedTVUpgrades) do
+        table.insert(tvDisplay, GetTVDisplay(v))
+    end
+
     local upgradeTitanSpeakerEnabled = Config:Get("UpgradeTitanSpeakerEnabled", false)
     local upgradeUTCMEnabled         = Config:Get("UpgradeUTCMEnabled", false)
     local upgradeTVEnabled           = Config:Get("UpgradeTVEnabled", false)
 
-    local StartAutoSyncedShopLoop = function() end
-
     Main5:Dropdown({
         Title = "选择泰坦扬声器升级",
         Desc = "选择将请求的泰坦扬声器升级。",
-        Values = titanSpeakerUpgradeValues,
+        Values = TitanSpeakerUpgradeDisplayNames,
         Multi = true,
-        Value = selectedTitanSpeakerUpgrades,
+        Value = titanDisplay,
         Callback = function(values)
-            selectedTitanSpeakerUpgrades = values or {}
-            Config:Set("SelectedTitanSpeakerUpgrades", selectedTitanSpeakerUpgrades)
+            local englishValues = {}
+            for _, v in ipairs(values or {}) do
+                local eng = TitanSpeakerUpgradeMap[v] or v
+                table.insert(englishValues, eng)
+            end
+            selectedTitanSpeakerUpgrades = englishValues
+            Config:Set("SelectedTitanSpeakerUpgrades", englishValues)
             Config:Save()
         end
     })
@@ -6387,12 +6498,17 @@ _G.__DYHUB_ShopSystems = function()
     Main5:Dropdown({
         Title = "选择 UTCM 升级",
         Desc = "选择将请求的 UTCM 升级。",
-        Values = utcmUpgradeValues,
+        Values = UTCMUpgradeDisplayNames,
         Multi = true,
-        Value = selectedUTCMUpgrades,
+        Value = utcmDisplay,
         Callback = function(values)
-            selectedUTCMUpgrades = values or {}
-            Config:Set("SelectedUTCMUpgrades", selectedUTCMUpgrades)
+            local englishValues = {}
+            for _, v in ipairs(values or {}) do
+                local eng = UTCMUpgradeMap[v] or v
+                table.insert(englishValues, eng)
+            end
+            selectedUTCMUpgrades = englishValues
+            Config:Set("SelectedUTCMUpgrades", englishValues)
             Config:Save()
         end
     })
@@ -6412,12 +6528,17 @@ _G.__DYHUB_ShopSystems = function()
     Main5:Dropdown({
         Title = "选择 TV 升级",
         Desc = "选择将请求的 TV 升级。",
-        Values = tvUpgradeValues,
+        Values = TVUpgradeDisplayNames,
         Multi = true,
-        Value = selectedTVUpgrades,
+        Value = tvDisplay,
         Callback = function(values)
-            selectedTVUpgrades = values or {}
-            Config:Set("SelectedTVUpgrades", selectedTVUpgrades)
+            local englishValues = {}
+            for _, v in ipairs(values or {}) do
+                local eng = TVUpgradeMap[v] or v
+                table.insert(englishValues, eng)
+            end
+            selectedTVUpgrades = englishValues
+            Config:Set("SelectedTVUpgrades", englishValues)
             Config:Save()
         end
     })
@@ -6434,12 +6555,13 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
+    -- ====================== 商店武器 ======================
     Main5:Section({ Title = "商店武器", Icon = "helicopter" })
 
     local autoBuyWeaponValue   = Config:Get("AutoBuyWeaponValue", "电击枪")
     local autoBuyWeaponEnabled = Config:Get("AutoBuyWeaponEnabled", false)
 
-    WeaponDropdown = Main5:Dropdown({
+    Main5:Dropdown({
         Title = "选择武器",
         Desc = "选择将自动购买的武器。",
         Values = WeaponDisplayNames,
@@ -6453,7 +6575,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    AutoBuyWeaponToggle = Main5:Toggle({
+    Main5:Toggle({
         Title = "购买武器",
         Desc = "在商店循环期间自动购买所选武器。",
         Value = autoBuyWeaponEnabled,
@@ -6476,12 +6598,13 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
+    -- ====================== 商店杂项 ======================
     Main5:Section({ Title = "商店杂项", Icon = "package" })
 
     local autoBuyMiscValue   = Config:Get("AutoBuyMiscValue", "头戴式耳机")
     local autoBuyMiscEnabled = Config:Get("AutoBuyMiscEnabled", false)
 
-    MiscShopDropdown = Main5:Dropdown({
+    Main5:Dropdown({
         Title = "选择杂项",
         Desc = "选择将自动购买的杂项物品。",
         Values = MiscDisplayNames,
@@ -6495,7 +6618,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    AutoBuyMiscToggle = Main5:Toggle({
+    Main5:Toggle({
         Title = "购买杂项",
         Value = autoBuyMiscEnabled,
         Desc = "在商店循环期间自动购买所选杂项物品。",
@@ -6518,9 +6641,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
+    -- ====================== 请求泰坦/扬声器 ======================
     Main5:Section({ Title = "请求泰坦/扬声器", Icon = "send" })
 
-    RequestTitanSpeakerDropdown = Main5:Dropdown({
+    Main5:Dropdown({
         Title = "选择请求",
         Desc = "选择将自动购买的泰坦/扬声器请求。",
         Values = RequestDisplayNames,
@@ -6534,7 +6658,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    AutoRequestToggle = Main5:Toggle({
+    Main5:Toggle({
         Title = "自动请求",
         Desc = "波次 10+ 时自动请求选中的泰坦/扬声器。",
         Value = autoRequestEnabled,
@@ -6542,7 +6666,6 @@ _G.__DYHUB_ShopSystems = function()
             autoRequestEnabled = enabled
             Config:Set("AutoRequestEnabled", enabled)
             Config:Save()
-
             if enabled then
                 if not IsRequestWaveReady() then NotifyRequestWaveNotReady() end
                 StartAutoSyncedShopLoop()
@@ -6550,9 +6673,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
+    -- ====================== 技能树 ======================
     Main5:Section({ Title = "技能树", Icon = "git-branch-plus" })
 
-    AutoSkillTreeToggle = Main5:Toggle({
+    Main5:Toggle({
         Title = "自动技能树",
         Desc = "自动为你当前角色解锁缺失的技能树。",
         Value = autoSkillTreeEnabled,
@@ -6560,11 +6684,67 @@ _G.__DYHUB_ShopSystems = function()
             autoSkillTreeEnabled = enabled
             Config:Set("AutoSkillTreeEnabled", enabled)
             Config:Save()
-
             if enabled then StartAutoSyncedShopLoop() end
         end
     })
 
+    -- ====================== 商店小时购 ======================
+    Main5:Section({ Title = "商店小时购", Icon = "clock" })
+
+    local selectedShopHourlyItems   = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
+    -- 转换为中文显示
+    local hourlyDisplay = {}
+    for _, v in ipairs(selectedShopHourlyItems) do
+        table.insert(hourlyDisplay, GetShopHourlyDisplay(v))
+    end
+
+    local shopHourlyItemAmount      = Config:Get("ShopHourlyItemAmount", 1)
+    local buyItemHourlyEnabled      = Config:Get("BuyItemHourlyEnabled", false)
+    local buyItemHourlyRunning      = false
+
+    Main5:Dropdown({
+        Title = "选择商店小时购",
+        Desc = "选择固定的小时购商店物品。",
+        Values = ShopHourlyDisplayNames,
+        Multi = true,
+        Value = hourlyDisplay,
+        Callback = function(values)
+            local englishValues = {}
+            for _, v in ipairs(values or {}) do
+                local eng = ShopHourlyMap[v] or v
+                table.insert(englishValues, eng)
+            end
+            selectedShopHourlyItems = englishValues
+            Config:Set("SelectedShopHourlyItems", englishValues)
+            Config:Save()
+        end
+    })
+
+    Main5:Slider({
+        Title = "物品数量",
+        Desc = "设置每种选中小时购物品的购买数量。",
+        Value = { Min = 1, Max = 100, Default = shopHourlyItemAmount },
+        Step = 1,
+        Callback = function(value)
+            shopHourlyItemAmount = value
+            Config:Set("ShopHourlyItemAmount", value)
+            Config:Save()
+        end
+    })
+
+    Main5:Toggle({
+        Title = "购买物品",
+        Desc = "在定时循环中自动购买选中的小时购商店物品。",
+        Value = buyItemHourlyEnabled,
+        Callback = function(enabled)
+            buyItemHourlyEnabled = enabled
+            Config:Set("BuyItemHourlyEnabled", enabled)
+            Config:Save()
+            if enabled then StartBuyItemHourlyLoop() end
+        end
+    })
+
+    -- ====================== 同步商店循环 ======================
     local autoSyncedShopRunning = false
 
     local function IsHeavySyncedShopEnabled()
@@ -6672,57 +6852,7 @@ _G.__DYHUB_ShopSystems = function()
         end)
     end
 
-    -- ====================== SHOP HOURLY SYSTEM ======================
-    Main5:Section({ Title = "商店小时购", Icon = "clock" })
-
-    local ShopHourlyFixedItems = {
-        "LuckPotionI", "LuckPotionII", "LuckPotionIII", "S-Ember",
-        "BSX2:30", "BSX2:60", "BSX2:360",
-        "FlashDrive#1", "FlashDrive#2", "FlashDrive#3", "FlashDrive#4", "FlashDrive#5", "FlashDrive#6",
-        "MasterCard:Normal", "MasterCard:NormalTitan", "MasterCard:SpecialTitan",
-    }
-
-    local function GetShopHourlyItems()
-        local results = {}
-        for _, itemName in ipairs(ShopHourlyFixedItems) do table.insert(results, itemName) end
-        return results
-    end
-
-    local ShopHourlyAllowed = {}
-    for _, itemName in ipairs(ShopHourlyFixedItems) do ShopHourlyAllowed[itemName] = true end
-
-    local function SanitizeShopHourlySelection(values, fallback)
-        local clean = {}
-        local seen = {}
-
-        for _, itemName in ipairs(EnsureList(values, fallback or {})) do
-            itemName = tostring(itemName or "")
-            if ShopHourlyAllowed[itemName] and not seen[itemName] then
-                seen[itemName] = true
-                table.insert(clean, itemName)
-            end
-        end
-
-        if #clean == 0 and type(fallback) == "table" then
-            for _, itemName in ipairs(fallback) do
-                itemName = tostring(itemName or "")
-                if ShopHourlyAllowed[itemName] and not seen[itemName] then
-                    seen[itemName] = true
-                    table.insert(clean, itemName)
-                    break
-                end
-            end
-        end
-
-        return clean
-    end
-
-    local shopHourlyValues          = GetShopHourlyItems()
-    local selectedShopHourlyItems   = SanitizeShopHourlySelection(Config:Get("SelectedShopHourlyItems", { shopHourlyValues[1] }), { shopHourlyValues[1] })
-    local shopHourlyItemAmount      = Config:Get("ShopHourlyItemAmount", 1)
-    local buyItemHourlyEnabled      = Config:Get("BuyItemHourlyEnabled", false)
-    local buyItemHourlyRunning      = false
-
+    -- ====================== 小时购循环 ======================
     local function IsBuyItemHourlyEnabled()
         return buyItemHourlyEnabled
     end
@@ -6761,43 +6891,7 @@ _G.__DYHUB_ShopSystems = function()
         end)
     end
 
-    Main5:Dropdown({
-        Title = "选择商店小时购",
-        Desc = "选择固定的小时购商店物品。",
-        Values = shopHourlyValues,
-        Multi = true,
-        Value = selectedShopHourlyItems,
-        Callback = function(values)
-            selectedShopHourlyItems = SanitizeShopHourlySelection(values or {}, {})
-            Config:Set("SelectedShopHourlyItems", selectedShopHourlyItems)
-            Config:Save()
-        end
-    })
-
-    Main5:Slider({
-        Title = "物品数量",
-        Desc = "设置每种选中小时购物品的购买数量。",
-        Value = { Min = 1, Max = 100, Default = shopHourlyItemAmount },
-        Step = 1,
-        Callback = function(value)
-            shopHourlyItemAmount = value
-            Config:Set("ShopHourlyItemAmount", value)
-            Config:Save()
-        end
-    })
-
-    Main5:Toggle({
-        Title = "购买物品",
-        Desc = "在定时循环中自动购买选中的小时购商店物品。",
-        Value = buyItemHourlyEnabled,
-        Callback = function(enabled)
-            buyItemHourlyEnabled = enabled
-            Config:Set("BuyItemHourlyEnabled", enabled)
-            Config:Save()
-            if enabled then StartBuyItemHourlyLoop() end
-        end
-    })
-
+    -- ====================== 启动已启用的循环 ======================
     if autoGachaCharacterEnabled then StartAutoGachaCharacter() end
     if autoGachaSkinEnabled then StartAutoGachaSkin() end
     if autoUseItemEnabled then StartAutoUseItem() end
