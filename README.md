@@ -279,6 +279,14 @@ RequestMap = {
     ["扬声器请求"] = "Speaker-Request",
 }
 
+GamepassDisplayNames = { "全部", "幸运加成", "稀有幸运加成", "传奇幸运加成" }
+GamepassMap = {
+    ["全部"] = "All",
+    ["幸运加成"] = "LuckyBoost",
+    ["稀有幸运加成"] = "RareLuckyBoost",
+    ["传奇幸运加成"] = "LegendaryLuckyBoost",
+}
+
 FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式" }
 FarmModeMap = {
     ["普通模式"] = "Normal Mode",
@@ -415,11 +423,10 @@ function GetDisplayName(map, englishValue)
     return englishValue
 end
 
--- ====================== WINDOW ======================
+-- ====================== WINDOW 2 ======================
 Players = game:GetService("Players")
-LocalPlayer = Players.LocalPlayer
-CoreGui = game:GetService("CoreGui")
 
+-- ====================== WINDOW ======================
 Window = WindUI:CreateWindow({
     Title = "至尊版",
     IconThemed = true,
@@ -481,17 +488,22 @@ VirtualInputManager = game:GetService("VirtualInputManager")
 RunService          = game:GetService("RunService")
 UserInputService    = game:GetService("UserInputService")
 Lighting            = game:GetService("Lighting")
+CoreGui             = game:GetService("CoreGui")
 
 -- ====================== PLAYER ======================
+LocalPlayer    = Players.LocalPlayer
 Client         = LocalPlayer
 Character      = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- ====================== GLOBAL TABLES ======================
 GlobalTables = {
+    redeemCodes = { "100MVisit2", "100MVisit1", "CamArmada", "CCTVBase", "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad" },
     Weapon   = { "Stungun", "Flamethrower", "Harpoon Gun", "Shot Gun", "Pulse Rifle", "Shot Harpoon Gun", "EPD", "Small Laser Gun" },
     MiscShop = { "HeadPhone", "Grenade", "Jetpack", "Lens" },
     RequestTitanSpeaker = { "Titan-Request", "SpecialTitan-Request", "Speaker-Request" },
+    Gamepasst = { "All", "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" },
+    Gamepassts = {},
 }
 
 -- ====================== CONFIG VARIABLES ======================
@@ -4261,7 +4273,7 @@ workspace.DescendantAdded:Connect(function(obj)
 end)
 
 -- ============================================================
--- ====================== MAIN FARM LOOP ======================
+-- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
 -- ============================================================
 FarmLoopToken = FarmLoopToken or 0
 
@@ -4850,7 +4862,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
     ApplyCameraMode(true)
 end)
-
 -- ====================== UI: MAIN TAB ======================
 Main:Section({ Title = "自动刷怪", Icon = "package" })
 
@@ -4892,6 +4903,7 @@ AutoFarmToggle = Main:Toggle({
     end
 })
 
+-- 刷怪模式下拉框（完全开放，无付费限制）
 FarmTargetModeDropdown = Main:Dropdown({
     Title = "刷怪模式",
     Desc = "不同的刷怪模式。",
@@ -5994,7 +6006,123 @@ Main2:Toggle({
     end
 })
 
--- 兑换码和通行证解锁部分已完全移除
+-- ====================== UI: 兑换码 ======================
+Main2:Section({ Title = "兑换码", Icon = "bird" })
+
+SelectedCodes = Config:Get("SelectedCodes", {})
+
+CodeDropdown = Main2:Dropdown({
+    Title = "选择兑换码",
+    Desc = "选择将要兑换的代码。",
+    Multi = true,
+    Values = GlobalTables.redeemCodes,
+    Value = SelectedCodes,
+    Callback = function(value)
+        SelectedCodes = value or {}
+        Config:Set("SelectedCodes", value)
+        Config:Save()
+    end,
+})
+
+Main2:Button({
+    Title = "兑换代码",
+    Desc = "仅兑换你在下拉菜单中选中的代码。",
+    Callback = function()
+        for _, code in ipairs(SelectedCodes or {}) do
+            pcall(function()
+                local remote = GetRemote("RedeemCode")
+                if remote then remote:FireServer(code) end
+                task.wait(0.2)
+            end)
+        end
+    end,
+})
+
+Main2:Button({
+    Title = "兑换全部代码",
+    Desc = "一次性兑换所有可用代码。",
+    Callback = function()
+        for _, code in ipairs(GlobalTables.redeemCodes or {}) do
+            pcall(function()
+                local remote = GetRemote("RedeemCode")
+                if remote then remote:FireServer(code) end
+                task.wait(0.5)
+            end)
+        end
+    end,
+})
+
+-- ====================== UI: 解锁通行证 ======================
+Main2:Section({ Title = "解锁通行证", Icon = "badge-dollar-sign" })
+
+SelectedGamepass = Config:Get("SelectedGamepass", {})
+GlobalTables.Gamepassts = SelectedGamepass
+
+GamepassDropdown = Main2:Dropdown({
+    Title = "选择通行证",
+    Desc = "选择要本地解锁的通行证。",
+    Multi = true,
+    Values = GamepassDisplayNames,
+    Value = SelectedGamepass,
+    Callback = function(value)
+        GlobalTables.Gamepassts = value or {}
+        SelectedGamepass = value or {}
+        Config:Set("SelectedGamepass", value)
+        Config:Save()
+    end,
+})
+
+Main2:Button({
+    Title = "解锁通行证",
+    Desc = "免费本地解锁选中的通行证。",
+    Callback = function()
+        local gachaData = LocalPlayer:FindFirstChild("GachaData")
+        if not gachaData then
+            gachaData = Instance.new("Folder")
+            gachaData.Name = "GachaData"
+            gachaData.Parent = LocalPlayer
+        end
+        local toUnlock = {}
+        for _, v in ipairs(GlobalTables.Gamepassts) do
+            if v == "全部" then
+                toUnlock = { "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" }
+                break
+            else
+                local english = GamepassMap[v] or v
+                table.insert(toUnlock, english)
+            end
+        end
+        if #toUnlock == 0 then
+            WindUI:Notify({
+                Title = "解锁通行证",
+                Content = "请先选择通行证！",
+                Duration = 3,
+                Icon = "alert-triangle"
+            })
+            return
+        end
+        local successCount = 0
+        for _, gamepassName in ipairs(toUnlock) do
+            pcall(function()
+                local boolValue = gachaData:FindFirstChild(gamepassName)
+                if not boolValue then
+                    boolValue = Instance.new("BoolValue")
+                    boolValue.Name = gamepassName
+                    boolValue.Parent = gachaData
+                end
+                boolValue.Value = true
+                successCount = successCount + 1
+                task.wait(0.2)
+            end)
+        end
+        WindUI:Notify({
+            Title = "解锁通行证",
+            Content = "已解锁 " .. successCount .. "/" .. #toUnlock .. " 个通行证！完成！",
+            Duration = 3,
+            Icon = "badge-check"
+        })
+    end,
+})
 
 -- ============================================================
 -- ============== 角色重生时重置飞行状态 ======================
@@ -6017,7 +6145,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ============================================================
--- ============== 抽奖增强功能（仅在抽奖开启时生效） ============
+-- ============== 抽奖增强功能 ================================
 -- ============================================================
 local MoneyUIExists = false
 local GachaHeartbeatConnection = nil
@@ -6243,14 +6371,29 @@ local function StopGachaEnhancement()
 end
 
 -- ============================================================
--- ============== 以下为 Shop Tab、Collect Tab、Gamemode Tab、Setting Tab ==============
+-- ============== Shop Tab ====================================
 -- ============================================================
 
--- ====================== UI: SHOP TAB ======================
 Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
 
 _G.__DYHUB_ShopSystems = function()
-    -- ====================== 辅助工具 ======================
+    local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
+
+    local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
+    local autoGachaSkinEnabled      = Config:Get("AutoGachaSkinEnabled", false)
+    local selectedGachaCharacterArg = Config:Get("SelectedGachaCharacterArg", "1次抽奖")
+    local selectedGachaSkinArg      = Config:Get("SelectedGachaSkinArg", "1次抽奖")
+    local characterGachaRunning     = false
+    local skinGachaRunning          = false
+
+    local autoUseItemEnabled        = Config:Get("AutoUseItemEnabled", false)
+    local selectedUseItem           = Config:Get("SelectedUseItem", "Presents")
+    local useItemRunning            = false
+
+    local selectedRequestItem       = Config:Get("SelectedRequestItem", "泰坦请求")
+    local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
+    local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
+
     local function EnsureList(value, fallback)
         if type(value) == "table" then return value end
         if value ~= nil then return { value } end
@@ -6280,25 +6423,6 @@ _G.__DYHUB_ShopSystems = function()
         return AutoSkipHeliEnabled and IsMiscFarmAllowed()
     end
 
-    -- ====================== 扭蛋系统 ======================
-    local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
-
-    local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
-    local autoGachaSkinEnabled      = Config:Get("AutoGachaSkinEnabled", false)
-    local selectedGachaCharacterArg = Config:Get("SelectedGachaCharacterArg", "1次抽奖")
-    local selectedGachaSkinArg      = Config:Get("SelectedGachaSkinArg", "1次抽奖")
-    local characterGachaRunning     = false
-    local skinGachaRunning          = false
-
-    local autoUseItemEnabled        = Config:Get("AutoUseItemEnabled", false)
-    local selectedUseItem           = Config:Get("SelectedUseItem", "Presents")
-    local useItemRunning            = false
-
-    local selectedRequestItem       = Config:Get("SelectedRequestItem", "泰坦请求")
-    local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
-    local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
-
-    -- 转换显示函数
     local function GetUseItemDisplay(english)
         for k, v in pairs(UseItemMap) do
             if v == english then return k end
@@ -6334,11 +6458,10 @@ _G.__DYHUB_ShopSystems = function()
         return english
     end
 
-    -- ====================== 自动扭蛋循环（增强版 + 互斥） ======================
+    -- ====================== 互斥抽奖循环 ======================
     local function StartAutoGachaCharacter()
         if characterGachaRunning then return end
 
-        -- 互斥：如果皮肤抽奖正在运行，先停止它
         if skinGachaRunning then
             autoGachaSkinEnabled = false
             Config:Set("AutoGachaSkinEnabled", false)
@@ -6375,7 +6498,6 @@ _G.__DYHUB_ShopSystems = function()
     local function StartAutoGachaSkin()
         if skinGachaRunning then return end
 
-        -- 互斥：如果角色抽奖正在运行，先停止它
         if characterGachaRunning then
             autoGachaCharacterEnabled = false
             Config:Set("AutoGachaCharacterEnabled", false)
@@ -6554,7 +6676,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    -- ====================== 商店升级系统 ======================
+    -- ====================== 商店升级 ======================
     Main5:Section({ Title = "商店升级", Icon = "arrow-big-up-dash" })
 
     local selectedTitanSpeakerUpgrades = EnsureList(Config:Get("SelectedTitanSpeakerUpgrades", { "Jetpack" }), { "Jetpack" })
@@ -7003,7 +7125,6 @@ _G.__DYHUB_ShopSystems = function()
         end)
     end
 
-    -- ====================== 启动已启用的循环 ======================
     if autoGachaCharacterEnabled then StartAutoGachaCharacter() end
     if autoGachaSkinEnabled then StartAutoGachaSkin() end
     if autoUseItemEnabled then StartAutoUseItem() end
@@ -7151,6 +7272,7 @@ Main7:Button({
     end
 })
 
+-- ====================== 投票模式下拉 ======================
 GameModeDropdown2 = Main7:Dropdown({
     Title = "设置投票模式",
     Desc = "选择自动投票将投选的游戏模式。",
@@ -7166,6 +7288,7 @@ GameModeDropdown2 = Main7:Dropdown({
     end
 })
 
+-- ====================== 自动投票 + 准备 ======================
 AutoVoteReadyEnabled = Config:Get("AutoVoteReadyEnabled", false)
 AutoVoteReadyLoading = false
 AutoVoteReadyLastFire = 0
