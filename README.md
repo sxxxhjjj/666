@@ -279,14 +279,6 @@ RequestMap = {
     ["扬声器请求"] = "Speaker-Request",
 }
 
-GamepassDisplayNames = { "全部", "幸运加成", "稀有幸运加成", "传奇幸运加成" }
-GamepassMap = {
-    ["全部"] = "All",
-    ["幸运加成"] = "LuckyBoost",
-    ["稀有幸运加成"] = "RareLuckyBoost",
-    ["传奇幸运加成"] = "LegendaryLuckyBoost",
-}
-
 FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式" }
 FarmModeMap = {
     ["普通模式"] = "Normal Mode",
@@ -423,10 +415,11 @@ function GetDisplayName(map, englishValue)
     return englishValue
 end
 
--- ====================== WINDOW 2 ======================
-Players = game:GetService("Players")
-
 -- ====================== WINDOW ======================
+Players = game:GetService("Players")
+LocalPlayer = Players.LocalPlayer
+CoreGui = game:GetService("CoreGui")
+
 Window = WindUI:CreateWindow({
     Title = "至尊版",
     IconThemed = true,
@@ -488,10 +481,8 @@ VirtualInputManager = game:GetService("VirtualInputManager")
 RunService          = game:GetService("RunService")
 UserInputService    = game:GetService("UserInputService")
 Lighting            = game:GetService("Lighting")
-CoreGui             = game:GetService("CoreGui")  -- 新增用于抽奖增强
 
 -- ====================== PLAYER ======================
-LocalPlayer    = Players.LocalPlayer
 Client         = LocalPlayer
 Character      = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
@@ -501,8 +492,6 @@ GlobalTables = {
     Weapon   = { "Stungun", "Flamethrower", "Harpoon Gun", "Shot Gun", "Pulse Rifle", "Shot Harpoon Gun", "EPD", "Small Laser Gun" },
     MiscShop = { "HeadPhone", "Grenade", "Jetpack", "Lens" },
     RequestTitanSpeaker = { "Titan-Request", "SpecialTitan-Request", "Speaker-Request" },
-    Gamepasst = { "All", "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" },
-    Gamepassts = {},
 }
 
 -- ====================== CONFIG VARIABLES ======================
@@ -4272,7 +4261,7 @@ workspace.DescendantAdded:Connect(function(obj)
 end)
 
 -- ============================================================
--- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
+-- ====================== MAIN FARM LOOP ======================
 -- ============================================================
 FarmLoopToken = FarmLoopToken or 0
 
@@ -4861,6 +4850,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
     ApplyCameraMode(true)
 end)
+
 -- ====================== UI: MAIN TAB ======================
 Main:Section({ Title = "自动刷怪", Icon = "package" })
 
@@ -6027,8 +6017,12 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ============================================================
--- ============== 抽奖增强功能 ================================
+-- ============== 抽奖增强功能（仅在抽奖开启时生效） ============
 -- ============================================================
+local MoneyUIExists = false
+local GachaHeartbeatConnection = nil
+local GachaEnhancementActive = false
+
 local function GetMoney()
     local money = 0
     local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
@@ -6059,8 +6053,6 @@ local function GetMoney()
     end
     return money
 end
-
-local MoneyUIExists = false
 
 local function CreateMoneyUI()
     if MoneyUIExists then return end
@@ -6225,51 +6217,30 @@ local function ResetCamera()
     cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
 end
 
-local function DoEverything()
-    ForceShowGacha()
-    RemoveBlackScreens()
-    RemoveGachaVisuals()
-    ResetCamera()
-end
+local function StartGachaEnhancement()
+    if GachaEnhancementActive then return end
+    GachaEnhancementActive = true
+    CreateMoneyUI()
 
--- 监听 GachaRoom 出现
-workspace.ChildAdded:Connect(function(child)
-    if child.Name == "GachaRoom" then
-        task.wait(0.01)
-        DoEverything()
-    end
-end)
-
-if pg then
-    pg.DescendantAdded:Connect(function(obj)
-        if obj:IsA("ScreenGui") then
-            task.wait(0.01)
-            DoEverything()
-        end
+    if GachaHeartbeatConnection then return end
+    GachaHeartbeatConnection = RunService.Heartbeat:Connect(function()
+        if not GachaEnhancementActive then return end
+        pcall(function()
+            ForceShowGacha()
+            RemoveBlackScreens()
+            RemoveGachaVisuals()
+            ResetCamera()
+        end)
     end)
 end
 
--- 持续执行
-task.spawn(function()
-    while true do
-        DoEverything()
-        task.wait(0.05)
+local function StopGachaEnhancement()
+    GachaEnhancementActive = false
+    if GachaHeartbeatConnection then
+        GachaHeartbeatConnection:Disconnect()
+        GachaHeartbeatConnection = nil
     end
-end)
-
--- 每帧强制摄像头
-RunService.Heartbeat:Connect(function()
-    local cam = workspace.CurrentCamera
-    if not cam then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    if cam.CameraSubject ~= hrp then
-        cam.CameraSubject = hrp
-        cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
-    end
-end)
+end
 
 -- ============================================================
 -- ============== 以下为 Shop Tab、Collect Tab、Gamemode Tab、Setting Tab ==============
@@ -6363,32 +6334,78 @@ _G.__DYHUB_ShopSystems = function()
         return english
     end
 
-    -- ====================== 自动扭蛋循环（增强版） ======================
+    -- ====================== 自动扭蛋循环（增强版 + 互斥） ======================
     local function StartAutoGachaCharacter()
         if characterGachaRunning then return end
+
+        -- 互斥：如果皮肤抽奖正在运行，先停止它
+        if skinGachaRunning then
+            autoGachaSkinEnabled = false
+            Config:Set("AutoGachaSkinEnabled", false)
+            Config:Save()
+            pcall(function()
+                if AutoGachaSkinToggle and AutoGachaSkinToggle.Set then
+                    AutoGachaSkinToggle:Set(false)
+                end
+            end)
+            WindUI:Notify({
+                Title = "互斥提示",
+                Content = "⚠️ 已自动关闭皮肤扭蛋，角色扭蛋已启用",
+                Duration = 3,
+                Icon = "alert-triangle"
+            })
+        end
+
         characterGachaRunning = true
+        StartGachaEnhancement()
+
         task.spawn(function()
             while autoGachaCharacterEnabled do
-                pcall(DoEverything)
                 local english = GachaMap[selectedGachaCharacterArg] or selectedGachaCharacterArg
                 FireShopRemote("GachaCharacter", english)
                 task.wait(1)
             end
             characterGachaRunning = false
+            if not skinGachaRunning then
+                StopGachaEnhancement()
+            end
         end)
     end
 
     local function StartAutoGachaSkin()
         if skinGachaRunning then return end
+
+        -- 互斥：如果角色抽奖正在运行，先停止它
+        if characterGachaRunning then
+            autoGachaCharacterEnabled = false
+            Config:Set("AutoGachaCharacterEnabled", false)
+            Config:Save()
+            pcall(function()
+                if AutoGachaCharacterToggle and AutoGachaCharacterToggle.Set then
+                    AutoGachaCharacterToggle:Set(false)
+                end
+            end)
+            WindUI:Notify({
+                Title = "互斥提示",
+                Content = "⚠️ 已自动关闭角色扭蛋，皮肤扭蛋已启用",
+                Duration = 3,
+                Icon = "alert-triangle"
+            })
+        end
+
         skinGachaRunning = true
+        StartGachaEnhancement()
+
         task.spawn(function()
             while autoGachaSkinEnabled do
-                pcall(DoEverything)
                 local english = GachaMap[selectedGachaSkinArg] or selectedGachaSkinArg
                 FireShopRemote("GachaSkins", english)
                 task.wait(1)
             end
             skinGachaRunning = false
+            if not characterGachaRunning then
+                StopGachaEnhancement()
+            end
         end)
     end
 
@@ -6421,15 +6438,39 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
+    local AutoGachaCharacterToggle = Main5:Toggle({
         Title = "自动角色扭蛋",
         Value = autoGachaCharacterEnabled,
         Desc = "使用所选选项自动进行角色扭蛋。",
         Callback = function(enabled)
+            if enabled and autoGachaSkinEnabled then
+                WindUI:Notify({
+                    Title = "互斥提示",
+                    Content = "⚠️ 皮肤扭蛋正在运行，请先关闭皮肤扭蛋再启用角色扭蛋",
+                    Duration = 3,
+                    Icon = "alert-triangle"
+                })
+                if AutoGachaCharacterToggle and AutoGachaCharacterToggle.Set then
+                    AutoGachaCharacterToggle:Set(false)
+                end
+                return
+            end
             autoGachaCharacterEnabled = enabled
             Config:Set("AutoGachaCharacterEnabled", enabled)
             Config:Save()
-            if enabled then StartAutoGachaCharacter() end
+            if enabled then
+                if autoGachaSkinEnabled then
+                    autoGachaSkinEnabled = false
+                    Config:Set("AutoGachaSkinEnabled", false)
+                    Config:Save()
+                    pcall(function()
+                        if AutoGachaSkinToggle and AutoGachaSkinToggle.Set then
+                            AutoGachaSkinToggle:Set(false)
+                        end
+                    end)
+                end
+                StartAutoGachaCharacter()
+            end
         end
     })
 
@@ -6446,15 +6487,39 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
+    local AutoGachaSkinToggle = Main5:Toggle({
         Title = "自动皮肤扭蛋",
         Value = autoGachaSkinEnabled,
         Desc = "使用所选选项自动进行皮肤扭蛋。",
         Callback = function(enabled)
+            if enabled and autoGachaCharacterEnabled then
+                WindUI:Notify({
+                    Title = "互斥提示",
+                    Content = "⚠️ 角色扭蛋正在运行，请先关闭角色扭蛋再启用皮肤扭蛋",
+                    Duration = 3,
+                    Icon = "alert-triangle"
+                })
+                if AutoGachaSkinToggle and AutoGachaSkinToggle.Set then
+                    AutoGachaSkinToggle:Set(false)
+                end
+                return
+            end
             autoGachaSkinEnabled = enabled
             Config:Set("AutoGachaSkinEnabled", enabled)
             Config:Save()
-            if enabled then StartAutoGachaSkin() end
+            if enabled then
+                if autoGachaCharacterEnabled then
+                    autoGachaCharacterEnabled = false
+                    Config:Set("AutoGachaCharacterEnabled", false)
+                    Config:Save()
+                    pcall(function()
+                        if AutoGachaCharacterToggle and AutoGachaCharacterToggle.Set then
+                            AutoGachaCharacterToggle:Set(false)
+                        end
+                    end)
+                end
+                StartAutoGachaSkin()
+            end
         end
     })
 
@@ -7874,9 +7939,6 @@ antiafk = Main3:Toggle({
 })
 
 if AntiAFK then StartAntiAFK() end
-
--- ====================== 启动 MoneyUI ======================
-CreateMoneyUI()
 
 -- ====================== APPLY SAVED CONFIG ON LOAD ======================
 function ApplySavedConfigOnStartup()
