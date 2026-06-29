@@ -229,9 +229,6 @@ end
 Config = CustomConfig.new()
 
 -- ====================== UI DISPLAY NAME MAPPING ======================
--- 所有映射表：UI显示中文，实际发送英文
-
--- Gacha 映射（扭蛋）
 GachaDisplayNames = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
 GachaMap = {
     ["1次抽奖"] = "1Spin",
@@ -241,7 +238,6 @@ GachaMap = {
     ["10次幸运抽奖"] = "10SpinLucky",
 }
 
--- 收集物品映射
 CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物" }
 CollectMap = {
     ["时钟蜘蛛"] = "Clock Spider",
@@ -256,7 +252,6 @@ CollectMap = {
     ["礼物"] = "Presents",
 }
 
--- 武器映射
 WeaponDisplayNames = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" }
 WeaponMap = {
     ["电击枪"] = "Stungun",
@@ -269,7 +264,6 @@ WeaponMap = {
     ["小型激光枪"] = "Small Laser Gun",
 }
 
--- 杂项映射
 MiscDisplayNames = { "头戴式耳机", "手雷", "喷气背包", "透镜" }
 MiscMap = {
     ["头戴式耳机"] = "HeadPhone",
@@ -278,7 +272,6 @@ MiscMap = {
     ["透镜"] = "Lens",
 }
 
--- 请求映射
 RequestDisplayNames = { "泰坦请求", "特殊泰坦请求", "扬声器请求" }
 RequestMap = {
     ["泰坦请求"] = "Titan-Request",
@@ -286,7 +279,6 @@ RequestMap = {
     ["扬声器请求"] = "Speaker-Request",
 }
 
--- 通行证映射
 GamepassDisplayNames = { "全部", "幸运加成", "稀有幸运加成", "传奇幸运加成" }
 GamepassMap = {
     ["全部"] = "All",
@@ -295,7 +287,6 @@ GamepassMap = {
     ["传奇幸运加成"] = "LegendaryLuckyBoost",
 }
 
--- 刷怪模式映射
 FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式" }
 FarmModeMap = {
     ["普通模式"] = "Normal Mode",
@@ -303,35 +294,30 @@ FarmModeMap = {
     ["黑暗维度模式"] = "Dark Dimension Mode",
 }
 
--- 刷怪位置映射
 FarmPositionDisplayNames = { "上方", "下方" }
 FarmPositionMap = {
     ["上方"] = "Above",
     ["下方"] = "Under",
 }
 
--- 移动方式映射
 MovementDisplayNames = { "传送", "补间" }
 MovementMap = {
     ["传送"] = "Teleport",
     ["补间"] = "Tween",
 }
 
--- 收集模式映射
 CollectModeDisplayNames = { "清洁", "IDGF" }
 CollectModeMap = {
     ["清洁"] = "Clean",
     ["IDGF"] = "IDGF",
 }
 
--- 相机模式映射
 CameraModeDisplayNames = { "经典", "手动" }
 CameraModeMap = {
     ["经典"] = "Classic",
     ["手动"] = "Manual",
 }
 
--- 投票模式映射（显示中文，发送英文）
 VoteDisplayNames = { "普通", "非常困难", "困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问" }
 VoteMap = {
     ["普通"] = "Normal",
@@ -350,7 +336,6 @@ VoteMap = {
     ["1亿访问"] = "100MVisit",
 }
 
--- 游戏模式映射（显示中文，发送英文）
 GameModeDisplayNames = { "普通", "困难", "非常困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问" }
 GameModeMap = {
     ["普通"] = "Normal",
@@ -369,7 +354,6 @@ GameModeMap = {
     ["1亿访问"] = "100MVisit",
 }
 
--- ====================== SHOP UPGRADE MAPS ======================
 TitanSpeakerUpgradeDisplayNames = { "喷气背包", "过载", "音波增幅器", "核心", "升级" }
 TitanSpeakerUpgradeMap = {
     ["喷气背包"] = "Jetpack",
@@ -396,7 +380,6 @@ TVUpgradeMap = {
     ["Astro 臂"] = "AstroArm",
 }
 
--- ====================== SHOP HOURLY MAP ======================
 ShopHourlyDisplayNames = {
     "幸运药水 I", "幸运药水 II", "幸运药水 III", "S-余烬",
     "BSX2:30", "BSX2:60", "BSX2:360",
@@ -422,18 +405,15 @@ ShopHourlyMap = {
     ["大师卡：特殊泰坦"] = "MasterCard:SpecialTitan",
 }
 
--- ====================== USE ITEM MAP ======================
 UseItemDisplayNames = { "礼物" }
 UseItemMap = {
     ["礼物"] = "Presents",
 }
 
--- 工具函数：根据显示名称获取英文值
 function GetEnglishValue(map, displayName)
     return map[displayName] or displayName
 end
 
--- 工具函数：根据英文值获取显示名称（反向查找）
 function GetDisplayName(map, englishValue)
     for k, v in pairs(map) do
         if v == englishValue then
@@ -445,33 +425,6 @@ end
 
 -- ====================== WINDOW 2 ======================
 Players = game:GetService("Players")
-
-function getData(url)
-    local success, response = pcall(function() return game:HttpGet(url) end)
-    if not success then return nil end
-    local func = loadstring(response)
-    if func then return func() end
-    return nil
-end
-
-function checkVersion(playerName)
-    local extraData = getData("https://raw.githubusercontent.com/mabdu21/2askdkn21h3u21ddaa/refs/heads/main/Main/Premium/STBBList.lua")
-    if extraData and extraData[playerName] then return "extra" end
-    local premiumData = getData("https://raw.githubusercontent.com/mabdu21/2askdkn21h3u21ddaa/refs/heads/main/Main/Premium/listpremium.lua")
-    if premiumData and premiumData[playerName] then return "premium" end
-    return "free"
-end
-
-player = Players.LocalPlayer
-userversion = checkVersion(player.Name)
-
-function IsPaidUserVersion()
-    return userversion == "premium" or userversion == "extra"
-end
-
-function GetVersionDisplay()
-    return "至尊版"
-end
 
 -- ====================== WINDOW ======================
 Window = WindUI:CreateWindow({
@@ -535,6 +488,8 @@ VirtualInputManager = game:GetService("VirtualInputManager")
 RunService          = game:GetService("RunService")
 UserInputService    = game:GetService("UserInputService")
 Lighting            = game:GetService("Lighting")
+CoreGui             = game:GetService("CoreGui")  -- 新增用于抽奖增强
+
 -- ====================== PLAYER ======================
 LocalPlayer    = Players.LocalPlayer
 Client         = LocalPlayer
@@ -543,7 +498,6 @@ HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- ====================== GLOBAL TABLES ======================
 GlobalTables = {
-    redeemCodes = { "100MVisit2", "100MVisit1", "CamArmada", "CCTVBase", "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad" },
     Weapon   = { "Stungun", "Flamethrower", "Harpoon Gun", "Shot Gun", "Pulse Rifle", "Shot Harpoon Gun", "EPD", "Small Laser Gun" },
     MiscShop = { "HeadPhone", "Grenade", "Jetpack", "Lens" },
     RequestTitanSpeaker = { "Titan-Request", "SpecialTitan-Request", "Speaker-Request" },
@@ -587,7 +541,6 @@ AutoFarmEnabled        = Config:Get("AutoFarmEnabled", false)
 FarmPosition           = Config:Get("FarmPosition", "上方")
 FarmMode               = NormalizeFarmMode(Config:Get("FarmMode", "补间"))
 FarmTargetMode         = NormalizeFarmTargetMode(Config:Get("FarmTargetMode", "普通模式"))
-if not IsPaidUserVersion() then FarmTargetMode = "普通模式" end
 DarkDimensionCollecting = false
 DarkDimensionLowValue   = 0.900
 DarkDimensionSafeValue  = 0.950
@@ -897,7 +850,6 @@ function FireAutoVote(force)
     if not remote then pcall(function() remote = ReplicatedStorage:WaitForChild("Vote", 3) end) end
     if not remote then return false end
 
-    -- 将显示名称转换为英文值
     local englishValue = VoteMap[AutoVoteValue] or AutoVoteValue
 
     local ok, err = pcall(function()
@@ -4950,33 +4902,24 @@ AutoFarmToggle = Main:Toggle({
     end
 })
 
-if IsPaidUserVersion() then
-    FarmTargetModeDropdown = Main:Dropdown({
-        Title = "刷怪模式",
-        Desc = "不同的刷怪模式。",
-        Values = FarmModeDisplayNames,
-        Multi = false,
-        Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
-        Callback = function(value)
-            local english = FarmModeMap[value] or value
-            FarmTargetMode = english
-            Config:Set("FarmTargetMode", english)
-            Config:Save()
-            InvalidateMobCache("刷怪模式已更改")
-            FarmForceRetarget = true
-            if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
-            task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
-            WindUI:Notify({ Title = "刷怪模式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "target" })
-        end
-    })
-else
-    FarmTargetMode = "普通模式"
-    Main:Paragraph({
-        Title = "[ 刷怪模式 ]",
-        Desc  = "此功能仅对付费会员开放",
-        Image = "rbxassetid://104487529937663", ImageSize = 30,
-    })
-end
+FarmTargetModeDropdown = Main:Dropdown({
+    Title = "刷怪模式",
+    Desc = "不同的刷怪模式。",
+    Values = FarmModeDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
+    Callback = function(value)
+        local english = FarmModeMap[value] or value
+        FarmTargetMode = english
+        Config:Set("FarmTargetMode", english)
+        Config:Save()
+        InvalidateMobCache("刷怪模式已更改")
+        FarmForceRetarget = true
+        if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
+        task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
+        WindUI:Notify({ Title = "刷怪模式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "target" })
+    end
+})
 
 Main:Section({ Title = "刷怪设置", Icon = "settings" })
 
@@ -5389,7 +5332,6 @@ function IsESPItemTarget(objectName, selectedList)
     for _, pattern in ipairs(selectedList) do
         if objectName == pattern then return true end
     end
-    -- 也检查英文名
     for _, pattern in ipairs(selectedList) do
         local english = CollectMap[pattern] or pattern
         if objectName == english then return true end
@@ -5820,18 +5762,17 @@ NoClip  = Config:Get("NoClip", false)
 LockMovementStats = Config:Get("LockMovementStats", true)
 
 -- ============================================================
--- ============== 飞行系统（整合到 Player Tab，无独立UI）==========
+-- ============== 飞行系统 ====================================
 -- ============================================================
 FlyEnabled = Config:Get("FlyEnabled", false)
 FlySpeed = Config:Get("FlySpeed", 1)
-FlyHeight = Config:Get("FlyHeight", 10)  -- 飞行高度（垂直速度倍率）
+FlyHeight = Config:Get("FlyHeight", 10)
 FlyBodyVelocity = nil
 FlyBodyGyro = nil
 FlyRenderConnection = nil
 FlyNowe = false
 FlySpeeds = 1
 
--- 飞行核心函数
 function FlyCleanupForces()
     if FlyBodyVelocity then
         pcall(function() FlyBodyVelocity:Destroy() end)
@@ -5932,7 +5873,6 @@ function FlyStart()
     end)
 end
 
--- Player Tab UI：移动速度、跳跃力、锁定、无碰撞
 Main2:Slider({
     Title = "设置移动速度",
     Desc = "设置你保存的移动速度值。",
@@ -5982,12 +5922,8 @@ nocliptoggle = Main2:Toggle({
     end
 })
 
--- ============================================================
--- ============== 飞行控制（整合在 Player Tab）===============
--- ============================================================
 Main2:Section({ Title = "飞行控制", Icon = "plane" })
 
--- 飞行开关
 FlyToggle = Main2:Toggle({
     Title = "飞行",
     Desc = "启用飞行。按 Space/E 上升，Ctrl/Q 下降。",
@@ -6006,7 +5942,6 @@ FlyToggle = Main2:Toggle({
     end
 })
 
--- 飞行速度
 Main2:Slider({
     Title = "飞行速度",
     Desc = "调整飞行移动速度（数值越大越快）。",
@@ -6020,7 +5955,6 @@ Main2:Slider({
     end
 })
 
--- 飞行高度（新增）
 Main2:Slider({
     Title = "飞行高度",
     Desc = "调整飞行时垂直上升/下降的速度倍率（数值越大升降越快）。",
@@ -6033,9 +5967,6 @@ Main2:Slider({
     end
 })
 
--- ============================================================
--- ============== 玩家其他功能 ================================
--- ============================================================
 Main2:Section({ Title = "无限跳跃", Icon = "sun" })
 
 Main2:Toggle({
@@ -6073,135 +6004,7 @@ Main2:Toggle({
     end
 })
 
--- ============================================================
--- ============== 兑换码 ======================================
--- ============================================================
-Main2:Section({ Title = "兑换码", Icon = "bird" })
-
-SelectedCodes = Config:Get("SelectedCodes", {})
-
-CodeDropdown = Main2:Dropdown({
-    Title = "选择兑换码",
-    Desc = "选择将要兑换的代码。",
-    Multi = true,
-    Values = {
-        "100MVisit2",
-        "100MVisit1",
-        "CamArmada",
-        "CCTVBase",
-        "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad"
-    },
-    Value = SelectedCodes,
-    Callback = function(value)
-        SelectedCodes = value or {}
-        Config:Set("SelectedCodes", value)
-        Config:Save()
-    end,
-})
-
-Main2:Button({
-    Title = "兑换代码",
-    Desc = "仅兑换你在下拉菜单中选中的代码。",
-    Callback = function()
-        for _, code in ipairs(SelectedCodes or {}) do
-            pcall(function()
-                local remote = GetRemote("RedeemCode")
-                if remote then remote:FireServer(code) end
-                task.wait(0.2)
-            end)
-        end
-    end,
-})
-
-Main2:Button({
-    Title = "兑换全部代码",
-    Desc = "一次性兑换所有可用代码。",
-    Callback = function()
-        for _, code in ipairs({
-            "100MVisit2",
-            "100MVisit1",
-            "CamArmada",
-            "CCTVBase",
-            "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad"
-        }) do
-            pcall(function()
-                local remote = GetRemote("RedeemCode")
-                if remote then remote:FireServer(code) end
-                task.wait(0.5)
-            end)
-        end
-    end,
-})
-
--- ====================== UI: UNLOCK GAMEPASS ======================
-Main2:Section({ Title = "解锁通行证", Icon = "badge-dollar-sign" })
-
-SelectedGamepass = Config:Get("SelectedGamepass", {})
-
-GamepassDropdown = Main2:Dropdown({
-    Title = "选择通行证",
-    Desc = "选择要本地解锁的通行证。",
-    Multi = true,
-    Values = GamepassDisplayNames,
-    Value = SelectedGamepass,
-    Callback = function(value)
-        SelectedGamepass = value or {}
-        Config:Set("SelectedGamepass", value)
-        Config:Save()
-    end,
-})
-
-Main2:Button({
-    Title = "解锁通行证",
-    Desc = "免费本地解锁选中的通行证。",
-    Callback = function()
-        local gachaData = LocalPlayer:FindFirstChild("GachaData")
-        if not gachaData then
-            gachaData = Instance.new("Folder")
-            gachaData.Name = "GachaData"
-            gachaData.Parent = LocalPlayer
-        end
-        local toUnlock = {}
-        for _, v in ipairs(SelectedGamepass or {}) do
-            if v == "全部" then
-                toUnlock = { "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" }
-                break
-            else
-                local english = GamepassMap[v] or v
-                table.insert(toUnlock, english)
-            end
-        end
-        if #toUnlock == 0 then
-            WindUI:Notify({
-                Title = "解锁通行证",
-                Content = "请先选择通行证！",
-                Duration = 3,
-                Icon = "alert-triangle"
-            })
-            return
-        end
-        local successCount = 0
-        for _, gamepassName in ipairs(toUnlock) do
-            pcall(function()
-                local boolValue = gachaData:FindFirstChild(gamepassName)
-                if not boolValue then
-                    boolValue = Instance.new("BoolValue")
-                    boolValue.Name = gamepassName
-                    boolValue.Parent = gachaData
-                end
-                boolValue.Value = true
-                successCount = successCount + 1
-                task.wait(0.2)
-            end)
-        end
-        WindUI:Notify({
-            Title = "解锁通行证",
-            Content = "已解锁 " .. successCount .. "/" .. #toUnlock .. " 个通行证！完成！",
-            Duration = 3,
-            Icon = "badge-check"
-        })
-    end,
-})
+-- 兑换码和通行证解锁部分已完全移除
 
 -- ============================================================
 -- ============== 角色重生时重置飞行状态 ======================
@@ -6221,6 +6024,251 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     local animate = char:FindFirstChild("Animate")
     if animate then animate.Disabled = false end
     updatePlayerStats(true)
+end)
+
+-- ============================================================
+-- ============== 抽奖增强功能 ================================
+-- ============================================================
+local function GetMoney()
+    local money = 0
+    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, child in ipairs(leaderstats:GetChildren()) do
+            if child:IsA("IntValue") or child:IsA("NumberValue") then
+                local name = child.Name:lower()
+                if name:find("cash") or name:find("coin") or name:find("money") or name:find("gold") or name:find("point") then
+                    money = child.Value
+                    break
+                end
+            end
+        end
+    end
+    if money == 0 then
+        local data = LocalPlayer:FindFirstChild("PlayerData") or LocalPlayer:FindFirstChild("Data")
+        if data then
+            for _, child in ipairs(data:GetChildren()) do
+                if child:IsA("IntValue") or child:IsA("NumberValue") then
+                    local name = child.Name:lower()
+                    if name:find("cash") or name:find("coin") or name:find("money") or name:find("gold") or name:find("point") then
+                        money = child.Value
+                        break
+                    end
+                end
+            end
+        end
+    end
+    return money
+end
+
+local MoneyUIExists = false
+
+local function CreateMoneyUI()
+    if MoneyUIExists then return end
+    local parent = CoreGui or pg
+    if not parent then return end
+
+    local old = parent:FindFirstChild("MoneyUI")
+    if old then old:Destroy() end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "MoneyUI"
+    screenGui.Parent = parent
+    screenGui.ResetOnSpawn = false
+    screenGui.DisplayOrder = 9999
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 200, 0, 50)
+    frame.Position = UDim2.new(0, 10, 0, 10)
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+    frame.ZIndex = 999
+
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 30, 0, 30)
+    icon.Position = UDim2.new(0, 0, 0, 10)
+    icon.BackgroundTransparency = 1
+    icon.Text = "💰"
+    icon.TextSize = 22
+    icon.TextColor3 = Color3.fromRGB(255, 215, 0)
+    icon.Font = Enum.Font.GothamBold
+    icon.Parent = frame
+
+    local moneyLabel = Instance.new("TextLabel")
+    moneyLabel.Size = UDim2.new(0, 120, 0, 30)
+    moneyLabel.Position = UDim2.new(0, 35, 0, 10)
+    moneyLabel.BackgroundTransparency = 1
+    moneyLabel.Text = "0"
+    moneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    moneyLabel.TextSize = 22
+    moneyLabel.Font = Enum.Font.GothamBold
+    moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+    moneyLabel.Parent = frame
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0, 60, 0, 16)
+    nameLabel.Position = UDim2.new(0, 35, 1, -20)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "Coins"
+    nameLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
+    nameLabel.TextSize = 11
+    nameLabel.Font = Enum.Font.Gotham
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = frame
+
+    local function UpdateMoney()
+        moneyLabel.Text = tostring(GetMoney())
+    end
+
+    UpdateMoney()
+    task.spawn(function()
+        while true do
+            UpdateMoney()
+            task.wait(1)
+        end
+    end)
+
+    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, child in ipairs(leaderstats:GetChildren()) do
+            if child:IsA("IntValue") or child:IsA("NumberValue") then
+                child.Changed:Connect(UpdateMoney)
+            end
+        end
+    end
+
+    MoneyUIExists = true
+end
+
+local function ForceShowGacha()
+    if not pg then return end
+    local gacha = pg:FindFirstChild("Gacha")
+    if gacha and gacha:IsA("ScreenGui") then
+        if not gacha.Enabled then
+            gacha.Enabled = true
+        end
+        for _, sub in ipairs(gacha:GetDescendants()) do
+            if sub:IsA("Frame") or sub:IsA("ImageLabel") or sub:IsA("TextLabel") or sub:IsA("TextButton") then
+                if not sub.Visible then
+                    sub.Visible = true
+                end
+            end
+        end
+    end
+end
+
+local function RemoveBlackScreens()
+    for _, guiParent in ipairs({pg, CoreGui}) do
+        if guiParent then
+            for _, child in ipairs(guiParent:GetChildren()) do
+                if child:IsA("ScreenGui") then
+                    local name = child.Name:lower()
+                    if name:find("black") or name:find("loading") or name:find("fade") or name:find("white") then
+                        pcall(function() child:Destroy() end)
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function RemoveGachaVisuals()
+    if pg then
+        local gachaUI = pg:FindFirstChild("GachaUI")
+        if gachaUI then
+            local frame = gachaUI:FindFirstChild("Frame")
+            if frame then
+                local viewport = frame:FindFirstChild("ViewportFrame")
+                if viewport then
+                    local wm = viewport:FindFirstChild("WorldModel")
+                    if wm then
+                        pcall(function() wm:Destroy() end)
+                    end
+                end
+            end
+        end
+    end
+
+    local room = workspace:FindFirstChild("GachaRoom")
+    if room then
+        for _, obj in ipairs(room:GetDescendants()) do
+            if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+                pcall(function()
+                    obj.Transparency = 1
+                    obj.CanCollide = false
+                end)
+            end
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                pcall(function() obj.Enabled = false end)
+            end
+        end
+    end
+
+    local effects = workspace:FindFirstChild("Effects")
+    if effects then
+        for _, child in ipairs(effects:GetChildren()) do
+            if child:IsA("Part") or child:IsA("MeshPart") or child:IsA("Model") then
+                pcall(function() child:Destroy() end)
+            end
+        end
+    end
+end
+
+local function ResetCamera()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    cam.CameraSubject = hrp
+    cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
+end
+
+local function DoEverything()
+    ForceShowGacha()
+    RemoveBlackScreens()
+    RemoveGachaVisuals()
+    ResetCamera()
+end
+
+-- 监听 GachaRoom 出现
+workspace.ChildAdded:Connect(function(child)
+    if child.Name == "GachaRoom" then
+        task.wait(0.01)
+        DoEverything()
+    end
+end)
+
+if pg then
+    pg.DescendantAdded:Connect(function(obj)
+        if obj:IsA("ScreenGui") then
+            task.wait(0.01)
+            DoEverything()
+        end
+    end)
+end
+
+-- 持续执行
+task.spawn(function()
+    while true do
+        DoEverything()
+        task.wait(0.05)
+    end
+end)
+
+-- 每帧强制摄像头
+RunService.Heartbeat:Connect(function()
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if cam.CameraSubject ~= hrp then
+        cam.CameraSubject = hrp
+        cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
+    end
 end)
 
 -- ============================================================
@@ -6279,7 +6327,7 @@ _G.__DYHUB_ShopSystems = function()
     local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
     local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
 
-    -- 将存储的英文转换为中文显示（使用物品）
+    -- 转换显示函数
     local function GetUseItemDisplay(english)
         for k, v in pairs(UseItemMap) do
             if v == english then return k end
@@ -6315,12 +6363,13 @@ _G.__DYHUB_ShopSystems = function()
         return english
     end
 
-    -- ====================== 自动扭蛋循环 ======================
+    -- ====================== 自动扭蛋循环（增强版） ======================
     local function StartAutoGachaCharacter()
         if characterGachaRunning then return end
         characterGachaRunning = true
         task.spawn(function()
             while autoGachaCharacterEnabled do
+                pcall(DoEverything)
                 local english = GachaMap[selectedGachaCharacterArg] or selectedGachaCharacterArg
                 FireShopRemote("GachaCharacter", english)
                 task.wait(1)
@@ -6334,6 +6383,7 @@ _G.__DYHUB_ShopSystems = function()
         skinGachaRunning = true
         task.spawn(function()
             while autoGachaSkinEnabled do
+                pcall(DoEverything)
                 local english = GachaMap[selectedGachaSkinArg] or selectedGachaSkinArg
                 FireShopRemote("GachaSkins", english)
                 task.wait(1)
@@ -6411,7 +6461,6 @@ _G.__DYHUB_ShopSystems = function()
     -- ====================== 自动使用物品 ======================
     Main5:Section({ Title = "自动使用物品", Icon = "package-open" })
 
-    -- 获取存储英文对应的中文显示
     local useItemDisplayValue = GetUseItemDisplay(selectedUseItem)
 
     Main5:Dropdown({
@@ -6447,7 +6496,6 @@ _G.__DYHUB_ShopSystems = function()
     local selectedUTCMUpgrades         = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
     local selectedTVUpgrades           = EnsureList(Config:Get("SelectedTVUpgrades", { "Absorb" }), { "Absorb" })
 
-    -- 转换为中文显示
     local titanDisplay = {}
     for _, v in ipairs(selectedTitanSpeakerUpgrades) do
         table.insert(titanDisplay, GetTitanSpeakerDisplay(v))
@@ -6692,7 +6740,6 @@ _G.__DYHUB_ShopSystems = function()
     Main5:Section({ Title = "商店小时购", Icon = "clock" })
 
     local selectedShopHourlyItems   = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
-    -- 转换为中文显示
     local hourlyDisplay = {}
     for _, v in ipairs(selectedShopHourlyItems) do
         table.insert(hourlyDisplay, GetShopHourlyDisplay(v))
@@ -7039,9 +7086,6 @@ Main7:Button({
     end
 })
 
--- ============================================================
--- ============== 投票模式下拉（显示中文，发送英文）===========
--- ============================================================
 GameModeDropdown2 = Main7:Dropdown({
     Title = "设置投票模式",
     Desc = "选择自动投票将投选的游戏模式。",
@@ -7057,9 +7101,6 @@ GameModeDropdown2 = Main7:Dropdown({
     end
 })
 
--- ============================================================
--- ============== 改进的自动投票+准备系统 ======================
--- ============================================================
 AutoVoteReadyEnabled = Config:Get("AutoVoteReadyEnabled", false)
 AutoVoteReadyLoading = false
 AutoVoteReadyLastFire = 0
@@ -7082,13 +7123,11 @@ function FireAutoVoteReady()
     if now - AutoVoteReadyLastFire < 1 then return false end
     AutoVoteReadyLastFire = now
 
-    -- 先投票
     local voteRemote = GetRemote("Vote")
     if voteRemote then
         pcall(function() voteRemote:FireServer(englishValue) end)
     end
 
-    -- 再准备
     task.wait(0.2)
     local readyRemote = GetRemote("GetReadyRemote")
     if readyRemote then
@@ -7179,7 +7218,6 @@ AutoVoteReadyToggle = Main7:Toggle({
     end
 })
 
--- 旧版AutoVoteinGameEnabled保留但不再使用（用新的替换）
 AutoVoteinGameEnabled = false
 if AutoVoteReadyEnabled then
     StartAutoVoteReadyLoop()
@@ -7837,6 +7875,9 @@ antiafk = Main3:Toggle({
 
 if AntiAFK then StartAntiAFK() end
 
+-- ====================== 启动 MoneyUI ======================
+CreateMoneyUI()
+
 -- ====================== APPLY SAVED CONFIG ON LOAD ======================
 function ApplySavedConfigOnStartup()
     task.wait(1)
@@ -7846,7 +7887,6 @@ function ApplySavedConfigOnStartup()
     if FullBrightEnabled then ApplyFullBright() end
     if NoFogEnabled then ApplyNoFog() end
 
-    -- 飞行状态由FlyToggle控制，不自动启动
     if FarmAstroTokenEnabled and AutoFarmEnabled then
         FarmAstroTokenEnabled = false
         Config:Set("FarmAstroTokenEnabled", false)
