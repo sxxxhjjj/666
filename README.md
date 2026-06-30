@@ -1,11 +1,11 @@
--- v190 | [Local Register Fix]
--- =========================
+-- yyt | 全功能自动化脚本
+-- 基于 Rayfield UI
+-- ============================================================
 version = "Rework"
 ver = "v023.91"
--- =========================
 
 -- ====================== LOAD UI ======================
-WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 -- ====================== GameLoad ======================
 repeat task.wait() until game:IsLoaded()
@@ -19,7 +19,12 @@ function waitLoadingGone(maxWait)
     local gui = pg:FindFirstChild("LoadingGui")
     if not gui then return true end
 
-    WindUI:Notify({ Title = "初始化", Content = "游戏加载中，请稍候。", Duration = 3, Icon = "download" })
+    Rayfield:Notify({
+        Title = "初始化",
+        Content = "游戏加载中，请稍候。",
+        Duration = 3,
+        Icon = "download"
+    })
 
     local startedAt = tick()
     while gui and gui.Parent and tick() - startedAt < maxWait do
@@ -27,7 +32,7 @@ function waitLoadingGone(maxWait)
     end
 
     if gui and gui.Parent then
-        warn("[DYHUB] LoadingGui 未及时消失，继续执行。")
+        warn("[yyt] LoadingGui 未及时消失，继续执行。")
         return false
     end
 
@@ -36,16 +41,21 @@ end
 
 waitLoadingGone(18)
 
-WindUI:Notify({ Title = "初始化", Content = "加载完成，2 秒后启动。", Duration = 2, Icon = "shield-check" })
+Rayfield:Notify({
+    Title = "初始化",
+    Content = "加载完成，2 秒后启动。",
+    Duration = 2,
+    Icon = "shield-check"
+})
 task.wait(2)
 
 -- ====================== WAITING PART / FPS UNLOCK ======================
-DYHUB_WAITING_PART_NAME = "DYHUB_WAITING_PART"
+DYHUB_WAITING_PART_NAME = "yyt_WAITING_PART"
 iddyhub = "rbxassetid://104487529937663"
 DYHUB_WAITING_STAND_CF = CFrame.new(-23.3435822, 67, 0.341766357)
 DYHUB_WAITING_PART_CF = CFrame.new(-23.3435822, 63.95, 0.341766357)
 DYHUB_WAITING_PART_SIZE = Vector3.new(16, 1, 16)
-DYHUB_WAITING_PART_VISIBLE_TRANSPARENCY = 1
+DYHUB_WAITING_PART_VISIBLE_TRANSPARENCY = 0.3  -- 改为半透明，更好看
 
 function GetDYHUBWaitingStandCFrame()
     return DYHUB_WAITING_STAND_CF
@@ -57,7 +67,7 @@ function EnsureDYHUBWaitingPartImages(waitingPart)
     local usedFaces = {}
 
     for _, obj in ipairs(waitingPart:GetChildren()) do
-        if obj:IsA("Decal") and obj.Name == "dyhub_image" then
+        if obj:IsA("Decal") and obj.Name == "yyt_image" then
             if usedFaces[obj.Face] then
                 obj:Destroy()
             else
@@ -71,7 +81,7 @@ function EnsureDYHUBWaitingPartImages(waitingPart)
     for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
         if not usedFaces[face] then
             local decal = Instance.new("Decal")
-            decal.Name = "dyhub_image"
+            decal.Name = "yyt_image"
             decal.Texture = iddyhub
             decal.Face = face
             decal.Transparency = 0
@@ -90,8 +100,8 @@ function ConfigureDYHUBWaitingPart(waitingPart)
     waitingPart.CanTouch = false
     waitingPart.CanQuery = false
     waitingPart.CastShadow = false
-    waitingPart.Material = Enum.Material.SmoothPlastic
-    waitingPart.Color = Color3.fromRGB(45, 130, 255)
+    waitingPart.Material = Enum.Material.Neon  -- 换成霓虹材质，更炫酷
+    waitingPart.Color = Color3.fromRGB(0, 200, 255)  -- 亮青色
     waitingPart.TopSurface = Enum.SurfaceType.Smooth
     waitingPart.BottomSurface = Enum.SurfaceType.Smooth
 
@@ -138,15 +148,15 @@ end
 
 if setfpscap then
     setfpscap(240)
-    WindUI:Notify({ Title = "服务", Content = "FPS 已解锁！ | " .. ver, Duration = 3, Icon = "cpu" })
+    Rayfield:Notify({ Title = "服务", Content = "FPS 已解锁！ | " .. ver, Duration = 3, Icon = "cpu" })
     warn("FPS 已解锁！")
 else
-    WindUI:Notify({ Title = "无法使用", Content = "您的注入器不支持 setfpscap。", Duration = 3, Icon = "ban" })
+    Rayfield:Notify({ Title = "无法使用", Content = "您的注入器不支持 setfpscap。", Duration = 3, Icon = "ban" })
 end
 
 -- ====================== CUSTOM CONFIG SYSTEM ======================
 HttpService = game:GetService("HttpService")
-ConfigFolder = "DYHUB_STBB"
+ConfigFolder = "yyt_CONFIG"
 
 CustomConfig = {}
 CustomConfig.__index = CustomConfig
@@ -154,7 +164,7 @@ CustomConfig.__index = CustomConfig
 function CustomConfig.new()
     local self = setmetatable({}, CustomConfig)
     self.ConfigData = {}
-    self.ConfigPath = ConfigFolder .. "/STBB_config.json"
+    self.ConfigPath = ConfigFolder .. "/yyt_config.json"
     if isfolder and makefolder and not isfolder(ConfigFolder) then
         pcall(function() makefolder(ConfigFolder) end)
     end
@@ -192,7 +202,7 @@ function CustomConfig:Save(force)
         self._LastSaveAt = now
         return true
     else
-        warn("[DYHUB] 保存失败:", err)
+        warn("[yyt] 保存失败:", err)
         return false
     end
 end
@@ -205,7 +215,7 @@ function CustomConfig:Load()
         if success and type(result) == "table" then
             self.ConfigData = result
         else
-            warn("[DYHUB] 加载配置失败，使用默认值")
+            warn("[yyt] 加载配置失败，使用默认值")
             self.ConfigData = {}
         end
     else
@@ -428,58 +438,27 @@ Players = game:GetService("Players")
 LocalPlayer = Players.LocalPlayer
 CoreGui = game:GetService("CoreGui")
 
-Window = WindUI:CreateWindow({
-    Title = "至尊版",
-    IconThemed = true,
-    Icon = "rbxassetid://104487529937663",
-    Author = "STBB | 至尊版",
-    Folder = "DYHUB",
-    Size = UDim2.fromOffset(550, 380),
-    Transparent = true,
-    Theme = "Dark",
-    BackgroundImageTransparency = 0.8,
-    HasOutline = false,
-    HideSearchBar = true,
-    ScrollBarEnabled = true,
-    User = { Enabled = true, Anonymous = false },
-})
-
-Window:SetToggleKey(Enum.KeyCode.K)
-
-Window:Tag({ Title = "至尊版", Color = Color3.fromHex("#db7093") })
-
-Window:EditOpenButton({
-    Title = "至尊版 - 打开",
-    Icon = "monitor",
-    CornerRadius = UDim.new(0, 6),
-    StrokeThickness = 2,
-    Color = ColorSequence.new(Color3.fromRGB(30, 30, 30), Color3.fromRGB(255, 255, 255)),
-    Draggable = true
-})
-
 -- ====================== TABS ======================
-Info = Window:Tab({ Title = "信息", Icon = "info" })
-MainDivider = Window:Divider()
-Main = Window:Tab({ Title = "主要", Icon = "rocket" })
-Main4 = Window:Tab({ Title = "透视", Icon = "eye" })
-Main2 = Window:Tab({ Title = "玩家", Icon = "user" })
-MainDivider1 = Window:Divider()
-Main5 = Window:Tab({ Title = "商店", Icon = "shopping-cart" })
-Main6 = Window:Tab({ Title = "收集", Icon = "hand" })
-Main7 = Window:Tab({ Title = "游戏模式", Icon = "gamepad-2" })
-MainDivider2 = Window:Divider()
-Main3 = Window:Tab({ Title = "设置", Icon = "settings" })
-Window:SelectTab(1)
-
--- ======================== INFO ========================
-Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 })
-Info:Divider()
-Info:Paragraph({
-    Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 06/02/2026 | CL: " .. ver .. "\n• [新增] 杂项刷怪中重置波次\n• [新增] 上帝模式滑条下的重置波次滑块\n• [修复] 重置波次现在保持重置点延迟并优先于刷怪锁定\n• [修复] 当前波次已高于/低于目标时重置波次滑块立即触发\n• [修复] 刷怪 Astro 模式计时器波次耗尽时的漏洞\n• [修复] 设置中的相机模式与刷怪同步\n• [优化] 刷怪循环/钩子后代扫描",
+local Window = Rayfield:CreateWindow({
+    Name = "yyt",
+    LoadingTitle = "加载中...",
+    LoadingSubtitle = "请稍候",
+    ConfigurationSaving = {
+        Enabled = false
+    },
+    Discord = {
+        Enabled = false
+    },
+    KeySystem = false
 })
 
-Info:Divider()
+local MainTab = Window:CreateTab("主要")
+local EspTab = Window:CreateTab("透视")
+local PlayerTab = Window:CreateTab("玩家")
+local ShopTab = Window:CreateTab("商店")
+local CollectTab = Window:CreateTab("收集")
+local GamemodeTab = Window:CreateTab("游戏模式")
+local SettingTab = Window:CreateTab("设置")
 
 -- ====================== SERVICES ======================
 TweenService        = game:GetService("TweenService")
@@ -683,12 +662,17 @@ function CombatDebug(tag, message, cooldown, showNotify)
     if CombatDebugCooldowns[key] and now - CombatDebugCooldowns[key] < cooldown then return end
     CombatDebugCooldowns[key] = now
 
-    local text = "[DYHUB][" .. key .. "] " .. tostring(message or "")
+    local text = "[yyt][" .. key .. "] " .. tostring(message or "")
     print(text)
 
-    if showNotify and WindUI then
+    if showNotify and Rayfield then
         pcall(function()
-            WindUI:Notify({ Title = "战斗调试", Content = tostring(message or ""), Duration = 3, Icon = "bug" })
+            Rayfield:Notify({
+                Title = "战斗调试",
+                Content = tostring(message or ""),
+                Duration = 3,
+                Icon = "bug"
+            })
         end)
     end
 end
@@ -811,7 +795,7 @@ function GetRemote(name)
         local now = tick()
         if not MissingRemoteWarnAt[name] or now - MissingRemoteWarnAt[name] >= 10 then
             MissingRemoteWarnAt[name] = now
-            warn("[DYHUB] 找不到远程事件: " .. tostring(name))
+            warn("[yyt] 找不到远程事件: " .. tostring(name))
         end
         return nil
     end
@@ -858,10 +842,10 @@ function FireAutoVote(force)
 
     if ok then
         HideVoteUI()
-        print("[DYHUB] 自动投票已触发:", AutoVoteValue, "->", englishValue)
+        print("[yyt] 自动投票已触发:", AutoVoteValue, "->", englishValue)
         return true
     else
-        warn("[DYHUB] 自动投票失败:", err)
+        warn("[yyt] 自动投票失败:", err)
         return false
     end
 end
@@ -2743,7 +2727,7 @@ function SafeGetPriorityMob()
     end
 
     CombatDebug("PriorityError", "GetPriorityMob 失败: " .. tostring(mob), 3, true)
-    warn("[DYHUB] GetPriorityMob 失败:", tostring(mob))
+    warn("[yyt] GetPriorityMob 失败:", tostring(mob))
     InvalidateMobCache("优先级错误")
     return nil, nil, nil, 0
 end
@@ -2946,7 +2930,7 @@ function SaveAndBoostFPS()
         end)
     end)
 
-    print("[DYHUB] 删除地图: ON")
+    print("[yyt] 删除地图: ON")
 end
 
 function RestoreBoostFPS()
@@ -2988,7 +2972,7 @@ function RestoreBoostFPS()
 
     BoostFPS_OriginalData = {}
     BoostFPS_LightingData = {}
-    print("[DYHUB] 删除地图: OFF (已恢复)")
+    print("[yyt] 删除地图: OFF (已恢复)")
 end
 
 task.spawn(function()
@@ -3189,7 +3173,7 @@ function FireGetReady(delayBefore)
         remote:FireServer("1", true)
     end)
 
-    if not ok then warn("[DYHUB] GetReadyRemote 失败:", err) end
+    if not ok then warn("[yyt] GetReadyRemote 失败:", err) end
     return ok
 end
 
@@ -3399,7 +3383,7 @@ function NotifyFarmAstroAutoFarm()
     local now = tick()
     if now - FarmAstroTokenLastAutoFarmNotify < 3 then return end
     FarmAstroTokenLastAutoFarmNotify = now
-    WindUI:Notify({
+    Rayfield:Notify({
         Title = "Farm Astro Token",
         Content = "请先关闭自动刷怪再使用 Farm Astro Token。",
         Duration = 4,
@@ -3411,7 +3395,7 @@ function NotifyFarmAstroCleanMode()
     local now = tick()
     if now - FarmAstroTokenLastCleanNotify < 5 then return end
     FarmAstroTokenLastCleanNotify = now
-    WindUI:Notify({
+    Rayfield:Notify({
         Title = "Farm Astro Token",
         Content = "Farm Astro Token 不会击杀怪物，因此清洁模式无法收集物品。请选择 IDGF 模式。",
         Duration = 5,
@@ -4490,7 +4474,7 @@ function StartFarmLoop()
         end)
 
         if not ok then
-            warn("[DYHUB] 刷怪循环错误:", tostring(err))
+            warn("[yyt] 刷怪循环错误:", tostring(err))
             CombatDebug("FarmLoopError", tostring(err), 3, true)
         end
 
@@ -4862,12 +4846,12 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     ApplyCameraMode(true)
 end)
 -- ====================== UI: MAIN TAB ======================
-Main:Section({ Title = "自动刷怪", Icon = "package" })
+MainTab:CreateSection("自动刷怪")
 
-AutoFarmToggle = Main:Toggle({
-    Title = "自动刷怪",
-    Desc = "基于优先级系统自动刷怪。",
-    Value = AutoFarmEnabled,
+AutoFarmToggle = MainTab:CreateToggle({
+    Name = "自动刷怪",
+    Description = "基于优先级系统自动刷怪。",
+    CurrentValue = AutoFarmEnabled,
     Callback = function(state)
         if state and FarmAstroTokenEnabled then
             AutoFarmEnabled = false
@@ -4883,7 +4867,7 @@ AutoFarmToggle = Main:Toggle({
             StartFarmLoop()
             StartJeffreyGuardLoop()
             HandleMiscOptions(MiscOptions)
-            WindUI:Notify({ Title = "自动刷怪", Content = "已启用，自动刷怪已启动！", Duration = 2, Icon = "play" })
+            Rayfield:Notify({ Title = "自动刷怪", Content = "已启用，自动刷怪已启动！", Duration = 2, Icon = "play" })
         else
             FarmLoopToken = (FarmLoopToken or 0) + 1
             WaitingRespawn = false
@@ -4892,25 +4876,23 @@ AutoFarmToggle = Main:Toggle({
             UpdateDYHUBWaitingPartCollision()
             if SyncFarmOnly then
                 StopMiscFarmRuntime("自动刷怪已关闭，同步刷怪锁定已开启")
-                WindUI:Notify({ Title = "自动刷怪", Content = "关闭自动刷怪：杂项功能停止工作（同步刷怪锁定已开启）", Duration = 3, Icon = "square" })
+                Rayfield:Notify({ Title = "自动刷怪", Content = "关闭自动刷怪：杂项功能停止工作（同步刷怪锁定已开启）", Duration = 3, Icon = "square" })
             else
                 HandleMiscOptions(MiscOptions)
-                WindUI:Notify({ Title = "自动刷怪", Content = "自动刷怪已关闭。杂项功能继续运行，因为同步刷怪锁定已关闭。", Duration = 3, Icon = "unlink" })
+                Rayfield:Notify({ Title = "自动刷怪", Content = "自动刷怪已关闭。杂项功能继续运行，因为同步刷怪锁定已关闭。", Duration = 3, Icon = "unlink" })
             end
         end
         Config:Set("AutoFarmEnabled", state); Config:Save()
     end
 })
 
--- 刷怪模式下拉框（完全开放，无付费限制）
-FarmTargetModeDropdown = Main:Dropdown({
-    Title = "刷怪模式",
-    Desc = "不同的刷怪模式。",
-    Values = FarmModeDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
-    Callback = function(value)
-        local english = FarmModeMap[value] or value
+FarmTargetModeDropdown = MainTab:CreateDropdown({
+    Name = "刷怪模式",
+    Description = "不同的刷怪模式。",
+    Options = FarmModeDisplayNames,
+    CurrentOption = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
+    Callback = function(option)
+        local english = FarmModeMap[option] or option
         FarmTargetMode = english
         Config:Set("FarmTargetMode", english)
         Config:Save()
@@ -4918,51 +4900,49 @@ FarmTargetModeDropdown = Main:Dropdown({
         FarmForceRetarget = true
         if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
         task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
-        WindUI:Notify({ Title = "刷怪模式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "target" })
+        Rayfield:Notify({ Title = "刷怪模式", Content = "已选择: " .. tostring(option), Duration = 2, Icon = "target" })
     end
 })
 
-Main:Section({ Title = "刷怪设置", Icon = "settings" })
+MainTab:CreateSection("刷怪设置")
 
-PositionDropdown = Main:Dropdown({
-    Title = "刷怪位置",
-    Desc = "选择角色在目标周围的站位。",
-    Values = FarmPositionDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(FarmPositionMap, FarmPosition) or FarmPosition,
-    Callback = function(value)
-        local english = FarmPositionMap[value] or value
+FarmPositionDropdown = MainTab:CreateDropdown({
+    Name = "刷怪位置",
+    Description = "选择角色在目标周围的站位。",
+    Options = FarmPositionDisplayNames,
+    CurrentOption = GetDisplayName(FarmPositionMap, FarmPosition) or FarmPosition,
+    Callback = function(option)
+        local english = FarmPositionMap[option] or option
         FarmPosition = english
         Config:Set("FarmPosition", english)
         Config:Save()
     end
 })
 
-ModeDropdown = Main:Dropdown({
-    Title = "移动方式",
-    Desc = "选择角色移动到每个目标的方式。",
-    Values = MovementDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(MovementMap, FarmMode) or FarmMode,
-    Callback = function(value)
-        local english = MovementMap[value] or value
+FarmModeDropdown = MainTab:CreateDropdown({
+    Name = "移动方式",
+    Description = "选择角色移动到每个目标的方式。",
+    Options = MovementDisplayNames,
+    CurrentOption = GetDisplayName(MovementMap, FarmMode) or FarmMode,
+    Callback = function(option)
+        local english = MovementMap[option] or option
         FarmMode = english
         Config:Set("FarmMode", english)
         Config:Save()
-        WindUI:Notify({ Title = "移动方式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "mouse-pointer-click" })
+        Rayfield:Notify({ Title = "移动方式", Content = "已选择: " .. tostring(option), Duration = 2, Icon = "mouse-pointer-click" })
     end
 })
 
-MiscDropdown = Main:Dropdown({
-    Title = "杂项功能",
-    Desc = "选择与自动刷怪一起运行的额外系统。",
-    Values = { "自动攻击", "自动技能", "自动开始", "自动跳过直升机", "自动填充", "安全模式", "上帝模式", "重置波次", "删除地图" },
+MiscDropdown = MainTab:CreateDropdown({
+    Name = "杂项功能",
+    Description = "选择与自动刷怪一起运行的额外系统。",
+    Options = { "自动攻击", "自动技能", "自动开始", "自动跳过直升机", "自动填充", "安全模式", "上帝模式", "重置波次", "删除地图" },
     Multi = true,
-    Value = MiscOptions,
+    CurrentValue = MiscOptions,
     Callback = function(values)
         MiscOptions = values
         if not AutoFarmEnabled and SyncFarmOnly and #values > 0 then
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "杂项功能",
                 Content = "你必须先开启自动刷怪（同步刷怪锁定已开启）",
                 Duration = 3, Icon = "triangle-alert"
@@ -4972,40 +4952,35 @@ MiscDropdown = Main:Dropdown({
     end
 })
 
-Main:Toggle({
-    Title = "同步刷怪锁定",
-    Desc = "启用时，所有杂项功能需要自动刷怪处于激活状态。",
-    Value = SyncFarmOnly,
+SyncFarmToggle = MainTab:CreateToggle({
+    Name = "同步刷怪锁定",
+    Description = "启用时，所有杂项功能需要自动刷怪处于激活状态。",
+    CurrentValue = SyncFarmOnly,
     Callback = function(state)
         SyncFarmOnly = state
         Config:Set("SyncFarmOnly", state)
         Config:Save()
         if state then
-            WindUI:Notify({ Title = "同步刷怪锁定", Content = "开启：杂项功能必须先启用自动刷怪", Duration = 3, Icon = "link" })
+            Rayfield:Notify({ Title = "同步刷怪锁定", Content = "开启：杂项功能必须先启用自动刷怪", Duration = 3, Icon = "link" })
         else
-            WindUI:Notify({ Title = "同步刷怪锁定", Content = "关闭：杂项功能无需自动刷怪即可工作。", Duration = 3, Icon = "unlink" })
+            Rayfield:Notify({ Title = "同步刷怪锁定", Content = "关闭：杂项功能无需自动刷怪即可工作。", Duration = 3, Icon = "unlink" })
         end
         ApplyMiscFarmGate("同步刷怪锁定已更改")
     end
 })
 
-Main:Section({ Title = "Astro 令牌刷怪（坚守模式）", Icon = "flame" })
+MainTab:CreateSection("Astro 令牌刷怪（坚守模式）")
 
-FarmAstroTokenToggle = Main:Toggle({
-    Title = "Astro 令牌刷怪（坚守模式）",
-    Desc = "避开所有怪物防止死亡，时间耗尽时前往中心",
-    Value = FarmAstroTokenEnabled,
+FarmAstroTokenToggle = MainTab:CreateToggle({
+    Name = "Astro 令牌刷怪（坚守模式）",
+    Description = "避开所有怪物防止死亡，时间耗尽时前往中心",
+    CurrentValue = FarmAstroTokenEnabled,
     Callback = function(state)
         if state and AutoFarmEnabled then
             FarmAstroTokenEnabled = false
             Config:Set("FarmAstroTokenEnabled", false)
             Config:Save()
             NotifyFarmAstroAutoFarm()
-            pcall(function()
-                if FarmAstroTokenToggle and FarmAstroTokenToggle.Set then
-                    FarmAstroTokenToggle:Set(false)
-                end
-            end)
             return
         end
 
@@ -5015,7 +4990,7 @@ FarmAstroTokenToggle = Main:Toggle({
 
         if state then
             StartFarmAstroToken()
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "Astro 令牌刷怪",
                 Content = "已启用。Astro 路线已启动。",
                 Duration = 3,
@@ -5023,7 +4998,7 @@ FarmAstroTokenToggle = Main:Toggle({
             })
         else
             StopFarmAstroToken(false)
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "Astro 令牌刷怪",
                 Content = "已禁用。Astro 路线已停止。",
                 Duration = 3,
@@ -5033,14 +5008,14 @@ FarmAstroTokenToggle = Main:Toggle({
     end
 })
 
-Main:Section({ Title = "通用设置", Icon = "zap" })
+MainTab:CreateSection("通用设置")
 
-SkillDropdown = Main:Dropdown({
-    Title = "自动技能（按键）",
-    Desc = "选择自动技能将按下的键盘技能键。",
-    Values = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" },
+SkillDropdown = MainTab:CreateDropdown({
+    Name = "自动技能（按键）",
+    Description = "选择自动技能将按下的键盘技能键。",
+    Options = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" },
     Multi = true,
-    Value = SelectedSkills,
+    CurrentValue = SelectedSkills,
     Callback = function(values)
         SelectedSkills = values
         Config:Set("SelectedSkills", values)
@@ -5048,11 +5023,13 @@ SkillDropdown = Main:Dropdown({
     end
 })
 
-SkillDelaySlider = Main:Slider({
-    Title = "技能延迟（秒）",
-    Desc = "设置每个自动技能按键之间的延迟（秒）。",
-    Value = { Min = 1, Max = 60, Default = SkillDelay },
-    Step = 1,
+SkillDelaySlider = MainTab:CreateSlider({
+    Name = "技能延迟（秒）",
+    Description = "设置每个自动技能按键之间的延迟（秒）。",
+    Min = 1,
+    Max = 60,
+    Default = SkillDelay,
+    Value = SkillDelay,
     Callback = function(value)
         SkillDelay = value
         Config:Set("SkillDelay", value)
@@ -5060,11 +5037,13 @@ SkillDelaySlider = Main:Slider({
     end
 })
 
-FarmHeightSlider = Main:Slider({
-    Title = "刷怪高度（±Y）",
-    Desc = "调整在怪物上方或下方刷怪时的垂直偏移。",
-    Value = { Min = -150, Max = 150, Default = HeightValue },
-    Step = 1,
+FarmHeightSlider = MainTab:CreateSlider({
+    Name = "刷怪高度（±Y）",
+    Description = "调整在怪物上方或下方刷怪时的垂直偏移。",
+    Min = -150,
+    Max = 150,
+    Default = HeightValue,
+    Value = HeightValue,
     Callback = function(value)
         HeightValue = value
         Config:Set("HeightValue", value)
@@ -5075,11 +5054,13 @@ FarmHeightSlider = Main:Slider({
     end
 })
 
-Main:Slider({
-    Title = "安全模式血量（%）",
-    Desc = "设置安全模式触发撤退的血量百分比。",
-    Value = { Min = 1, Max = 99, Default = SafeValue },
-    Step = 1,
+MainTab:CreateSlider({
+    Name = "安全模式血量（%）",
+    Description = "设置安全模式触发撤退的血量百分比。",
+    Min = 1,
+    Max = 99,
+    Default = SafeValue,
+    Value = SafeValue,
     Callback = function(value)
         SafeValue = value
         Config:Set("SafeValue", value)
@@ -5087,11 +5068,13 @@ Main:Slider({
     end
 })
 
-Main:Slider({
-    Title = "上帝模式血量（%）",
-    Desc = "设置普通上帝模式的血量百分比阈值。在 Farm Astro Token 期间被阻止。",
-    Value = { Min = 1, Max = 99, Default = GodModeValue },
-    Step = 1,
+MainTab:CreateSlider({
+    Name = "上帝模式血量（%）",
+    Description = "设置普通上帝模式的血量百分比阈值。在 Farm Astro Token 期间被阻止。",
+    Min = 1,
+    Max = 99,
+    Default = GodModeValue,
+    Value = GodModeValue,
     Callback = function(value)
         GodModeValue = value
         Config:Set("GodModeValue", value)
@@ -5099,11 +5082,13 @@ Main:Slider({
     end
 })
 
-Main:Slider({
-    Title = "重置波次（数值）",
-    Desc = "达到指定波次时立即重置。",
-    Value = { Min = 1, Max = 100, Default = ResetWaveValue },
-    Step = 1,
+MainTab:CreateSlider({
+    Name = "重置波次（数值）",
+    Description = "达到指定波次时立即重置。",
+    Min = 1,
+    Max = 100,
+    Default = ResetWaveValue,
+    Value = ResetWaveValue,
     Callback = function(value)
         ResetWaveValue = tonumber(value) or 10
         ClearResetWaveTrigger("滑块已更改")
@@ -5117,12 +5102,12 @@ Main:Slider({
     end
 })
 
-Main:Divider()
+MainTab:CreateDivider()
 
-BypassJeffreyToggle = Main:Toggle({
-    Title = "绕过 Jeffrey",
-    Desc = "此功能会让 Jeffrey 无法移动。",
-    Value = BypassJeffreyEnabled,
+BypassJeffreyToggle = MainTab:CreateToggle({
+    Name = "绕过 Jeffrey",
+    Description = "此功能会让 Jeffrey 无法移动。",
+    CurrentValue = BypassJeffreyEnabled,
     Callback = function(state)
         BypassJeffreyEnabled = state
         Config:Set("BypassJeffreyEnabled", state)
@@ -5134,10 +5119,10 @@ BypassJeffreyToggle = Main:Toggle({
     end
 })
 
-AntiJeffreyToggle = Main:Toggle({
-    Title = "反 Jeffrey",
-    Desc = "免费功能：创建软性隐形屏障。如果任何 Jeffrey 在范围内，你会被缓慢推开。",
-    Value = AntiJeffreyEnabled,
+AntiJeffreyToggle = MainTab:CreateToggle({
+    Name = "反 Jeffrey",
+    Description = "免费功能：创建软性隐形屏障。如果任何 Jeffrey 在范围内，你会被缓慢推开。",
+    CurrentValue = AntiJeffreyEnabled,
     Callback = function(state)
         AntiJeffreyEnabled = state
         Config:Set("AntiJeffreyEnabled", state)
@@ -5146,11 +5131,13 @@ AntiJeffreyToggle = Main:Toggle({
     end
 })
 
-Main:Slider({
-    Title = "反 Jeffrey 范围（单位）",
-    Desc = "设置反 Jeffrey 的距离。默认 50 单位。",
-    Value = { Min = 10, Max = 200, Default = AntiJeffreyRange },
-    Step = 1,
+MainTab:CreateSlider({
+    Name = "反 Jeffrey 范围（单位）",
+    Description = "设置反 Jeffrey 的距离。默认 50 单位。",
+    Min = 10,
+    Max = 200,
+    Default = AntiJeffreyRange,
+    Value = AntiJeffreyRange,
     Callback = function(value)
         AntiJeffreyRange = value
         Config:Set("AntiJeffreyRange", value)
@@ -5162,35 +5149,32 @@ if AntiJeffreyEnabled then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
 if BypassJeffreyEnabled then StartBypassJeffreyLoop(); ScanBypassJeffreys(true) end
 
 -- ====================== UI: PRIORITY SETTINGS ======================
-Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
+MainTab:CreateSection("优先级设置")
 
-Main:Paragraph({
-    Title = "优先级设置",
-    Desc = "中断：如果正在攻击低血量怪物且更高血量怪物出现，立即切换目标",
-    Image = "rbxassetid://104487529937663",
-    ImageSize = 26,
-})
+MainTab:CreateLabel("中断：如果正在攻击低血量怪物且更高血量怪物出现，立即切换目标")
 
-Main:Slider({
-    Title = "高血量阈值（最大生命值）",
-    Desc = "设置怪物成为高血量优先级所需的最大生命值。",
-    Value = { Min = 1, Max = 100000, Default = HighHPThreshold },
-    Step = 100,
+MainTab:CreateSlider({
+    Name = "高血量阈值（最大生命值）",
+    Description = "设置怪物成为高血量优先级所需的最大生命值。",
+    Min = 1,
+    Max = 100000,
+    Default = HighHPThreshold,
+    Value = HighHPThreshold,
     Callback = function(value)
         HighHPThreshold = value
         Config:Set("HighHPThreshold", value)
         Config:Save()
-        print("[DYHUB] 高血量阈值设置为 " .. value)
+        print("[yyt] 高血量阈值设置为 " .. value)
     end
 })
 
 -- ====================== UI: OVERRIDE SETTINGS ======================
-Main:Section({ Title = "覆盖设置", Icon = "ruler" })
+MainTab:CreateSection("覆盖设置")
 
-PaddingReduceInput = Main:Input({
-    Title = "设置减少偏移",
-    Default = tostring(PADDING_REDUCE_STEP),
-    Placeholder = "默认: 2",
+MainTab:CreateInput({
+    Name = "设置减少偏移",
+    Description = "默认: 2",
+    Placeholder = "输入数字",
     Callback = function(text)
         local num = tonumber(text)
         if num then
@@ -5203,10 +5187,10 @@ PaddingReduceInput = Main:Input({
     end
 })
 
-PaddingSafeInput = Main:Input({
-    Title = "设置安全最小偏移（全局底线）",
-    Default = tostring(PADDING_SAFE_MIN),
-    Placeholder = "默认: -30",
+MainTab:CreateInput({
+    Name = "设置安全最小偏移（全局底线）",
+    Description = "默认: -30",
+    Placeholder = "输入数字",
     Callback = function(text)
         local num = tonumber(text)
         if num then
@@ -5219,11 +5203,13 @@ PaddingSafeInput = Main:Input({
     end
 })
 
-Main:Slider({
-    Title = "防穿模边距（单位）",
-    Desc = "增加额外间距以减少在怪物附近刷怪时的穿模。",
-    Value = { Min = -10, Max = 10, Default = ANTI_CLIP_MARGIN },
-    Step = 1,
+MainTab:CreateSlider({
+    Name = "防穿模边距（单位）",
+    Description = "增加额外间距以减少在怪物附近刷怪时的穿模。",
+    Min = -10,
+    Max = 10,
+    Default = ANTI_CLIP_MARGIN,
+    Value = ANTI_CLIP_MARGIN,
     Callback = function(value)
         ANTI_CLIP_MARGIN = value
         Config:Set("AntiClipMargin", value)
@@ -5231,11 +5217,13 @@ Main:Slider({
     end
 })
 
-Main:Slider({
-    Title = "伤害阈值（确认锁定）",
-    Desc = "设置确认当前刷怪位置有效的伤害量。",
-    Value = { Min = 1, Max = 500, Default = DMG_THRESHOLD },
-    Step = 1,
+MainTab:CreateSlider({
+    Name = "伤害阈值（确认锁定）",
+    Description = "设置确认当前刷怪位置有效的伤害量。",
+    Min = 1,
+    Max = 500,
+    Default = DMG_THRESHOLD,
+    Value = DMG_THRESHOLD,
     Callback = function(value)
         DMG_THRESHOLD = value
         Config:Set("DmgThreshold", value)
@@ -5243,26 +5231,28 @@ Main:Slider({
     end
 })
 
-Main:Button({
-    Title = "重置所有已确认位置",
-    Desc = "清除所有已保存的怪物高度位置并恢复默认。",
+MainTab:CreateButton({
+    Name = "重置所有已确认位置",
+    Description = "清除所有已保存的怪物高度位置并恢复默认。",
     Callback = function()
         MobConfirmedPadding = {}
-        MobHeightOverride   = {}
-        WindUI:Notify({ Title = "覆盖设置", Content = "所有已确认的怪物位置已清除。", Duration = 2, Icon = "refresh-cw" })
+        MobHeightOverride = {}
+        Rayfield:Notify({ Title = "覆盖设置", Content = "所有已确认的怪物位置已清除。", Duration = 2, Icon = "refresh-cw" })
     end
 })
 
-Main:Section({ Title = "冲水设置", Icon = "toilet" })
+MainTab:CreateSection("冲水设置")
 
-Flushaura      = Config:Get("flushaura", false)
+Flushaura = Config:Get("flushaura", false)
 FlushAuraValue = Config:Get("FlushAuraValue", 5)
 
-Main:Slider({
-    Title = "冲水光环（单位）",
-    Desc = "设置冲水光环激活附近提示的距离。",
-    Value = { Min = 1, Max = 15, Default = FlushAuraValue },
-    Step = 1,
+MainTab:CreateSlider({
+    Name = "冲水光环（单位）",
+    Description = "设置冲水光环激活附近提示的距离。",
+    Min = 1,
+    Max = 15,
+    Default = FlushAuraValue,
+    Value = FlushAuraValue,
     Callback = function(value)
         FlushAuraValue = value
         Config:Set("FlushAuraValue", value)
@@ -5270,10 +5260,10 @@ Main:Slider({
     end
 })
 
-Main:Toggle({
-    Title = "冲水光环",
-    Desc = "在设定半径内自动冲水附近的冲水提示。",
-    Value = Flushaura,
+MainTab:CreateToggle({
+    Name = "冲水光环",
+    Description = "在设定半径内自动冲水附近的冲水提示。",
+    CurrentValue = Flushaura,
     Callback = function(enabled)
         Flushaura = enabled
         Config:Set("flushaura", enabled)
@@ -5341,10 +5331,10 @@ function IsESPItemTarget(objectName, selectedList)
 end
 
 function CreateESPLabel(parent, labelText)
-    local existing = parent:FindFirstChild("DYHUB_ESP_LABEL")
+    local existing = parent:FindFirstChild("yyt_ESP_LABEL")
     if existing then existing:Destroy() end
     local billboard = Instance.new("BillboardGui")
-    billboard.Name = "DYHUB_ESP_LABEL"
+    billboard.Name = "yyt_ESP_LABEL"
     billboard.Size = UDim2.new(0, 120, 0, 40)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.AlwaysOnTop = true
@@ -5369,10 +5359,10 @@ function CreateESPLabel(parent, labelText)
 end
 
 function CreateHighlight(model, outlineColor, fillColor, fillTransparency)
-    local existing = model:FindFirstChild("DYHUB_ESP_HIGHLIGHT")
+    local existing = model:FindFirstChild("yyt_ESP_HIGHLIGHT")
     if existing then existing:Destroy() end
     local hl = Instance.new("Highlight")
-    hl.Name = "DYHUB_ESP_HIGHLIGHT"
+    hl.Name = "yyt_ESP_HIGHLIGHT"
     hl.OutlineColor = outlineColor
     hl.FillColor = fillColor
     hl.FillTransparency = fillTransparency or 0.9
@@ -5385,13 +5375,13 @@ end
 
 function RemoveESP(model)
     pcall(function()
-        local hl = model:FindFirstChild("DYHUB_ESP_HIGHLIGHT")
+        local hl = model:FindFirstChild("yyt_ESP_HIGHLIGHT")
         if hl then hl:Destroy() end
-        local hb = model:FindFirstChild("DYHUB_ESP_LABEL")
+        local hb = model:FindFirstChild("yyt_ESP_LABEL")
         if hb then hb:Destroy() end
         local hrp = model:FindFirstChild("HumanoidRootPart")
         if hrp then
-            local lb = hrp:FindFirstChild("DYHUB_ESP_LABEL")
+            local lb = hrp:FindFirstChild("yyt_ESP_LABEL")
             if lb then lb:Destroy() end
         end
     end)
@@ -5663,12 +5653,12 @@ task.spawn(function()
 end)
 
 -- ====================== UI: ESP TAB ======================
-Main4:Section({ Title = "启用透视", Icon = "eye" })
+EspTab:CreateSection("启用透视")
 
-EspEnableToggle = Main4:Toggle({
-    Title = "启用透视",
-    Value = ESP.Enabled,
-    Desc = "启用所有透视视觉效果。",
+EspEnableToggle = EspTab:CreateToggle({
+    Name = "启用透视",
+    Description = "启用所有透视视觉效果。",
+    CurrentValue = ESP.Enabled,
     Callback = function(state)
         ESP.Enabled = state
         Config:Set("EspEnabled", state)
@@ -5677,10 +5667,10 @@ EspEnableToggle = Main4:Toggle({
     end
 })
 
-EspMobToggle = Main4:Toggle({
-    Title = "怪物透视",
-    Value = ESP.MobEnabled,
-    Desc = "在敌人怪物上方显示高亮和信息标签。",
+EspMobToggle = EspTab:CreateToggle({
+    Name = "怪物透视",
+    Description = "在敌人怪物上方显示高亮和信息标签。",
+    CurrentValue = ESP.MobEnabled,
     Callback = function(state)
         ESP.MobEnabled = state
         Config:Set("EspMobEnabled", state)
@@ -5692,10 +5682,10 @@ EspMobToggle = Main4:Toggle({
     end
 })
 
-EspPlayerToggle = Main4:Toggle({
-    Title = "玩家透视",
-    Value = ESP.PlayerEnabled,
-    Desc = "在其他玩家上方显示高亮和信息标签。",
+EspPlayerToggle = EspTab:CreateToggle({
+    Name = "玩家透视",
+    Description = "在其他玩家上方显示高亮和信息标签。",
+    CurrentValue = ESP.PlayerEnabled,
     Callback = function(state)
         ESP.PlayerEnabled = state
         Config:Set("EspPlayerEnabled", state)
@@ -5707,10 +5697,10 @@ EspPlayerToggle = Main4:Toggle({
     end
 })
 
-EspItemToggle = Main4:Toggle({
-    Title = "物品透视",
-    Value = ESP.ItemEnabled,
-    Desc = "在可收集物品上显示高亮和信息标签。",
+EspItemToggle = EspTab:CreateToggle({
+    Name = "物品透视",
+    Description = "在可收集物品上显示高亮和信息标签。",
+    CurrentValue = ESP.ItemEnabled,
     Callback = function(state)
         ESP.ItemEnabled = state
         Config:Set("EspItemEnabled", state)
@@ -5722,14 +5712,14 @@ EspItemToggle = Main4:Toggle({
     end
 })
 
-Main4:Section({ Title = "透视设置", Icon = "settings" })
+EspTab:CreateSection("透视设置")
 
-EspSettingsDropdown = Main4:Dropdown({
-    Title = "透视选项",
-    Desc = "选择显示的额外透视标签和视觉效果。",
+EspSettingsDropdown = EspTab:CreateDropdown({
+    Name = "透视选项",
+    Description = "选择显示的额外透视标签和视觉效果。",
+    Options = { "高亮", "距离", "血量", "名称" },
     Multi = true,
-    Values = { "高亮", "距离", "血量", "名称" },
-    Value = ESP.Settings,
+    CurrentValue = ESP.Settings,
     Callback = function(value)
         ESP.Settings = value or {}
         Config:Set("EspSettings", value)
@@ -5738,12 +5728,12 @@ EspSettingsDropdown = Main4:Dropdown({
     end,
 })
 
-EspItemDropdown = Main4:Dropdown({
-    Title = "透视物品",
-    Desc = "选择哪些可收集物品名称应接收物品透视。",
+EspItemDropdown = EspTab:CreateDropdown({
+    Name = "透视物品",
+    Description = "选择哪些可收集物品名称应接收物品透视。",
+    Options = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物" },
     Multi = true,
-    Values = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物" },
-    Value = ESP.SelectedItems,
+    CurrentValue = ESP.SelectedItems,
     Callback = function(value)
         ESP.SelectedItems = value or {}
         Config:Set("EspSelectedItems", value)
@@ -5755,12 +5745,65 @@ EspItemDropdown = Main4:Dropdown({
 })
 
 -- ====================== UI: PLAYER TAB ======================
-Main2:Section({ Title = "玩家", Icon = "user" })
+PlayerTab:CreateSection("移动控制")
 
 WSValue = Config:Get("WSValue", 16)
 JPValue = Config:Get("JPValue", 50)
-NoClip  = Config:Get("NoClip", false)
+NoClip = Config:Get("NoClip", false)
 LockMovementStats = Config:Get("LockMovementStats", true)
+
+PlayerTab:CreateSlider({
+    Name = "设置移动速度",
+    Description = "设置你保存的移动速度值。",
+    Min = 1,
+    Max = 200,
+    Default = WSValue,
+    Value = WSValue,
+    Callback = function(value)
+        WSValue = value
+        Config:Set("WSValue", value)
+        Config:Save()
+        updatePlayerStats(true)
+    end
+})
+
+PlayerTab:CreateSlider({
+    Name = "设置跳跃力",
+    Description = "设置你保存的跳跃力值。",
+    Min = 1,
+    Max = 500,
+    Default = JPValue,
+    Value = JPValue,
+    Callback = function(value)
+        JPValue = value
+        Config:Set("JPValue", value)
+        Config:Save()
+        updatePlayerStats(true)
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "锁定移动属性",
+    Description = "当游戏降低移动速度和跳跃力时恢复。",
+    CurrentValue = LockMovementStats,
+    Callback = function(state)
+        LockMovementStats = state
+        Config:Set("LockMovementStats", state)
+        Config:Save()
+        if state then updatePlayerStats(true) end
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "无碰撞",
+    Description = "允许角色穿过墙壁和部件。",
+    CurrentValue = NoClip,
+    Callback = function(state)
+        NoClip = state
+        Config:Set("NoClip", state)
+        Config:Save()
+    end
+})
 
 -- ============================================================
 -- ============== 飞行系统 ====================================
@@ -5874,80 +5917,33 @@ function FlyStart()
     end)
 end
 
-Main2:Slider({
-    Title = "设置移动速度",
-    Desc = "设置你保存的移动速度值。",
-    Value = { Min = 1, Max = 200, Default = WSValue },
-    Step = 1,
-    Callback = function(value)
-        WSValue = value
-        Config:Set("WSValue", value)
-        Config:Save()
-        updatePlayerStats(true)
-    end
-})
+PlayerTab:CreateSection("飞行控制")
 
-Main2:Slider({
-    Title = "设置跳跃力",
-    Desc = "设置你保存的跳跃力值。",
-    Value = { Min = 1, Max = 500, Default = JPValue },
-    Step = 1,
-    Callback = function(value)
-        JPValue = value
-        Config:Set("JPValue", value)
-        Config:Save()
-        updatePlayerStats(true)
-    end
-})
-
-Main2:Toggle({
-    Title = "锁定移动属性",
-    Desc = "当游戏降低移动速度和跳跃力时恢复。",
-    Value = LockMovementStats,
-    Callback = function(state)
-        LockMovementStats = state
-        Config:Set("LockMovementStats", state)
-        Config:Save()
-        if state then updatePlayerStats(true) end
-    end
-})
-
-nocliptoggle = Main2:Toggle({
-    Title = "无碰撞",
-    Value = NoClip,
-    Desc = "允许角色穿过墙壁和部件。",
-    Callback = function(state)
-        NoClip = state
-        Config:Set("NoClip", state)
-        Config:Save()
-    end
-})
-
-Main2:Section({ Title = "飞行控制", Icon = "plane" })
-
-FlyToggle = Main2:Toggle({
-    Title = "飞行",
-    Desc = "启用飞行。按 Space/E 上升，Ctrl/Q 下降。",
-    Value = FlyEnabled,
+PlayerTab:CreateToggle({
+    Name = "飞行",
+    Description = "启用飞行。按 Space/E 上升，Ctrl/Q 下降。",
+    CurrentValue = FlyEnabled,
     Callback = function(state)
         FlyEnabled = state
         Config:Set("FlyEnabled", state)
         Config:Save()
         if state then
             FlyStart()
-            WindUI:Notify({ Title = "飞行", Content = "飞行已开启", Duration = 2, Icon = "plane" })
+            Rayfield:Notify({ Title = "飞行", Content = "飞行已开启", Duration = 2, Icon = "plane" })
         else
             FlyStopAll()
-            WindUI:Notify({ Title = "飞行", Content = "飞行已关闭", Duration = 2, Icon = "plane" })
+            Rayfield:Notify({ Title = "飞行", Content = "飞行已关闭", Duration = 2, Icon = "plane" })
         end
     end
 })
 
-Main2:Slider({
-    Title = "飞行速度",
-    Desc = "调整飞行移动速度（数值越大越快）。",
-    Value = { Min = 1, Max = 20, Default = FlySpeed },
-    Step = 1,
+PlayerTab:CreateSlider({
+    Name = "飞行速度",
+    Description = "调整飞行移动速度（数值越大越快）。",
+    Min = 1,
+    Max = 20,
+    Default = FlySpeed,
+    Value = FlySpeed,
     Callback = function(value)
         FlySpeed = value
         FlySpeeds = value
@@ -5956,11 +5952,13 @@ Main2:Slider({
     end
 })
 
-Main2:Slider({
-    Title = "飞行高度",
-    Desc = "调整飞行时垂直上升/下降的速度倍率（数值越大升降越快）。",
-    Value = { Min = 1, Max = 50, Default = FlyHeight },
-    Step = 1,
+PlayerTab:CreateSlider({
+    Name = "飞行高度",
+    Description = "调整飞行时垂直上升/下降的速度倍率（数值越大升降越快）。",
+    Min = 1,
+    Max = 50,
+    Default = FlyHeight,
+    Value = FlyHeight,
     Callback = function(value)
         FlyHeight = value
         Config:Set("FlyHeight", value)
@@ -5968,12 +5966,16 @@ Main2:Slider({
     end
 })
 
-Main2:Section({ Title = "无限跳跃", Icon = "sun" })
+PlayerTab:CreateSection("视觉与工具")
 
-Main2:Toggle({
-    Title = "无限跳跃",
-    Desc = "允许在空中重复跳跃。",
-    Value = InfiniteJumpEnabled,
+InfiniteJumpEnabled = Config:Get("InfiniteJumpEnabled", false)
+FullBrightEnabled = Config:Get("FullBrightEnabled", false)
+NoFogEnabled = Config:Get("NoFogEnabled", false)
+
+PlayerTab:CreateToggle({
+    Name = "无限跳跃",
+    Description = "允许在空中重复跳跃。",
+    CurrentValue = InfiniteJumpEnabled,
     Callback = function(state)
         InfiniteJumpEnabled = state
         Config:Set("InfiniteJumpEnabled", state)
@@ -5981,10 +5983,10 @@ Main2:Toggle({
     end
 })
 
-Main2:Toggle({
-    Title = "全亮",
-    Desc = "提高地图亮度，禁用时恢复原有光照。",
-    Value = FullBrightEnabled,
+PlayerTab:CreateToggle({
+    Name = "全亮",
+    Description = "提高地图亮度，禁用时恢复原有光照。",
+    CurrentValue = FullBrightEnabled,
     Callback = function(state)
         FullBrightEnabled = state
         Config:Set("FullBrightEnabled", state)
@@ -5993,10 +5995,10 @@ Main2:Toggle({
     end
 })
 
-Main2:Toggle({
-    Title = "无雾",
-    Desc = "移除距离雾气，禁用时恢复原有雾设置。",
-    Value = NoFogEnabled,
+PlayerTab:CreateToggle({
+    Name = "无雾",
+    Description = "移除距离雾气，禁用时恢复原有雾设置。",
+    CurrentValue = NoFogEnabled,
     Callback = function(state)
         NoFogEnabled = state
         Config:Set("NoFogEnabled", state)
@@ -6006,16 +6008,16 @@ Main2:Toggle({
 })
 
 -- ====================== UI: 兑换码 ======================
-Main2:Section({ Title = "兑换码", Icon = "bird" })
+PlayerTab:CreateSection("兑换码")
 
 SelectedCodes = Config:Get("SelectedCodes", {})
 
-CodeDropdown = Main2:Dropdown({
-    Title = "选择兑换码",
-    Desc = "选择将要兑换的代码。",
+PlayerTab:CreateDropdown({
+    Name = "选择兑换码",
+    Description = "选择将要兑换的代码。",
+    Options = GlobalTables.redeemCodes,
     Multi = true,
-    Values = GlobalTables.redeemCodes,
-    Value = SelectedCodes,
+    CurrentValue = SelectedCodes,
     Callback = function(value)
         SelectedCodes = value or {}
         Config:Set("SelectedCodes", value)
@@ -6023,9 +6025,9 @@ CodeDropdown = Main2:Dropdown({
     end,
 })
 
-Main2:Button({
-    Title = "兑换代码",
-    Desc = "仅兑换你在下拉菜单中选中的代码。",
+PlayerTab:CreateButton({
+    Name = "兑换代码",
+    Description = "仅兑换你在下拉菜单中选中的代码。",
     Callback = function()
         for _, code in ipairs(SelectedCodes or {}) do
             pcall(function()
@@ -6037,9 +6039,9 @@ Main2:Button({
     end,
 })
 
-Main2:Button({
-    Title = "兑换全部代码",
-    Desc = "一次性兑换所有可用代码。",
+PlayerTab:CreateButton({
+    Name = "兑换全部代码",
+    Description = "一次性兑换所有可用代码。",
     Callback = function()
         for _, code in ipairs(GlobalTables.redeemCodes or {}) do
             pcall(function()
@@ -6052,17 +6054,17 @@ Main2:Button({
 })
 
 -- ====================== UI: 解锁通行证 ======================
-Main2:Section({ Title = "解锁通行证", Icon = "badge-dollar-sign" })
+PlayerTab:CreateSection("解锁通行证")
 
 SelectedGamepass = Config:Get("SelectedGamepass", {})
 GlobalTables.Gamepassts = SelectedGamepass
 
-GamepassDropdown = Main2:Dropdown({
-    Title = "选择通行证",
-    Desc = "选择要本地解锁的通行证。",
+PlayerTab:CreateDropdown({
+    Name = "选择通行证",
+    Description = "选择要本地解锁的通行证。",
+    Options = GamepassDisplayNames,
     Multi = true,
-    Values = GamepassDisplayNames,
-    Value = SelectedGamepass,
+    CurrentValue = SelectedGamepass,
     Callback = function(value)
         GlobalTables.Gamepassts = value or {}
         SelectedGamepass = value or {}
@@ -6071,9 +6073,9 @@ GamepassDropdown = Main2:Dropdown({
     end,
 })
 
-Main2:Button({
-    Title = "解锁通行证",
-    Desc = "免费本地解锁选中的通行证。",
+PlayerTab:CreateButton({
+    Name = "解锁通行证",
+    Description = "免费本地解锁选中的通行证。",
     Callback = function()
         local gachaData = LocalPlayer:FindFirstChild("GachaData")
         if not gachaData then
@@ -6092,7 +6094,7 @@ Main2:Button({
             end
         end
         if #toUnlock == 0 then
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "解锁通行证",
                 Content = "请先选择通行证！",
                 Duration = 3,
@@ -6114,7 +6116,7 @@ Main2:Button({
                 task.wait(0.2)
             end)
         end
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "解锁通行证",
             Content = "已解锁 " .. successCount .. "/" .. #toUnlock .. " 个通行证！完成！",
             Duration = 3,
@@ -6133,7 +6135,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         FlyNowe = false
         FlyEnabled = false
         pcall(function()
-            if FlyToggle and FlyToggle.Set then FlyToggle:Set(false) end
+            if FlyToggle and FlyToggle.Set then
+                FlyToggle:Set(false)
+            end
         end)
     end
     local hum = char:FindFirstChildOfClass("Humanoid")
@@ -6367,31 +6371,61 @@ local function StopGachaEnhancement()
         GachaHeartbeatConnection:Disconnect()
         GachaHeartbeatConnection = nil
     end
+
+    pcall(function()
+        local parent = CoreGui or pg
+        if parent then
+            local moneyUI = parent:FindFirstChild("MoneyUI")
+            if moneyUI then moneyUI:Destroy() end
+        end
+    end)
+    MoneyUIExists = false
+
+    pcall(function()
+        ApplyCameraMode(true)
+        local cam = workspace.CurrentCamera
+        local char = LocalPlayer.Character
+        if cam and char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                cam.CameraSubject = hrp
+            end
+        end
+    end)
+
+    pcall(function()
+        local readyRemote = GetRemote("GetReadyRemote")
+        if readyRemote then
+            readyRemote:FireServer("1", true)
+            task.wait(0.1)
+            readyRemote:FireServer("1", false)
+        end
+    end)
 end
 
 -- ============================================================
 -- ============== Shop Tab ====================================
 -- ============================================================
 
-Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
+ShopTab:CreateSection("角色扭蛋")
 
 _G.__DYHUB_ShopSystems = function()
     local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
 
     local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
-    local autoGachaSkinEnabled      = Config:Get("AutoGachaSkinEnabled", false)
+    local autoGachaSkinEnabled = Config:Get("AutoGachaSkinEnabled", false)
     local selectedGachaCharacterArg = Config:Get("SelectedGachaCharacterArg", "1次抽奖")
-    local selectedGachaSkinArg      = Config:Get("SelectedGachaSkinArg", "1次抽奖")
-    local characterGachaRunning     = false
-    local skinGachaRunning          = false
+    local selectedGachaSkinArg = Config:Get("SelectedGachaSkinArg", "1次抽奖")
+    local characterGachaRunning = false
+    local skinGachaRunning = false
 
-    local autoUseItemEnabled        = Config:Get("AutoUseItemEnabled", false)
-    local selectedUseItem           = Config:Get("SelectedUseItem", "Presents")
-    local useItemRunning            = false
+    local autoUseItemEnabled = Config:Get("AutoUseItemEnabled", false)
+    local selectedUseItem = Config:Get("SelectedUseItem", "Presents")
+    local useItemRunning = false
 
-    local selectedRequestItem       = Config:Get("SelectedRequestItem", "泰坦请求")
-    local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
-    local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
+    local selectedRequestItem = Config:Get("SelectedRequestItem", "泰坦请求")
+    local autoRequestEnabled = Config:Get("AutoRequestEnabled", false)
+    local autoSkillTreeEnabled = Config:Get("AutoSkillTreeEnabled", false)
 
     local function EnsureList(value, fallback)
         if type(value) == "table" then return value end
@@ -6414,7 +6448,7 @@ _G.__DYHUB_ShopSystems = function()
         if not remote then return false end
         local args = { ... }
         local ok, err = pcall(function() remote:FireServer(unpack(args)) end)
-        if not ok then warn("[DYHUB] 商店远程失败:", tostring(remoteName), err) end
+        if not ok then warn("[yyt] 商店远程失败:", tostring(remoteName), err) end
         return ok
     end
 
@@ -6470,7 +6504,7 @@ _G.__DYHUB_ShopSystems = function()
                     AutoGachaSkinToggle:Set(false)
                 end
             end)
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "互斥提示",
                 Content = "⚠️ 已自动关闭皮肤扭蛋，角色扭蛋已启用",
                 Duration = 3,
@@ -6479,7 +6513,7 @@ _G.__DYHUB_ShopSystems = function()
         end
 
         characterGachaRunning = true
-        StartGachaEnhancement()  -- UI增强启动
+        StartGachaEnhancement()
 
         task.spawn(function()
             while autoGachaCharacterEnabled do
@@ -6489,7 +6523,7 @@ _G.__DYHUB_ShopSystems = function()
             end
             characterGachaRunning = false
             if not skinGachaRunning then
-                StopGachaEnhancement()  -- 全部关闭才停止
+                StopGachaEnhancement()
             end
         end)
     end
@@ -6506,7 +6540,7 @@ _G.__DYHUB_ShopSystems = function()
                     AutoGachaCharacterToggle:Set(false)
                 end
             end)
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "互斥提示",
                 Content = "⚠️ 已自动关闭角色扭蛋，皮肤扭蛋已启用",
                 Duration = 3,
@@ -6515,7 +6549,7 @@ _G.__DYHUB_ShopSystems = function()
         end
 
         skinGachaRunning = true
-        StartGachaEnhancement()  -- UI增强启动
+        StartGachaEnhancement()
 
         task.spawn(function()
             while autoGachaSkinEnabled do
@@ -6525,7 +6559,7 @@ _G.__DYHUB_ShopSystems = function()
             end
             skinGachaRunning = false
             if not characterGachaRunning then
-                StopGachaEnhancement()  -- 全部关闭才停止
+                StopGachaEnhancement()
             end
         end)
     end
@@ -6546,12 +6580,11 @@ _G.__DYHUB_ShopSystems = function()
     end
 
     -- ====================== UI：角色扭蛋 ======================
-    Main5:Dropdown({
-        Title = "角色扭蛋",
-        Desc = "选择角色扭蛋使用的抽奖类型。",
-        Values = gachaValues,
-        Multi = false,
-        Value = selectedGachaCharacterArg,
+    ShopTab:CreateDropdown({
+        Name = "角色扭蛋",
+        Description = "选择角色扭蛋使用的抽奖类型。",
+        Options = gachaValues,
+        CurrentOption = selectedGachaCharacterArg,
         Callback = function(value)
             selectedGachaCharacterArg = value or "1次抽奖"
             Config:Set("SelectedGachaCharacterArg", value)
@@ -6559,13 +6592,13 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    local AutoGachaCharacterToggle = Main5:Toggle({
-        Title = "自动角色扭蛋",
-        Value = autoGachaCharacterEnabled,
-        Desc = "使用所选选项自动进行角色扭蛋。",
+    local AutoGachaCharacterToggle = ShopTab:CreateToggle({
+        Name = "自动角色扭蛋",
+        Description = "使用所选选项自动进行角色扭蛋。",
+        CurrentValue = autoGachaCharacterEnabled,
         Callback = function(enabled)
             if enabled and autoGachaSkinEnabled then
-                WindUI:Notify({
+                Rayfield:Notify({
                     Title = "互斥提示",
                     Content = "⚠️ 皮肤扭蛋正在运行，请先关闭皮肤扭蛋再启用角色扭蛋",
                     Duration = 3,
@@ -6595,12 +6628,11 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Dropdown({
-        Title = "皮肤扭蛋",
-        Desc = "选择皮肤扭蛋使用的抽奖类型。",
-        Values = gachaValues,
-        Multi = false,
-        Value = selectedGachaSkinArg,
+    ShopTab:CreateDropdown({
+        Name = "皮肤扭蛋",
+        Description = "选择皮肤扭蛋使用的抽奖类型。",
+        Options = gachaValues,
+        CurrentOption = selectedGachaSkinArg,
         Callback = function(value)
             selectedGachaSkinArg = value or "1次抽奖"
             Config:Set("SelectedGachaSkinArg", value)
@@ -6608,13 +6640,13 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    local AutoGachaSkinToggle = Main5:Toggle({
-        Title = "自动皮肤扭蛋",
-        Value = autoGachaSkinEnabled,
-        Desc = "使用所选选项自动进行皮肤扭蛋。",
+    local AutoGachaSkinToggle = ShopTab:CreateToggle({
+        Name = "自动皮肤扭蛋",
+        Description = "使用所选选项自动进行皮肤扭蛋。",
+        CurrentValue = autoGachaSkinEnabled,
         Callback = function(enabled)
             if enabled and autoGachaCharacterEnabled then
-                WindUI:Notify({
+                Rayfield:Notify({
                     Title = "互斥提示",
                     Content = "⚠️ 角色扭蛋正在运行，请先关闭角色扭蛋再启用皮肤扭蛋",
                     Duration = 3,
@@ -6645,16 +6677,15 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 自动使用物品 ======================
-    Main5:Section({ Title = "自动使用物品", Icon = "package-open" })
+    ShopTab:CreateSection("自动使用物品")
 
     local useItemDisplayValue = GetUseItemDisplay(selectedUseItem)
 
-    Main5:Dropdown({
-        Title = "使用物品",
-        Desc = "选择自动使用物品将激活的物品。",
-        Values = UseItemDisplayNames,
-        Multi = false,
-        Value = useItemDisplayValue,
+    ShopTab:CreateDropdown({
+        Name = "使用物品",
+        Description = "选择自动使用物品将激活的物品。",
+        Options = UseItemDisplayNames,
+        CurrentOption = useItemDisplayValue,
         Callback = function(value)
             local english = UseItemMap[value] or value
             selectedUseItem = english
@@ -6663,10 +6694,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
-        Title = "自动使用物品",
-        Value = autoUseItemEnabled,
-        Desc = "以安全延迟自动使用所选物品。",
+    ShopTab:CreateToggle({
+        Name = "自动使用物品",
+        Description = "以安全延迟自动使用所选物品。",
+        CurrentValue = autoUseItemEnabled,
         Callback = function(enabled)
             autoUseItemEnabled = enabled
             Config:Set("AutoUseItemEnabled", enabled)
@@ -6676,11 +6707,11 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 商店升级 ======================
-    Main5:Section({ Title = "商店升级", Icon = "arrow-big-up-dash" })
+    ShopTab:CreateSection("商店升级")
 
     local selectedTitanSpeakerUpgrades = EnsureList(Config:Get("SelectedTitanSpeakerUpgrades", { "Jetpack" }), { "Jetpack" })
-    local selectedUTCMUpgrades         = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
-    local selectedTVUpgrades           = EnsureList(Config:Get("SelectedTVUpgrades", { "Absorb" }), { "Absorb" })
+    local selectedUTCMUpgrades = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
+    local selectedTVUpgrades = EnsureList(Config:Get("SelectedTVUpgrades", { "Absorb" }), { "Absorb" })
 
     local titanDisplay = {}
     for _, v in ipairs(selectedTitanSpeakerUpgrades) do
@@ -6696,15 +6727,15 @@ _G.__DYHUB_ShopSystems = function()
     end
 
     local upgradeTitanSpeakerEnabled = Config:Get("UpgradeTitanSpeakerEnabled", false)
-    local upgradeUTCMEnabled         = Config:Get("UpgradeUTCMEnabled", false)
-    local upgradeTVEnabled           = Config:Get("UpgradeTVEnabled", false)
+    local upgradeUTCMEnabled = Config:Get("UpgradeUTCMEnabled", false)
+    local upgradeTVEnabled = Config:Get("UpgradeTVEnabled", false)
 
-    Main5:Dropdown({
-        Title = "选择泰坦扬声器升级",
-        Desc = "选择将请求的泰坦扬声器升级。",
-        Values = TitanSpeakerUpgradeDisplayNames,
+    ShopTab:CreateDropdown({
+        Name = "选择泰坦扬声器升级",
+        Description = "选择将请求的泰坦扬声器升级。",
+        Options = TitanSpeakerUpgradeDisplayNames,
         Multi = true,
-        Value = titanDisplay,
+        CurrentValue = titanDisplay,
         Callback = function(values)
             local englishValues = {}
             for _, v in ipairs(values or {}) do
@@ -6717,10 +6748,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
-        Title = "升级泰坦扬声器",
-        Desc = "自动请求选中的泰坦扬声器升级。",
-        Value = upgradeTitanSpeakerEnabled,
+    ShopTab:CreateToggle({
+        Name = "升级泰坦扬声器",
+        Description = "自动请求选中的泰坦扬声器升级。",
+        CurrentValue = upgradeTitanSpeakerEnabled,
         Callback = function(enabled)
             upgradeTitanSpeakerEnabled = enabled
             Config:Set("UpgradeTitanSpeakerEnabled", enabled)
@@ -6729,12 +6760,12 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Dropdown({
-        Title = "选择 UTCM 升级",
-        Desc = "选择将请求的 UTCM 升级。",
-        Values = UTCMUpgradeDisplayNames,
+    ShopTab:CreateDropdown({
+        Name = "选择 UTCM 升级",
+        Description = "选择将请求的 UTCM 升级。",
+        Options = UTCMUpgradeDisplayNames,
         Multi = true,
-        Value = utcmDisplay,
+        CurrentValue = utcmDisplay,
         Callback = function(values)
             local englishValues = {}
             for _, v in ipairs(values or {}) do
@@ -6747,10 +6778,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
-        Title = "升级 UTCM",
-        Desc = "自动请求选中的 UTCM 升级。",
-        Value = upgradeUTCMEnabled,
+    ShopTab:CreateToggle({
+        Name = "升级 UTCM",
+        Description = "自动请求选中的 UTCM 升级。",
+        CurrentValue = upgradeUTCMEnabled,
         Callback = function(enabled)
             upgradeUTCMEnabled = enabled
             Config:Set("UpgradeUTCMEnabled", enabled)
@@ -6759,12 +6790,12 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Dropdown({
-        Title = "选择 TV 升级",
-        Desc = "选择将请求的 TV 升级。",
-        Values = TVUpgradeDisplayNames,
+    ShopTab:CreateDropdown({
+        Name = "选择 TV 升级",
+        Description = "选择将请求的 TV 升级。",
+        Options = TVUpgradeDisplayNames,
         Multi = true,
-        Value = tvDisplay,
+        CurrentValue = tvDisplay,
         Callback = function(values)
             local englishValues = {}
             for _, v in ipairs(values or {}) do
@@ -6777,10 +6808,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
-        Title = "升级 TV",
-        Desc = "自动请求选中的 TV 升级。",
-        Value = upgradeTVEnabled,
+    ShopTab:CreateToggle({
+        Name = "升级 TV",
+        Description = "自动请求选中的 TV 升级。",
+        CurrentValue = upgradeTVEnabled,
         Callback = function(enabled)
             upgradeTVEnabled = enabled
             Config:Set("UpgradeTVEnabled", enabled)
@@ -6790,17 +6821,16 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 商店武器 ======================
-    Main5:Section({ Title = "商店武器", Icon = "helicopter" })
+    ShopTab:CreateSection("商店武器")
 
-    local autoBuyWeaponValue   = Config:Get("AutoBuyWeaponValue", "电击枪")
+    local autoBuyWeaponValue = Config:Get("AutoBuyWeaponValue", "电击枪")
     local autoBuyWeaponEnabled = Config:Get("AutoBuyWeaponEnabled", false)
 
-    Main5:Dropdown({
-        Title = "选择武器",
-        Desc = "选择将自动购买的武器。",
-        Values = WeaponDisplayNames,
-        Multi = false,
-        Value = autoBuyWeaponValue,
+    ShopTab:CreateDropdown({
+        Name = "选择武器",
+        Description = "选择将自动购买的武器。",
+        Options = WeaponDisplayNames,
+        CurrentOption = autoBuyWeaponValue,
         Callback = function(value)
             autoBuyWeaponValue = value
             local english = WeaponMap[value] or value
@@ -6809,10 +6839,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
-        Title = "购买武器",
-        Desc = "在商店循环期间自动购买所选武器。",
-        Value = autoBuyWeaponEnabled,
+    ShopTab:CreateToggle({
+        Name = "购买武器",
+        Description = "在商店循环期间自动购买所选武器。",
+        CurrentValue = autoBuyWeaponEnabled,
         Callback = function(enabled)
             autoBuyWeaponEnabled = enabled
             Config:Set("AutoBuyWeaponEnabled", enabled)
@@ -6821,9 +6851,9 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Button({
-        Title = "购买武器（一次）",
-        Desc = "购买所选武器一次。",
+    ShopTab:CreateButton({
+        Name = "购买武器（一次）",
+        Description = "购买所选武器一次。",
         Callback = function()
             if autoBuyWeaponValue then
                 local english = WeaponMap[autoBuyWeaponValue] or autoBuyWeaponValue
@@ -6833,17 +6863,16 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 商店杂项 ======================
-    Main5:Section({ Title = "商店杂项", Icon = "package" })
+    ShopTab:CreateSection("商店杂项")
 
-    local autoBuyMiscValue   = Config:Get("AutoBuyMiscValue", "头戴式耳机")
+    local autoBuyMiscValue = Config:Get("AutoBuyMiscValue", "头戴式耳机")
     local autoBuyMiscEnabled = Config:Get("AutoBuyMiscEnabled", false)
 
-    Main5:Dropdown({
-        Title = "选择杂项",
-        Desc = "选择将自动购买的杂项物品。",
-        Values = MiscDisplayNames,
-        Multi = false,
-        Value = autoBuyMiscValue,
+    ShopTab:CreateDropdown({
+        Name = "选择杂项",
+        Description = "选择将自动购买的杂项物品。",
+        Options = MiscDisplayNames,
+        CurrentOption = autoBuyMiscValue,
         Callback = function(value)
             autoBuyMiscValue = value
             local english = MiscMap[value] or value
@@ -6852,10 +6881,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
-        Title = "购买杂项",
-        Value = autoBuyMiscEnabled,
-        Desc = "在商店循环期间自动购买所选杂项物品。",
+    ShopTab:CreateToggle({
+        Name = "购买杂项",
+        Description = "在商店循环期间自动购买所选杂项物品。",
+        CurrentValue = autoBuyMiscEnabled,
         Callback = function(enabled)
             autoBuyMiscEnabled = enabled
             Config:Set("AutoBuyMiscEnabled", enabled)
@@ -6864,9 +6893,9 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Button({
-        Title = "购买杂项（一次）",
-        Desc = "购买所选杂项物品一次。",
+    ShopTab:CreateButton({
+        Name = "购买杂项（一次）",
+        Description = "购买所选杂项物品一次。",
         Callback = function()
             if autoBuyMiscValue then
                 local english = MiscMap[autoBuyMiscValue] or autoBuyMiscValue
@@ -6876,14 +6905,13 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 请求泰坦/扬声器 ======================
-    Main5:Section({ Title = "请求泰坦/扬声器", Icon = "send" })
+    ShopTab:CreateSection("请求泰坦/扬声器")
 
-    Main5:Dropdown({
-        Title = "选择请求",
-        Desc = "选择将自动购买的泰坦/扬声器请求。",
-        Values = RequestDisplayNames,
-        Multi = false,
-        Value = selectedRequestItem,
+    ShopTab:CreateDropdown({
+        Name = "选择请求",
+        Description = "选择将自动购买的泰坦/扬声器请求。",
+        Options = RequestDisplayNames,
+        CurrentOption = selectedRequestItem,
         Callback = function(value)
             selectedRequestItem = value
             local english = RequestMap[value] or value
@@ -6892,10 +6920,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
-        Title = "自动请求",
-        Desc = "波次 10+ 时自动请求选中的泰坦/扬声器。",
-        Value = autoRequestEnabled,
+    ShopTab:CreateToggle({
+        Name = "自动请求",
+        Description = "波次 10+ 时自动请求选中的泰坦/扬声器。",
+        CurrentValue = autoRequestEnabled,
         Callback = function(enabled)
             autoRequestEnabled = enabled
             Config:Set("AutoRequestEnabled", enabled)
@@ -6908,12 +6936,12 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 技能树 ======================
-    Main5:Section({ Title = "技能树", Icon = "git-branch-plus" })
+    ShopTab:CreateSection("技能树")
 
-    Main5:Toggle({
-        Title = "自动技能树",
-        Desc = "自动为你当前角色解锁缺失的技能树。",
-        Value = autoSkillTreeEnabled,
+    ShopTab:CreateToggle({
+        Name = "自动技能树",
+        Description = "自动为你当前角色解锁缺失的技能树。",
+        CurrentValue = autoSkillTreeEnabled,
         Callback = function(enabled)
             autoSkillTreeEnabled = enabled
             Config:Set("AutoSkillTreeEnabled", enabled)
@@ -6923,24 +6951,24 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 商店小时购 ======================
-    Main5:Section({ Title = "商店小时购", Icon = "clock" })
+    ShopTab:CreateSection("商店小时购")
 
-    local selectedShopHourlyItems   = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
+    local selectedShopHourlyItems = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
     local hourlyDisplay = {}
     for _, v in ipairs(selectedShopHourlyItems) do
         table.insert(hourlyDisplay, GetShopHourlyDisplay(v))
     end
 
-    local shopHourlyItemAmount      = Config:Get("ShopHourlyItemAmount", 1)
-    local buyItemHourlyEnabled      = Config:Get("BuyItemHourlyEnabled", false)
-    local buyItemHourlyRunning      = false
+    local shopHourlyItemAmount = Config:Get("ShopHourlyItemAmount", 1)
+    local buyItemHourlyEnabled = Config:Get("BuyItemHourlyEnabled", false)
+    local buyItemHourlyRunning = false
 
-    Main5:Dropdown({
-        Title = "选择商店小时购",
-        Desc = "选择固定的小时购商店物品。",
-        Values = ShopHourlyDisplayNames,
+    ShopTab:CreateDropdown({
+        Name = "选择商店小时购",
+        Description = "选择固定的小时购商店物品。",
+        Options = ShopHourlyDisplayNames,
         Multi = true,
-        Value = hourlyDisplay,
+        CurrentValue = hourlyDisplay,
         Callback = function(values)
             local englishValues = {}
             for _, v in ipairs(values or {}) do
@@ -6953,11 +6981,13 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Slider({
-        Title = "物品数量",
-        Desc = "设置每种选中小时购物品的购买数量。",
-        Value = { Min = 1, Max = 100, Default = shopHourlyItemAmount },
-        Step = 1,
+    ShopTab:CreateSlider({
+        Name = "物品数量",
+        Description = "设置每种选中小时购物品的购买数量。",
+        Min = 1,
+        Max = 100,
+        Default = shopHourlyItemAmount,
+        Value = shopHourlyItemAmount,
         Callback = function(value)
             shopHourlyItemAmount = value
             Config:Set("ShopHourlyItemAmount", value)
@@ -6965,10 +6995,10 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    Main5:Toggle({
-        Title = "购买物品",
-        Desc = "在定时循环中自动购买选中的小时购商店物品。",
-        Value = buyItemHourlyEnabled,
+    ShopTab:CreateToggle({
+        Name = "购买物品",
+        Description = "在定时循环中自动购买选中的小时购商店物品。",
+        CurrentValue = buyItemHourlyEnabled,
         Callback = function(enabled)
             buyItemHourlyEnabled = enabled
             Config:Set("BuyItemHourlyEnabled", enabled)
@@ -6982,7 +7012,7 @@ _G.__DYHUB_ShopSystems = function()
 
     local function IsHeavySyncedShopEnabled()
         return autoBuyWeaponEnabled or autoBuyMiscEnabled or
-               upgradeTitanSpeakerEnabled or upgradeUTCMEnabled or upgradeTVEnabled
+            upgradeTitanSpeakerEnabled or upgradeUTCMEnabled or upgradeTVEnabled
     end
 
     local function IsAnySyncedShopEnabled()
@@ -7134,12 +7164,12 @@ _G.__DYHUB_ShopSystems()
 _G.__DYHUB_ShopSystems = nil
 
 -- ====================== UI: COLLECT TAB ======================
-Main6:Section({ Title = "自动收集", Icon = "package" })
+CollectTab:CreateSection("自动收集")
 
-AutoCollectToggle = Main6:Toggle({
-    Title = "自动收集",
-    Value = AutoCollectEnabled,
-    Desc = "自动收集地图中出现的选中物品。",
+AutoCollectToggle = CollectTab:CreateToggle({
+    Name = "自动收集",
+    Description = "自动收集地图中出现的选中物品。",
+    CurrentValue = AutoCollectEnabled,
     Callback = function(state)
         AutoCollectEnabled = state
         Config:Set("AutoCollectEnabled", state)
@@ -7157,14 +7187,14 @@ AutoCollectToggle = Main6:Toggle({
     end
 })
 
-Main6:Section({ Title = "收集设置", Icon = "settings" })
+CollectTab:CreateSection("收集设置")
 
-CollectItemDropdown = Main6:Dropdown({
-    Title = "收集物品",
-    Desc = "选择自动收集将目标的收集物品。",
-    Values = CollectDisplayNames,
+CollectItemDropdown = CollectTab:CreateDropdown({
+    Name = "收集物品",
+    Description = "选择自动收集将目标的收集物品。",
+    Options = CollectDisplayNames,
     Multi = true,
-    Value = SelectedCollectItems,
+    CurrentValue = SelectedCollectItems,
     Callback = function(values)
         SelectedCollectItems = values or {}
         local englishValues = {}
@@ -7180,12 +7210,11 @@ CollectItemDropdown = Main6:Dropdown({
     end
 })
 
-CollectModeDropdown = Main6:Dropdown({
-    Title = "收集模式",
-    Desc = "选择自动收集何时收集物品。",
-    Values = CollectModeDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(CollectModeMap, CollectMode) or CollectMode,
+CollectModeDropdown = CollectTab:CreateDropdown({
+    Name = "收集模式",
+    Description = "选择自动收集何时收集物品。",
+    Options = CollectModeDisplayNames,
+    CurrentOption = GetDisplayName(CollectModeMap, CollectMode) or CollectMode,
     Callback = function(value)
         local english = CollectModeMap[value] or value
         CollectMode = english
@@ -7195,18 +7224,17 @@ CollectModeDropdown = Main6:Dropdown({
     end
 })
 
-CollectMovementDropdown = Main6:Dropdown({
-    Title = "收集移动方式",
-    Desc = "选择角色移动到可收集物品的方式。",
-    Values = MovementDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(MovementMap, CollectMovementMode) or CollectMovementMode,
+CollectMovementDropdown = CollectTab:CreateDropdown({
+    Name = "收集移动方式",
+    Description = "选择角色移动到可收集物品的方式。",
+    Options = MovementDisplayNames,
+    CurrentOption = GetDisplayName(MovementMap, CollectMovementMode) or CollectMovementMode,
     Callback = function(value)
         local english = MovementMap[value] or value
         CollectMovementMode = english
         Config:Set("CollectMovementMode", english)
         Config:Save()
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "收集移动方式",
             Content = "已选择: " .. tostring(value),
             Duration = 2,
@@ -7216,20 +7244,13 @@ CollectMovementDropdown = Main6:Dropdown({
 })
 
 -- ====================== UI: GAMEMODE TAB ======================
-Main7:Section({ Title = "投票信息", TextXAlignment = "Center", TextSize = 17 })
-Main7:Divider()
-Main7:Paragraph({
-    Title = "投票信息",
-    Desc = "- [步骤 1] 点击恢复投票系统\n- [步骤 2] 在大厅中（游戏内）等待\n- [步骤 3] 设置自动投票并等待",
-    Image = "rbxassetid://104487529937663",
-    ImageSize = 30,
-})
-Main7:Divider()
-Main7:Section({ Title = "投票信息", Icon = "gamepad-2" })
+GamemodeTab:CreateSection("投票系统")
 
-Main7:Button({
-    Title = "恢复投票系统",
-    Desc = "⚠️ 首次使用自动投票模式前按一次。",
+GamemodeTab:CreateLabel("- [步骤 1] 点击恢复投票系统\n- [步骤 2] 在大厅中（游戏内）等待\n- [步骤 3] 设置自动投票并等待")
+
+GamemodeTab:CreateButton({
+    Name = "恢复投票系统",
+    Description = "⚠️ 首次使用自动投票模式前按一次。",
     Callback = function()
         pcall(function()
             ReplicatedStorage.GetReadyRemote:FireServer("1", true)
@@ -7242,7 +7263,7 @@ Main7:Button({
             task.wait(0.5)
             ReplicatedStorage.GetReadyRemote:FireServer("1", true)
         end)
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "恢复投票系统",
             Content = "准备中，恢复投票系统...",
             Duration = 6,
@@ -7255,14 +7276,14 @@ Main7:Button({
                 char.HumanoidRootPart.CFrame = CFrame.new(-220, -10, -600)
             end
         end)
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "恢复投票系统",
             Content = "恢复投票系统，请稍候...",
             Duration = 10,
             Icon = "loader-circle"
         })
         task.wait(10)
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "恢复投票系统",
             Content = "投票系统已恢复！你现在可以使用自动投票模式了。",
             Duration = 5,
@@ -7272,18 +7293,17 @@ Main7:Button({
 })
 
 -- ====================== 投票模式下拉 ======================
-GameModeDropdown2 = Main7:Dropdown({
-    Title = "设置投票模式",
-    Desc = "选择自动投票将投选的游戏模式。",
-    Values = VoteDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(VoteMap, AutoVoteValue) or AutoVoteValue,
+GamemodeTab:CreateDropdown({
+    Name = "设置投票模式",
+    Description = "选择自动投票将投选的游戏模式。",
+    Options = VoteDisplayNames,
+    CurrentOption = GetDisplayName(VoteMap, AutoVoteValue) or AutoVoteValue,
     Callback = function(value)
         local english = VoteMap[value] or value
         AutoVoteValue = english
         Config:Set("AutoVoteValue", english)
         Config:Save()
-        print("[DYHUB] 投票模式已选择:", value, "->", english)
+        print("[yyt] 投票模式已选择:", value, "->", english)
     end
 })
 
@@ -7297,7 +7317,7 @@ AutoVoteLoadingNotified = false
 function FireAutoVoteReady()
     local englishValue = AutoVoteValue
     if englishValue == nil or englishValue == "" then
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "自动投票",
             Content = "⚠️ 你未选择投票模式！请先在设置投票模式中选择一个模式。",
             Duration = 4,
@@ -7331,7 +7351,7 @@ function FireAutoVoteReady()
         end)
     end
 
-    print("[DYHUB] 自动投票+准备已触发，模式:", englishValue)
+    print("[yyt] 自动投票+准备已触发，模式:", englishValue)
     return true
 end
 
@@ -7344,7 +7364,7 @@ function StartAutoVoteReadyLoop()
             if IsVoteUIOpen() then
                 if not AutoVoteLoadingNotified then
                     AutoVoteLoadingNotified = true
-                    WindUI:Notify({
+                    Rayfield:Notify({
                         Title = "自动投票",
                         Content = "⏳ 正在加载中...进入地图后提示加载成功",
                         Duration = 3,
@@ -7362,28 +7382,27 @@ function StartAutoVoteReadyLoop()
     end)
 end
 
-AutoVoteReadyToggle = Main7:Toggle({
-    Title = "自动投票+准备（每轮）",
-    Desc = "每轮游戏自动投票并自动准备。开启前请先选择投票模式！",
-    Value = AutoVoteReadyEnabled,
+GamemodeTab:CreateToggle({
+    Name = "自动投票+准备（每轮）",
+    Description = "每轮游戏自动投票并自动准备。开启前请先选择投票模式！",
+    CurrentValue = AutoVoteReadyEnabled,
     Callback = function(enabled)
         if enabled then
             local englishValue = AutoVoteValue
             if englishValue == nil or englishValue == "" then
-                WindUI:Notify({
+                Rayfield:Notify({
                     Title = "自动投票",
                     Content = "⚠️ 你未选择投票模式！请先在设置投票模式中选择一个模式。",
                     Duration = 4,
                     Icon = "alert-triangle"
                 })
-                AutoVoteReadyToggle:Set(false)
                 return
             end
             AutoVoteReadyEnabled = true
             Config:Set("AutoVoteReadyEnabled", true)
             Config:Save()
             StartAutoVoteReadyLoop()
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "自动投票",
                 Content = "✅ 自动投票+准备已启用，模式: " .. tostring(GetDisplayName(VoteMap, AutoVoteValue) or AutoVoteValue),
                 Duration = 3,
@@ -7395,7 +7414,7 @@ AutoVoteReadyToggle = Main7:Toggle({
             AutoVoteLoadingNotified = false
             Config:Set("AutoVoteReadyEnabled", false)
             Config:Save()
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "自动投票",
                 Content = "自动投票+准备已禁用",
                 Duration = 2,
@@ -7410,30 +7429,25 @@ if AutoVoteReadyEnabled then
     StartAutoVoteReadyLoop()
 end
 
-Main7:Divider()
-Main7:Section({ Title = "休闲模式任务选择", TextXAlignment = "Center", TextSize = 17 })
-Main7:Divider()
-Main7:Paragraph({
-    Title = "休闲模式任务选择",
-    Desc = "- [步骤 1] 在大厅中（不在游戏内）\n- [步骤 2] 按 Play 并进入经典模式选择界面\n- [步骤 3] 选择休闲模式并完成传送\n- [步骤 4] 运行脚本",
-    Image = "rbxassetid://104487529937663",
-    ImageSize = 30,
-})
-Main7:Divider()
-Main7:Section({ Title = "设置游戏模式", Icon = "gamepad-2" })
+GamemodeTab:CreateDivider()
+GamemodeTab:CreateSection("休闲模式任务选择")
+GamemodeTab:CreateLabel("- [步骤 1] 在大厅中（不在游戏内）\n- [步骤 2] 按 Play 并进入经典模式选择界面\n- [步骤 3] 选择休闲模式并完成传送\n- [步骤 4] 运行脚本")
 
-GameModeDropdown = Main7:Dropdown({
-    Title = "设置游戏模式",
-    Desc = "选择自动创建将创建的游戏模式。",
-    Values = GameModeDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(GameModeMap, AutoGameValue) or AutoGameValue,
+GamemodeTab:CreateSection("设置游戏模式")
+
+AutoGameValue = Config:Get("AutoGameValue", "普通")
+
+GamemodeTab:CreateDropdown({
+    Name = "设置游戏模式",
+    Description = "选择自动创建将创建的游戏模式。",
+    Options = GameModeDisplayNames,
+    CurrentOption = GetDisplayName(GameModeMap, AutoGameValue) or AutoGameValue,
     Callback = function(value)
         local english = GameModeMap[value] or value
         AutoGameValue = english
         Config:Set("AutoGameValue", english)
         Config:Save()
-        print("[DYHUB] 游戏模式已选择: " .. tostring(value))
+        print("[yyt] 游戏模式已选择: " .. tostring(value))
     end
 })
 
@@ -7453,7 +7467,7 @@ function click_btn(btn)
 end
 
 function notify(title, content, icon)
-    WindUI:Notify({
+    Rayfield:Notify({
         Title = title,
         Content = content,
         Duration = 3,
@@ -7561,10 +7575,10 @@ task.spawn(function()
     end
 end)
 
-AutoVoteToggle = Main7:Toggle({
-    Title = "自动游戏模式（大厅）",
-    Desc = "在大厅时自动创建所选游戏模式。",
-    Value = AutoVoteEnabled,
+GamemodeTab:CreateToggle({
+    Name = "自动游戏模式（大厅）",
+    Description = "在大厅时自动创建所选游戏模式。",
+    CurrentValue = AutoVoteEnabled,
     Callback = function(enabled)
         AutoVoteEnabled = enabled
         Config:Set("AutoVoteEnabled", enabled)
@@ -7583,10 +7597,10 @@ RequestWaveNotifyAt = 0
 AutoSkillTreeNotifyAt = 0
 
 function SafeWindNotify(title, content, duration, icon)
-    if WindUI and WindUI.Notify then
+    if Rayfield and Rayfield.Notify then
         pcall(function()
-            WindUI:Notify({
-                Title = tostring(title or "DYHUB"),
+            Rayfield:Notify({
+                Title = tostring(title or "yyt"),
                 Content = tostring(content or ""),
                 Duration = duration or 3,
                 Icon = icon or "info"
@@ -7732,8 +7746,8 @@ function GetSkillTreesRemote()
 
     pcall(function()
         remote = ReplicatedStorage:FindFirstChild("SkillTrees") or
-                 ReplicatedStorage:FindFirstChild("SkillTree") or
-                 ReplicatedStorage:WaitForChild("skilltrees", 2)
+            ReplicatedStorage:FindFirstChild("SkillTree") or
+            ReplicatedStorage:WaitForChild("skilltrees", 2)
     end)
 
     return remote
@@ -7774,9 +7788,9 @@ function FireAutoSkillTrees()
 
             if ok then
                 fired = fired + 1
-                print("[DYHUB] 自动技能树已触发:", remoteArg)
+                print("[yyt] 自动技能树已触发:", remoteArg)
             else
-                warn("[DYHUB] 自动技能树失败:", remoteArg, err)
+                warn("[yyt] 自动技能树失败:", remoteArg, err)
             end
 
             task.wait(0.35)
@@ -7787,14 +7801,14 @@ function FireAutoSkillTrees()
 end
 
 -- ====================== UI: SETTING TAB ======================
-Main3:Section({ Title = "保存配置", Icon = "save" })
+SettingTab:CreateSection("保存配置")
 
-Main3:Button({
-    Title = "立即保存配置",
-    Desc = "立即将所有当前设置保存到配置文件。",
+SettingTab:CreateButton({
+    Name = "立即保存配置",
+    Description = "立即将所有当前设置保存到配置文件。",
     Callback = function()
         Config:Save()
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "保存配置",
             Content = "配置保存成功！",
             Duration = 2,
@@ -7804,8 +7818,8 @@ Main3:Button({
 })
 
 AutoSaveEnabled = Config:Get("AutoSaveEnabled", true)
-AutoSaveDelay   = Config:Get("AutoSaveDelay", 15)
-AutoSaveThread  = nil
+AutoSaveDelay = Config:Get("AutoSaveDelay", 15)
+AutoSaveThread = nil
 
 function RestartAutoSave()
     if AutoSaveThread then
@@ -7822,10 +7836,10 @@ function RestartAutoSave()
     end
 end
 
-Main3:Toggle({
-    Title = "自动保存配置",
-    Value = AutoSaveEnabled,
-    Desc = "以设定间隔自动保存配置。",
+SettingTab:CreateToggle({
+    Name = "自动保存配置",
+    Description = "以设定间隔自动保存配置。",
+    CurrentValue = AutoSaveEnabled,
     Callback = function(state)
         AutoSaveEnabled = state
         Config:Set("AutoSaveEnabled", state)
@@ -7834,10 +7848,9 @@ Main3:Toggle({
     end
 })
 
-Main3:Input({
-    Title = "配置保存延迟",
-    Desc = "设置自动保存间隔（秒）。",
-    Default = tostring(AutoSaveDelay),
+SettingTab:CreateInput({
+    Name = "配置保存延迟",
+    Description = "设置自动保存间隔（秒）。",
     Placeholder = "默认: 15",
     Callback = function(text)
         local num = tonumber(text)
@@ -7847,18 +7860,18 @@ Main3:Input({
             Config:Save()
             RestartAutoSave()
         else
-            warn("[DYHUB] 无效延迟值！")
+            warn("[yyt] 无效延迟值！")
         end
     end
 })
 
 RestartAutoSave()
 
-Main3:Section({ Title = "服务器状态", Icon = "server" })
+SettingTab:CreateSection("服务器状态")
 
-Main3:Button({
-    Title = "跳转服务器",
-    Desc = "将你传送到此游戏的不同随机服务器。",
+SettingTab:CreateButton({
+    Name = "跳转服务器",
+    Description = "将你传送到此游戏的不同随机服务器。",
     Callback = function()
         local TeleportService = game:GetService("TeleportService")
         local servers = {}
@@ -7873,7 +7886,7 @@ Main3:Button({
             end
         end
         if #servers > 0 then
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "跳转服务器",
                 Content = "正在传送至另一台服务器...",
                 Duration = 2,
@@ -7882,7 +7895,7 @@ Main3:Button({
             task.wait(1)
             TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer)
         else
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "跳转服务器",
                 Content = "未找到可用服务器。",
                 Duration = 3,
@@ -7892,11 +7905,11 @@ Main3:Button({
     end
 })
 
-Main3:Button({
-    Title = "重新加入",
-    Desc = "重新加入当前游戏服务器。",
+SettingTab:CreateButton({
+    Name = "重新加入",
+    Description = "重新加入当前游戏服务器。",
     Callback = function()
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "重新加入",
             Content = "正在重新加入服务器...",
             Duration = 2,
@@ -7907,21 +7920,20 @@ Main3:Button({
     end
 })
 
-Main3:Section({ Title = "杂项", Icon = "settings" })
+SettingTab:CreateSection("杂项")
 
-CameraDropdown = Main3:Dropdown({
-    Title = "相机模式",
-    Desc = "选择相机应如何跟随角色。",
-    Values = CameraModeDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(CameraModeMap, CameraMode) or CameraMode,
+CameraDropdown = SettingTab:CreateDropdown({
+    Name = "相机模式",
+    Description = "选择相机应如何跟随角色。",
+    Options = CameraModeDisplayNames,
+    CurrentOption = GetDisplayName(CameraModeMap, CameraMode) or CameraMode,
     Callback = function(value)
         local english = CameraModeMap[value] or value
         CameraMode = english
         Config:Set("CameraMode", english)
         Config:Save()
         ApplyCameraMode(true)
-        WindUI:Notify({
+        Rayfield:Notify({
             Title = "相机模式",
             Content = "已选择: " .. tostring(value),
             Duration = 2,
@@ -7930,10 +7942,10 @@ CameraDropdown = Main3:Dropdown({
     end
 })
 
-NoBarrierToggle = Main3:Toggle({
-    Title = "绕过屏障（已修补）",
-    Value = noBarrierActive,
-    Desc = "尝试绕过隐形屏障。",
+SettingTab:CreateToggle({
+    Name = "绕过屏障（已修补）",
+    Description = "尝试绕过隐形屏障。",
+    CurrentValue = noBarrierActive,
     Callback = function(value)
         noBarrierActive = value
         Config:Set("NoBarrier", value)
@@ -7942,23 +7954,23 @@ NoBarrierToggle = Main3:Toggle({
     end
 })
 
-CombatDebugToggle = Main3:Toggle({
-    Title = "战斗调试",
-    Value = CombatDebugEnabled,
-    Desc = "打印基于冷却的自动攻击/技能和怪物缓存调试日志。",
+SettingTab:CreateToggle({
+    Name = "战斗调试",
+    Description = "打印基于冷却的自动攻击/技能和怪物缓存调试日志。",
+    CurrentValue = CombatDebugEnabled,
     Callback = function(value)
         CombatDebugEnabled = value
         Config:Set("CombatDebugEnabled", value)
         Config:Save()
         if value then
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "战斗调试",
                 Content = "战斗调试日志已启用。",
                 Duration = 2,
                 Icon = "bug"
             })
         else
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "战斗调试",
                 Content = "战斗调试日志已禁用。",
                 Duration = 2,
@@ -8032,17 +8044,17 @@ function StopAntiAFK()
     end
 end
 
-antiafk = Main3:Toggle({
-    Title = "反 AFK",
-    Value = AntiAFK,
-    Desc = "防止 Roblox 因闲置而踢出你。",
+SettingTab:CreateToggle({
+    Name = "反 AFK",
+    Description = "防止 Roblox 因闲置而踢出你。",
+    CurrentValue = AntiAFK,
     Callback = function(enabled)
         AntiAFK = enabled
         Config:Set("AntiAfk", enabled)
         Config:Save()
         if enabled then
             StartAntiAFK()
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "反 AFK",
                 Content = "反闲置已启用。",
                 Duration = 2,
@@ -8050,7 +8062,7 @@ antiafk = Main3:Toggle({
             })
         else
             StopAntiAFK()
-            WindUI:Notify({
+            Rayfield:Notify({
                 Title = "反 AFK",
                 Content = "反闲置已禁用。",
                 Duration = 2,
@@ -8061,6 +8073,203 @@ antiafk = Main3:Toggle({
 })
 
 if AntiAFK then StartAntiAFK() end
+
+-- ====================== 全亮 / 无雾 辅助函数 ======================
+LastVisualApply = 0
+FullBrightOriginal = nil
+NoFogOriginal = nil
+
+function CaptureFullBrightOriginal()
+    if FullBrightOriginal then return end
+    FullBrightOriginal = {
+        Brightness = Lighting.Brightness,
+        ClockTime = Lighting.ClockTime,
+        GlobalShadows = Lighting.GlobalShadows,
+        Ambient = Lighting.Ambient,
+        OutdoorAmbient = Lighting.OutdoorAmbient,
+        ExposureCompensation = Lighting.ExposureCompensation,
+    }
+end
+
+function ApplyFullBright()
+    CaptureFullBrightOriginal()
+    pcall(function()
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.GlobalShadows = false
+        Lighting.Ambient = Color3.new(1, 1, 1)
+        Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+        Lighting.ExposureCompensation = 0
+    end)
+end
+
+function RestoreFullBright()
+    if not FullBrightOriginal then return end
+    pcall(function()
+        Lighting.Brightness = FullBrightOriginal.Brightness
+        Lighting.ClockTime = FullBrightOriginal.ClockTime
+        Lighting.GlobalShadows = FullBrightOriginal.GlobalShadows
+        Lighting.Ambient = FullBrightOriginal.Ambient
+        Lighting.OutdoorAmbient = FullBrightOriginal.OutdoorAmbient
+        Lighting.ExposureCompensation = FullBrightOriginal.ExposureCompensation
+    end)
+    FullBrightOriginal = nil
+end
+
+function CaptureNoFogOriginal()
+    if NoFogOriginal then return end
+    NoFogOriginal = {
+        FogStart = Lighting.FogStart,
+        FogEnd = Lighting.FogEnd,
+        FogColor = Lighting.FogColor,
+        Atmospheres = {},
+    }
+    for _, obj in ipairs(Lighting:GetChildren()) do
+        if obj:IsA("Atmosphere") then
+            table.insert(NoFogOriginal.Atmospheres, {
+                Instance = obj,
+                Density = obj.Density,
+                Haze = obj.Haze,
+                Glare = obj.Glare,
+                Offset = obj.Offset,
+            })
+        end
+    end
+end
+
+function ApplyNoFog()
+    CaptureNoFogOriginal()
+    pcall(function()
+        Lighting.FogStart = 0
+        Lighting.FogEnd = 100000
+    end)
+    for _, obj in ipairs(Lighting:GetChildren()) do
+        if obj:IsA("Atmosphere") then
+            pcall(function()
+                obj.Density = 0
+                obj.Haze = 0
+                obj.Glare = 0
+                obj.Offset = 0
+            end)
+        end
+    end
+end
+
+function RestoreNoFog()
+    if not NoFogOriginal then return end
+    pcall(function()
+        Lighting.FogStart = NoFogOriginal.FogStart
+        Lighting.FogEnd = NoFogOriginal.FogEnd
+        Lighting.FogColor = NoFogOriginal.FogColor
+    end)
+    for _, data in ipairs(NoFogOriginal.Atmospheres or {}) do
+        local obj = data.Instance
+        if obj and obj.Parent then
+            pcall(function()
+                obj.Density = data.Density
+                obj.Haze = data.Haze
+                obj.Glare = data.Glare
+                obj.Offset = data.Offset
+            end)
+        end
+    end
+    NoFogOriginal = nil
+end
+
+-- ====================== 移动统计保护 ======================
+LastMovementStatApply = 0
+MovementStatInterval = 0.25
+
+function GetLocalHumanoid()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    return char:FindFirstChildOfClass("Humanoid")
+end
+
+function GetLocalRootPart()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart")
+end
+
+function updatePlayerStats(force)
+    local humanoid = GetLocalHumanoid()
+    if not humanoid then return end
+
+    pcall(function()
+        if humanoid.UseJumpPower ~= nil then
+            humanoid.UseJumpPower = true
+        end
+    end)
+
+    if force or humanoid.WalkSpeed ~= WSValue then
+        humanoid.WalkSpeed = WSValue
+    end
+
+    if force or humanoid.JumpPower ~= JPValue then
+        humanoid.JumpPower = JPValue
+    end
+end
+
+function ProtectMovementStats()
+    if not LockMovementStats then return end
+
+    local now = tick()
+    if now - LastMovementStatApply < MovementStatInterval then return end
+    LastMovementStatApply = now
+
+    local humanoid = GetLocalHumanoid()
+    if not humanoid then return end
+
+    pcall(function()
+        if humanoid.UseJumpPower ~= nil then
+            humanoid.UseJumpPower = true
+        end
+    end)
+
+    if humanoid.WalkSpeed < WSValue then
+        humanoid.WalkSpeed = WSValue
+    end
+
+    if humanoid.JumpPower < JPValue then
+        humanoid.JumpPower = JPValue
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    ProtectMovementStats()
+
+    local now = tick()
+    if now - LastVisualApply >= 1 then
+        LastVisualApply = now
+        if FullBrightEnabled then ApplyFullBright() end
+        if NoFogEnabled then ApplyNoFog() end
+    end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if not InfiniteJumpEnabled then return end
+    local humanoid = GetLocalHumanoid()
+    if humanoid then
+        pcall(function()
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end)
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    if NoClip and LocalPlayer.Character then
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    updatePlayerStats(true)
+    if FlyEnabled then StartFly() end
+end)
 
 -- ====================== APPLY SAVED CONFIG ON LOAD ======================
 function ApplySavedConfigOnStartup()
@@ -8083,13 +8292,17 @@ function ApplySavedConfigOnStartup()
         StartJeffreyGuardLoop()
     end
 
-    if FarmAstroTokenEnabled then StartFarmAstroToken() end
+    if FarmAstroTokenEnabled then
+        StartFarmAstroToken()
+    end
 
     HandleMiscOptions(MiscOptions)
 
     if noBarrierActive then startNoBarrier() end
 
-    if ESP.Enabled then StartESPLoop() end
+    if ESP.Enabled then
+        StartESPLoop()
+    end
 
     if AutoCollectEnabled then
         KnownCollectItems = {}
@@ -8111,6 +8324,6 @@ end
 
 ApplySavedConfigOnStartup()
 
-print("[DYHUB] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成功！")
-print("[DYHUB] 配置系统已激活 | 自动保存间隔 " .. tostring(AutoSaveDelay) .. " 秒")
-print("[DYHUB] 至尊版")
+print("[yyt] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成功！")
+print("[yyt] 配置系统已激活 | 自动保存间隔 " .. tostring(AutoSaveDelay) .. " 秒")
+print("[yyt] 已加载")
