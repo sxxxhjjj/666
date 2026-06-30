@@ -1,5 +1,6 @@
+-- ============================================================
 -- yyt | 全功能自动化脚本
--- 基于 Rayfield UI
+-- 基于 Rayfield UI（已从 WindUI 迁移）
 -- ============================================================
 version = "Rework"
 ver = "v023.91"
@@ -55,7 +56,7 @@ iddyhub = "rbxassetid://104487529937663"
 DYHUB_WAITING_STAND_CF = CFrame.new(-23.3435822, 67, 0.341766357)
 DYHUB_WAITING_PART_CF = CFrame.new(-23.3435822, 63.95, 0.341766357)
 DYHUB_WAITING_PART_SIZE = Vector3.new(16, 1, 16)
-DYHUB_WAITING_PART_VISIBLE_TRANSPARENCY = 0.3  -- 改为半透明，更好看
+DYHUB_WAITING_PART_VISIBLE_TRANSPARENCY = 0.3
 
 function GetDYHUBWaitingStandCFrame()
     return DYHUB_WAITING_STAND_CF
@@ -100,8 +101,8 @@ function ConfigureDYHUBWaitingPart(waitingPart)
     waitingPart.CanTouch = false
     waitingPart.CanQuery = false
     waitingPart.CastShadow = false
-    waitingPart.Material = Enum.Material.Neon  -- 换成霓虹材质，更炫酷
-    waitingPart.Color = Color3.fromRGB(0, 200, 255)  -- 亮青色
+    waitingPart.Material = Enum.Material.Neon
+    waitingPart.Color = Color3.fromRGB(0, 200, 255)
     waitingPart.TopSurface = Enum.SurfaceType.Smooth
     waitingPart.BottomSurface = Enum.SurfaceType.Smooth
 
@@ -438,7 +439,7 @@ Players = game:GetService("Players")
 LocalPlayer = Players.LocalPlayer
 CoreGui = game:GetService("CoreGui")
 
--- ====================== TABS ======================
+-- ====================== RAYFIELD WINDOW ======================
 local Window = Rayfield:CreateWindow({
     Name = "yyt",
     LoadingTitle = "加载中...",
@@ -452,13 +453,19 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false
 })
 
-local MainTab = Window:CreateTab("主要")
-local EspTab = Window:CreateTab("透视")
-local PlayerTab = Window:CreateTab("玩家")
-local ShopTab = Window:CreateTab("商店")
-local CollectTab = Window:CreateTab("收集")
-local GamemodeTab = Window:CreateTab("游戏模式")
-local SettingTab = Window:CreateTab("设置")
+-- ====================== TABS ======================
+local Info = Window:CreateTab("信息")
+local Main = Window:CreateTab("主要")
+local Main4 = Window:CreateTab("透视")
+local Main2 = Window:CreateTab("玩家")
+local Main5 = Window:CreateTab("商店")
+local Main6 = Window:CreateTab("收集")
+local Main7 = Window:CreateTab("游戏模式")
+local Main3 = Window:CreateTab("设置")
+
+-- ======================== INFO ========================
+Info:CreateSection("最新更新")
+Info:CreateLabel("更新日期: 06/02/2026 | CL: " .. ver .. "\n• [新增] 杂项刷怪中重置波次\n• [新增] 上帝模式滑条下的重置波次滑块\n• [修复] 重置波次现在保持重置点延迟并优先于刷怪锁定\n• [修复] 当前波次已高于/低于目标时重置波次滑块立即触发\n• [修复] 刷怪 Astro 模式计时器波次耗尽时的漏洞\n• [修复] 设置中的相机模式与刷怪同步\n• [优化] 刷怪循环/钩子后代扫描")
 
 -- ====================== SERVICES ======================
 TweenService        = game:GetService("TweenService")
@@ -4845,10 +4852,11 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
     ApplyCameraMode(true)
 end)
--- ====================== UI: MAIN TAB ======================
-MainTab:CreateSection("自动刷怪")
 
-AutoFarmToggle = MainTab:CreateToggle({
+-- ====================== UI: MAIN TAB ======================
+Main:CreateSection("自动刷怪")
+
+AutoFarmToggle = Main:CreateToggle({
     Name = "自动刷怪",
     Description = "基于优先级系统自动刷怪。",
     CurrentValue = AutoFarmEnabled,
@@ -4886,7 +4894,7 @@ AutoFarmToggle = MainTab:CreateToggle({
     end
 })
 
-FarmTargetModeDropdown = MainTab:CreateDropdown({
+FarmTargetModeDropdown = Main:CreateDropdown({
     Name = "刷怪模式",
     Description = "不同的刷怪模式。",
     Options = FarmModeDisplayNames,
@@ -4904,9 +4912,9 @@ FarmTargetModeDropdown = MainTab:CreateDropdown({
     end
 })
 
-MainTab:CreateSection("刷怪设置")
+Main:CreateSection("刷怪设置")
 
-FarmPositionDropdown = MainTab:CreateDropdown({
+FarmPositionDropdown = Main:CreateDropdown({
     Name = "刷怪位置",
     Description = "选择角色在目标周围的站位。",
     Options = FarmPositionDisplayNames,
@@ -4919,7 +4927,7 @@ FarmPositionDropdown = MainTab:CreateDropdown({
     end
 })
 
-FarmModeDropdown = MainTab:CreateDropdown({
+FarmModeDropdown = Main:CreateDropdown({
     Name = "移动方式",
     Description = "选择角色移动到每个目标的方式。",
     Options = MovementDisplayNames,
@@ -4933,7 +4941,7 @@ FarmModeDropdown = MainTab:CreateDropdown({
     end
 })
 
-MiscDropdown = MainTab:CreateDropdown({
+MiscDropdown = Main:CreateDropdown({
     Name = "杂项功能",
     Description = "选择与自动刷怪一起运行的额外系统。",
     Options = { "自动攻击", "自动技能", "自动开始", "自动跳过直升机", "自动填充", "安全模式", "上帝模式", "重置波次", "删除地图" },
@@ -4945,14 +4953,15 @@ MiscDropdown = MainTab:CreateDropdown({
             Rayfield:Notify({
                 Title = "杂项功能",
                 Content = "你必须先开启自动刷怪（同步刷怪锁定已开启）",
-                Duration = 3, Icon = "triangle-alert"
+                Duration = 3,
+                Icon = "triangle-alert"
             })
         end
         HandleMiscOptions(values)
     end
 })
 
-SyncFarmToggle = MainTab:CreateToggle({
+SyncFarmToggle = Main:CreateToggle({
     Name = "同步刷怪锁定",
     Description = "启用时，所有杂项功能需要自动刷怪处于激活状态。",
     CurrentValue = SyncFarmOnly,
@@ -4969,9 +4978,9 @@ SyncFarmToggle = MainTab:CreateToggle({
     end
 })
 
-MainTab:CreateSection("Astro 令牌刷怪（坚守模式）")
+Main:CreateSection("Astro 令牌刷怪（坚守模式）")
 
-FarmAstroTokenToggle = MainTab:CreateToggle({
+FarmAstroTokenToggle = Main:CreateToggle({
     Name = "Astro 令牌刷怪（坚守模式）",
     Description = "避开所有怪物防止死亡，时间耗尽时前往中心",
     CurrentValue = FarmAstroTokenEnabled,
@@ -5008,9 +5017,9 @@ FarmAstroTokenToggle = MainTab:CreateToggle({
     end
 })
 
-MainTab:CreateSection("通用设置")
+Main:CreateSection("通用设置")
 
-SkillDropdown = MainTab:CreateDropdown({
+SkillDropdown = Main:CreateDropdown({
     Name = "自动技能（按键）",
     Description = "选择自动技能将按下的键盘技能键。",
     Options = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" },
@@ -5023,7 +5032,7 @@ SkillDropdown = MainTab:CreateDropdown({
     end
 })
 
-SkillDelaySlider = MainTab:CreateSlider({
+SkillDelaySlider = Main:CreateSlider({
     Name = "技能延迟（秒）",
     Description = "设置每个自动技能按键之间的延迟（秒）。",
     Min = 1,
@@ -5037,7 +5046,7 @@ SkillDelaySlider = MainTab:CreateSlider({
     end
 })
 
-FarmHeightSlider = MainTab:CreateSlider({
+FarmHeightSlider = Main:CreateSlider({
     Name = "刷怪高度（±Y）",
     Description = "调整在怪物上方或下方刷怪时的垂直偏移。",
     Min = -150,
@@ -5054,7 +5063,7 @@ FarmHeightSlider = MainTab:CreateSlider({
     end
 })
 
-MainTab:CreateSlider({
+Main:CreateSlider({
     Name = "安全模式血量（%）",
     Description = "设置安全模式触发撤退的血量百分比。",
     Min = 1,
@@ -5068,7 +5077,7 @@ MainTab:CreateSlider({
     end
 })
 
-MainTab:CreateSlider({
+Main:CreateSlider({
     Name = "上帝模式血量（%）",
     Description = "设置普通上帝模式的血量百分比阈值。在 Farm Astro Token 期间被阻止。",
     Min = 1,
@@ -5082,7 +5091,7 @@ MainTab:CreateSlider({
     end
 })
 
-MainTab:CreateSlider({
+Main:CreateSlider({
     Name = "重置波次（数值）",
     Description = "达到指定波次时立即重置。",
     Min = 1,
@@ -5102,9 +5111,9 @@ MainTab:CreateSlider({
     end
 })
 
-MainTab:CreateDivider()
+Main:CreateDivider()
 
-BypassJeffreyToggle = MainTab:CreateToggle({
+BypassJeffreyToggle = Main:CreateToggle({
     Name = "绕过 Jeffrey",
     Description = "此功能会让 Jeffrey 无法移动。",
     CurrentValue = BypassJeffreyEnabled,
@@ -5119,7 +5128,7 @@ BypassJeffreyToggle = MainTab:CreateToggle({
     end
 })
 
-AntiJeffreyToggle = MainTab:CreateToggle({
+AntiJeffreyToggle = Main:CreateToggle({
     Name = "反 Jeffrey",
     Description = "免费功能：创建软性隐形屏障。如果任何 Jeffrey 在范围内，你会被缓慢推开。",
     CurrentValue = AntiJeffreyEnabled,
@@ -5131,7 +5140,7 @@ AntiJeffreyToggle = MainTab:CreateToggle({
     end
 })
 
-MainTab:CreateSlider({
+Main:CreateSlider({
     Name = "反 Jeffrey 范围（单位）",
     Description = "设置反 Jeffrey 的距离。默认 50 单位。",
     Min = 10,
@@ -5149,11 +5158,11 @@ if AntiJeffreyEnabled then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
 if BypassJeffreyEnabled then StartBypassJeffreyLoop(); ScanBypassJeffreys(true) end
 
 -- ====================== UI: PRIORITY SETTINGS ======================
-MainTab:CreateSection("优先级设置")
+Main:CreateSection("优先级设置")
 
-MainTab:CreateLabel("中断：如果正在攻击低血量怪物且更高血量怪物出现，立即切换目标")
+Main:CreateLabel("中断：如果正在攻击低血量怪物且更高血量怪物出现，立即切换目标")
 
-MainTab:CreateSlider({
+Main:CreateSlider({
     Name = "高血量阈值（最大生命值）",
     Description = "设置怪物成为高血量优先级所需的最大生命值。",
     Min = 1,
@@ -5169,9 +5178,9 @@ MainTab:CreateSlider({
 })
 
 -- ====================== UI: OVERRIDE SETTINGS ======================
-MainTab:CreateSection("覆盖设置")
+Main:CreateSection("覆盖设置")
 
-MainTab:CreateInput({
+Main:CreateInput({
     Name = "设置减少偏移",
     Description = "默认: 2",
     Placeholder = "输入数字",
@@ -5187,7 +5196,7 @@ MainTab:CreateInput({
     end
 })
 
-MainTab:CreateInput({
+Main:CreateInput({
     Name = "设置安全最小偏移（全局底线）",
     Description = "默认: -30",
     Placeholder = "输入数字",
@@ -5203,7 +5212,7 @@ MainTab:CreateInput({
     end
 })
 
-MainTab:CreateSlider({
+Main:CreateSlider({
     Name = "防穿模边距（单位）",
     Description = "增加额外间距以减少在怪物附近刷怪时的穿模。",
     Min = -10,
@@ -5217,7 +5226,7 @@ MainTab:CreateSlider({
     end
 })
 
-MainTab:CreateSlider({
+Main:CreateSlider({
     Name = "伤害阈值（确认锁定）",
     Description = "设置确认当前刷怪位置有效的伤害量。",
     Min = 1,
@@ -5231,7 +5240,7 @@ MainTab:CreateSlider({
     end
 })
 
-MainTab:CreateButton({
+Main:CreateButton({
     Name = "重置所有已确认位置",
     Description = "清除所有已保存的怪物高度位置并恢复默认。",
     Callback = function()
@@ -5241,12 +5250,12 @@ MainTab:CreateButton({
     end
 })
 
-MainTab:CreateSection("冲水设置")
+Main:CreateSection("冲水设置")
 
 Flushaura = Config:Get("flushaura", false)
 FlushAuraValue = Config:Get("FlushAuraValue", 5)
 
-MainTab:CreateSlider({
+Main:CreateSlider({
     Name = "冲水光环（单位）",
     Description = "设置冲水光环激活附近提示的距离。",
     Min = 1,
@@ -5260,7 +5269,7 @@ MainTab:CreateSlider({
     end
 })
 
-MainTab:CreateToggle({
+Main:CreateToggle({
     Name = "冲水光环",
     Description = "在设定半径内自动冲水附近的冲水提示。",
     CurrentValue = Flushaura,
@@ -5653,9 +5662,9 @@ task.spawn(function()
 end)
 
 -- ====================== UI: ESP TAB ======================
-EspTab:CreateSection("启用透视")
+Main4:CreateSection("启用透视")
 
-EspEnableToggle = EspTab:CreateToggle({
+EspEnableToggle = Main4:CreateToggle({
     Name = "启用透视",
     Description = "启用所有透视视觉效果。",
     CurrentValue = ESP.Enabled,
@@ -5667,7 +5676,7 @@ EspEnableToggle = EspTab:CreateToggle({
     end
 })
 
-EspMobToggle = EspTab:CreateToggle({
+EspMobToggle = Main4:CreateToggle({
     Name = "怪物透视",
     Description = "在敌人怪物上方显示高亮和信息标签。",
     CurrentValue = ESP.MobEnabled,
@@ -5682,7 +5691,7 @@ EspMobToggle = EspTab:CreateToggle({
     end
 })
 
-EspPlayerToggle = EspTab:CreateToggle({
+EspPlayerToggle = Main4:CreateToggle({
     Name = "玩家透视",
     Description = "在其他玩家上方显示高亮和信息标签。",
     CurrentValue = ESP.PlayerEnabled,
@@ -5697,7 +5706,7 @@ EspPlayerToggle = EspTab:CreateToggle({
     end
 })
 
-EspItemToggle = EspTab:CreateToggle({
+EspItemToggle = Main4:CreateToggle({
     Name = "物品透视",
     Description = "在可收集物品上显示高亮和信息标签。",
     CurrentValue = ESP.ItemEnabled,
@@ -5712,9 +5721,9 @@ EspItemToggle = EspTab:CreateToggle({
     end
 })
 
-EspTab:CreateSection("透视设置")
+Main4:CreateSection("透视设置")
 
-EspSettingsDropdown = EspTab:CreateDropdown({
+EspSettingsDropdown = Main4:CreateDropdown({
     Name = "透视选项",
     Description = "选择显示的额外透视标签和视觉效果。",
     Options = { "高亮", "距离", "血量", "名称" },
@@ -5728,7 +5737,7 @@ EspSettingsDropdown = EspTab:CreateDropdown({
     end,
 })
 
-EspItemDropdown = EspTab:CreateDropdown({
+EspItemDropdown = Main4:CreateDropdown({
     Name = "透视物品",
     Description = "选择哪些可收集物品名称应接收物品透视。",
     Options = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物" },
@@ -5745,14 +5754,14 @@ EspItemDropdown = EspTab:CreateDropdown({
 })
 
 -- ====================== UI: PLAYER TAB ======================
-PlayerTab:CreateSection("移动控制")
+Main2:CreateSection("移动控制")
 
 WSValue = Config:Get("WSValue", 16)
 JPValue = Config:Get("JPValue", 50)
 NoClip = Config:Get("NoClip", false)
 LockMovementStats = Config:Get("LockMovementStats", true)
 
-PlayerTab:CreateSlider({
+Main2:CreateSlider({
     Name = "设置移动速度",
     Description = "设置你保存的移动速度值。",
     Min = 1,
@@ -5767,7 +5776,7 @@ PlayerTab:CreateSlider({
     end
 })
 
-PlayerTab:CreateSlider({
+Main2:CreateSlider({
     Name = "设置跳跃力",
     Description = "设置你保存的跳跃力值。",
     Min = 1,
@@ -5782,7 +5791,7 @@ PlayerTab:CreateSlider({
     end
 })
 
-PlayerTab:CreateToggle({
+Main2:CreateToggle({
     Name = "锁定移动属性",
     Description = "当游戏降低移动速度和跳跃力时恢复。",
     CurrentValue = LockMovementStats,
@@ -5794,7 +5803,7 @@ PlayerTab:CreateToggle({
     end
 })
 
-PlayerTab:CreateToggle({
+Main2:CreateToggle({
     Name = "无碰撞",
     Description = "允许角色穿过墙壁和部件。",
     CurrentValue = NoClip,
@@ -5917,9 +5926,9 @@ function FlyStart()
     end)
 end
 
-PlayerTab:CreateSection("飞行控制")
+Main2:CreateSection("飞行控制")
 
-PlayerTab:CreateToggle({
+Main2:CreateToggle({
     Name = "飞行",
     Description = "启用飞行。按 Space/E 上升，Ctrl/Q 下降。",
     CurrentValue = FlyEnabled,
@@ -5937,7 +5946,7 @@ PlayerTab:CreateToggle({
     end
 })
 
-PlayerTab:CreateSlider({
+Main2:CreateSlider({
     Name = "飞行速度",
     Description = "调整飞行移动速度（数值越大越快）。",
     Min = 1,
@@ -5952,7 +5961,7 @@ PlayerTab:CreateSlider({
     end
 })
 
-PlayerTab:CreateSlider({
+Main2:CreateSlider({
     Name = "飞行高度",
     Description = "调整飞行时垂直上升/下降的速度倍率（数值越大升降越快）。",
     Min = 1,
@@ -5966,13 +5975,13 @@ PlayerTab:CreateSlider({
     end
 })
 
-PlayerTab:CreateSection("视觉与工具")
+Main2:CreateSection("视觉与工具")
 
 InfiniteJumpEnabled = Config:Get("InfiniteJumpEnabled", false)
 FullBrightEnabled = Config:Get("FullBrightEnabled", false)
 NoFogEnabled = Config:Get("NoFogEnabled", false)
 
-PlayerTab:CreateToggle({
+Main2:CreateToggle({
     Name = "无限跳跃",
     Description = "允许在空中重复跳跃。",
     CurrentValue = InfiniteJumpEnabled,
@@ -5983,7 +5992,7 @@ PlayerTab:CreateToggle({
     end
 })
 
-PlayerTab:CreateToggle({
+Main2:CreateToggle({
     Name = "全亮",
     Description = "提高地图亮度，禁用时恢复原有光照。",
     CurrentValue = FullBrightEnabled,
@@ -5995,7 +6004,7 @@ PlayerTab:CreateToggle({
     end
 })
 
-PlayerTab:CreateToggle({
+Main2:CreateToggle({
     Name = "无雾",
     Description = "移除距离雾气，禁用时恢复原有雾设置。",
     CurrentValue = NoFogEnabled,
@@ -6008,11 +6017,11 @@ PlayerTab:CreateToggle({
 })
 
 -- ====================== UI: 兑换码 ======================
-PlayerTab:CreateSection("兑换码")
+Main2:CreateSection("兑换码")
 
 SelectedCodes = Config:Get("SelectedCodes", {})
 
-PlayerTab:CreateDropdown({
+Main2:CreateDropdown({
     Name = "选择兑换码",
     Description = "选择将要兑换的代码。",
     Options = GlobalTables.redeemCodes,
@@ -6025,7 +6034,7 @@ PlayerTab:CreateDropdown({
     end,
 })
 
-PlayerTab:CreateButton({
+Main2:CreateButton({
     Name = "兑换代码",
     Description = "仅兑换你在下拉菜单中选中的代码。",
     Callback = function()
@@ -6039,7 +6048,7 @@ PlayerTab:CreateButton({
     end,
 })
 
-PlayerTab:CreateButton({
+Main2:CreateButton({
     Name = "兑换全部代码",
     Description = "一次性兑换所有可用代码。",
     Callback = function()
@@ -6054,12 +6063,12 @@ PlayerTab:CreateButton({
 })
 
 -- ====================== UI: 解锁通行证 ======================
-PlayerTab:CreateSection("解锁通行证")
+Main2:CreateSection("解锁通行证")
 
 SelectedGamepass = Config:Get("SelectedGamepass", {})
 GlobalTables.Gamepassts = SelectedGamepass
 
-PlayerTab:CreateDropdown({
+Main2:CreateDropdown({
     Name = "选择通行证",
     Description = "选择要本地解锁的通行证。",
     Options = GamepassDisplayNames,
@@ -6073,7 +6082,7 @@ PlayerTab:CreateDropdown({
     end,
 })
 
-PlayerTab:CreateButton({
+Main2:CreateButton({
     Name = "解锁通行证",
     Description = "免费本地解锁选中的通行证。",
     Callback = function()
@@ -6407,7 +6416,7 @@ end
 -- ============== Shop Tab ====================================
 -- ============================================================
 
-ShopTab:CreateSection("角色扭蛋")
+Main5:CreateSection("角色扭蛋")
 
 _G.__DYHUB_ShopSystems = function()
     local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
@@ -6580,7 +6589,7 @@ _G.__DYHUB_ShopSystems = function()
     end
 
     -- ====================== UI：角色扭蛋 ======================
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "角色扭蛋",
         Description = "选择角色扭蛋使用的抽奖类型。",
         Options = gachaValues,
@@ -6592,7 +6601,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    local AutoGachaCharacterToggle = ShopTab:CreateToggle({
+    local AutoGachaCharacterToggle = Main5:CreateToggle({
         Name = "自动角色扭蛋",
         Description = "使用所选选项自动进行角色扭蛋。",
         CurrentValue = autoGachaCharacterEnabled,
@@ -6628,7 +6637,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "皮肤扭蛋",
         Description = "选择皮肤扭蛋使用的抽奖类型。",
         Options = gachaValues,
@@ -6640,7 +6649,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    local AutoGachaSkinToggle = ShopTab:CreateToggle({
+    local AutoGachaSkinToggle = Main5:CreateToggle({
         Name = "自动皮肤扭蛋",
         Description = "使用所选选项自动进行皮肤扭蛋。",
         CurrentValue = autoGachaSkinEnabled,
@@ -6677,11 +6686,11 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 自动使用物品 ======================
-    ShopTab:CreateSection("自动使用物品")
+    Main5:CreateSection("自动使用物品")
 
     local useItemDisplayValue = GetUseItemDisplay(selectedUseItem)
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "使用物品",
         Description = "选择自动使用物品将激活的物品。",
         Options = UseItemDisplayNames,
@@ -6694,7 +6703,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "自动使用物品",
         Description = "以安全延迟自动使用所选物品。",
         CurrentValue = autoUseItemEnabled,
@@ -6707,7 +6716,7 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 商店升级 ======================
-    ShopTab:CreateSection("商店升级")
+    Main5:CreateSection("商店升级")
 
     local selectedTitanSpeakerUpgrades = EnsureList(Config:Get("SelectedTitanSpeakerUpgrades", { "Jetpack" }), { "Jetpack" })
     local selectedUTCMUpgrades = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
@@ -6730,7 +6739,7 @@ _G.__DYHUB_ShopSystems = function()
     local upgradeUTCMEnabled = Config:Get("UpgradeUTCMEnabled", false)
     local upgradeTVEnabled = Config:Get("UpgradeTVEnabled", false)
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "选择泰坦扬声器升级",
         Description = "选择将请求的泰坦扬声器升级。",
         Options = TitanSpeakerUpgradeDisplayNames,
@@ -6748,7 +6757,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "升级泰坦扬声器",
         Description = "自动请求选中的泰坦扬声器升级。",
         CurrentValue = upgradeTitanSpeakerEnabled,
@@ -6760,7 +6769,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "选择 UTCM 升级",
         Description = "选择将请求的 UTCM 升级。",
         Options = UTCMUpgradeDisplayNames,
@@ -6778,7 +6787,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "升级 UTCM",
         Description = "自动请求选中的 UTCM 升级。",
         CurrentValue = upgradeUTCMEnabled,
@@ -6790,7 +6799,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "选择 TV 升级",
         Description = "选择将请求的 TV 升级。",
         Options = TVUpgradeDisplayNames,
@@ -6808,7 +6817,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "升级 TV",
         Description = "自动请求选中的 TV 升级。",
         CurrentValue = upgradeTVEnabled,
@@ -6821,12 +6830,12 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 商店武器 ======================
-    ShopTab:CreateSection("商店武器")
+    Main5:CreateSection("商店武器")
 
     local autoBuyWeaponValue = Config:Get("AutoBuyWeaponValue", "电击枪")
     local autoBuyWeaponEnabled = Config:Get("AutoBuyWeaponEnabled", false)
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "选择武器",
         Description = "选择将自动购买的武器。",
         Options = WeaponDisplayNames,
@@ -6839,7 +6848,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "购买武器",
         Description = "在商店循环期间自动购买所选武器。",
         CurrentValue = autoBuyWeaponEnabled,
@@ -6851,7 +6860,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateButton({
+    Main5:CreateButton({
         Name = "购买武器（一次）",
         Description = "购买所选武器一次。",
         Callback = function()
@@ -6863,12 +6872,12 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 商店杂项 ======================
-    ShopTab:CreateSection("商店杂项")
+    Main5:CreateSection("商店杂项")
 
     local autoBuyMiscValue = Config:Get("AutoBuyMiscValue", "头戴式耳机")
     local autoBuyMiscEnabled = Config:Get("AutoBuyMiscEnabled", false)
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "选择杂项",
         Description = "选择将自动购买的杂项物品。",
         Options = MiscDisplayNames,
@@ -6881,7 +6890,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "购买杂项",
         Description = "在商店循环期间自动购买所选杂项物品。",
         CurrentValue = autoBuyMiscEnabled,
@@ -6893,7 +6902,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateButton({
+    Main5:CreateButton({
         Name = "购买杂项（一次）",
         Description = "购买所选杂项物品一次。",
         Callback = function()
@@ -6905,9 +6914,9 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 请求泰坦/扬声器 ======================
-    ShopTab:CreateSection("请求泰坦/扬声器")
+    Main5:CreateSection("请求泰坦/扬声器")
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "选择请求",
         Description = "选择将自动购买的泰坦/扬声器请求。",
         Options = RequestDisplayNames,
@@ -6920,7 +6929,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "自动请求",
         Description = "波次 10+ 时自动请求选中的泰坦/扬声器。",
         CurrentValue = autoRequestEnabled,
@@ -6936,9 +6945,9 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 技能树 ======================
-    ShopTab:CreateSection("技能树")
+    Main5:CreateSection("技能树")
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "自动技能树",
         Description = "自动为你当前角色解锁缺失的技能树。",
         CurrentValue = autoSkillTreeEnabled,
@@ -6951,7 +6960,7 @@ _G.__DYHUB_ShopSystems = function()
     })
 
     -- ====================== 商店小时购 ======================
-    ShopTab:CreateSection("商店小时购")
+    Main5:CreateSection("商店小时购")
 
     local selectedShopHourlyItems = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
     local hourlyDisplay = {}
@@ -6963,7 +6972,7 @@ _G.__DYHUB_ShopSystems = function()
     local buyItemHourlyEnabled = Config:Get("BuyItemHourlyEnabled", false)
     local buyItemHourlyRunning = false
 
-    ShopTab:CreateDropdown({
+    Main5:CreateDropdown({
         Name = "选择商店小时购",
         Description = "选择固定的小时购商店物品。",
         Options = ShopHourlyDisplayNames,
@@ -6981,7 +6990,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateSlider({
+    Main5:CreateSlider({
         Name = "物品数量",
         Description = "设置每种选中小时购物品的购买数量。",
         Min = 1,
@@ -6995,7 +7004,7 @@ _G.__DYHUB_ShopSystems = function()
         end
     })
 
-    ShopTab:CreateToggle({
+    Main5:CreateToggle({
         Name = "购买物品",
         Description = "在定时循环中自动购买选中的小时购商店物品。",
         CurrentValue = buyItemHourlyEnabled,
@@ -7164,9 +7173,9 @@ _G.__DYHUB_ShopSystems()
 _G.__DYHUB_ShopSystems = nil
 
 -- ====================== UI: COLLECT TAB ======================
-CollectTab:CreateSection("自动收集")
+Main6:CreateSection("自动收集")
 
-AutoCollectToggle = CollectTab:CreateToggle({
+AutoCollectToggle = Main6:CreateToggle({
     Name = "自动收集",
     Description = "自动收集地图中出现的选中物品。",
     CurrentValue = AutoCollectEnabled,
@@ -7187,9 +7196,9 @@ AutoCollectToggle = CollectTab:CreateToggle({
     end
 })
 
-CollectTab:CreateSection("收集设置")
+Main6:CreateSection("收集设置")
 
-CollectItemDropdown = CollectTab:CreateDropdown({
+CollectItemDropdown = Main6:CreateDropdown({
     Name = "收集物品",
     Description = "选择自动收集将目标的收集物品。",
     Options = CollectDisplayNames,
@@ -7210,7 +7219,7 @@ CollectItemDropdown = CollectTab:CreateDropdown({
     end
 })
 
-CollectModeDropdown = CollectTab:CreateDropdown({
+CollectModeDropdown = Main6:CreateDropdown({
     Name = "收集模式",
     Description = "选择自动收集何时收集物品。",
     Options = CollectModeDisplayNames,
@@ -7224,7 +7233,7 @@ CollectModeDropdown = CollectTab:CreateDropdown({
     end
 })
 
-CollectMovementDropdown = CollectTab:CreateDropdown({
+CollectMovementDropdown = Main6:CreateDropdown({
     Name = "收集移动方式",
     Description = "选择角色移动到可收集物品的方式。",
     Options = MovementDisplayNames,
@@ -7244,11 +7253,11 @@ CollectMovementDropdown = CollectTab:CreateDropdown({
 })
 
 -- ====================== UI: GAMEMODE TAB ======================
-GamemodeTab:CreateSection("投票系统")
+Main7:CreateSection("投票系统")
 
-GamemodeTab:CreateLabel("- [步骤 1] 点击恢复投票系统\n- [步骤 2] 在大厅中（游戏内）等待\n- [步骤 3] 设置自动投票并等待")
+Main7:CreateLabel("- [步骤 1] 点击恢复投票系统\n- [步骤 2] 在大厅中（游戏内）等待\n- [步骤 3] 设置自动投票并等待")
 
-GamemodeTab:CreateButton({
+Main7:CreateButton({
     Name = "恢复投票系统",
     Description = "⚠️ 首次使用自动投票模式前按一次。",
     Callback = function()
@@ -7293,7 +7302,7 @@ GamemodeTab:CreateButton({
 })
 
 -- ====================== 投票模式下拉 ======================
-GamemodeTab:CreateDropdown({
+Main7:CreateDropdown({
     Name = "设置投票模式",
     Description = "选择自动投票将投选的游戏模式。",
     Options = VoteDisplayNames,
@@ -7382,7 +7391,7 @@ function StartAutoVoteReadyLoop()
     end)
 end
 
-GamemodeTab:CreateToggle({
+Main7:CreateToggle({
     Name = "自动投票+准备（每轮）",
     Description = "每轮游戏自动投票并自动准备。开启前请先选择投票模式！",
     CurrentValue = AutoVoteReadyEnabled,
@@ -7429,15 +7438,15 @@ if AutoVoteReadyEnabled then
     StartAutoVoteReadyLoop()
 end
 
-GamemodeTab:CreateDivider()
-GamemodeTab:CreateSection("休闲模式任务选择")
-GamemodeTab:CreateLabel("- [步骤 1] 在大厅中（不在游戏内）\n- [步骤 2] 按 Play 并进入经典模式选择界面\n- [步骤 3] 选择休闲模式并完成传送\n- [步骤 4] 运行脚本")
+Main7:CreateDivider()
+Main7:CreateSection("休闲模式任务选择")
+Main7:CreateLabel("- [步骤 1] 在大厅中（不在游戏内）\n- [步骤 2] 按 Play 并进入经典模式选择界面\n- [步骤 3] 选择休闲模式并完成传送\n- [步骤 4] 运行脚本")
 
-GamemodeTab:CreateSection("设置游戏模式")
+Main7:CreateSection("设置游戏模式")
 
 AutoGameValue = Config:Get("AutoGameValue", "普通")
 
-GamemodeTab:CreateDropdown({
+Main7:CreateDropdown({
     Name = "设置游戏模式",
     Description = "选择自动创建将创建的游戏模式。",
     Options = GameModeDisplayNames,
@@ -7575,7 +7584,7 @@ task.spawn(function()
     end
 end)
 
-GamemodeTab:CreateToggle({
+Main7:CreateToggle({
     Name = "自动游戏模式（大厅）",
     Description = "在大厅时自动创建所选游戏模式。",
     CurrentValue = AutoVoteEnabled,
@@ -7801,9 +7810,9 @@ function FireAutoSkillTrees()
 end
 
 -- ====================== UI: SETTING TAB ======================
-SettingTab:CreateSection("保存配置")
+Main3:CreateSection("保存配置")
 
-SettingTab:CreateButton({
+Main3:CreateButton({
     Name = "立即保存配置",
     Description = "立即将所有当前设置保存到配置文件。",
     Callback = function()
@@ -7836,7 +7845,7 @@ function RestartAutoSave()
     end
 end
 
-SettingTab:CreateToggle({
+Main3:CreateToggle({
     Name = "自动保存配置",
     Description = "以设定间隔自动保存配置。",
     CurrentValue = AutoSaveEnabled,
@@ -7848,7 +7857,7 @@ SettingTab:CreateToggle({
     end
 })
 
-SettingTab:CreateInput({
+Main3:CreateInput({
     Name = "配置保存延迟",
     Description = "设置自动保存间隔（秒）。",
     Placeholder = "默认: 15",
@@ -7867,9 +7876,9 @@ SettingTab:CreateInput({
 
 RestartAutoSave()
 
-SettingTab:CreateSection("服务器状态")
+Main3:CreateSection("服务器状态")
 
-SettingTab:CreateButton({
+Main3:CreateButton({
     Name = "跳转服务器",
     Description = "将你传送到此游戏的不同随机服务器。",
     Callback = function()
@@ -7905,7 +7914,7 @@ SettingTab:CreateButton({
     end
 })
 
-SettingTab:CreateButton({
+Main3:CreateButton({
     Name = "重新加入",
     Description = "重新加入当前游戏服务器。",
     Callback = function()
@@ -7920,9 +7929,9 @@ SettingTab:CreateButton({
     end
 })
 
-SettingTab:CreateSection("杂项")
+Main3:CreateSection("杂项")
 
-CameraDropdown = SettingTab:CreateDropdown({
+CameraDropdown = Main3:CreateDropdown({
     Name = "相机模式",
     Description = "选择相机应如何跟随角色。",
     Options = CameraModeDisplayNames,
@@ -7942,7 +7951,7 @@ CameraDropdown = SettingTab:CreateDropdown({
     end
 })
 
-SettingTab:CreateToggle({
+Main3:CreateToggle({
     Name = "绕过屏障（已修补）",
     Description = "尝试绕过隐形屏障。",
     CurrentValue = noBarrierActive,
@@ -7954,7 +7963,7 @@ SettingTab:CreateToggle({
     end
 })
 
-SettingTab:CreateToggle({
+Main3:CreateToggle({
     Name = "战斗调试",
     Description = "打印基于冷却的自动攻击/技能和怪物缓存调试日志。",
     CurrentValue = CombatDebugEnabled,
@@ -8044,7 +8053,7 @@ function StopAntiAFK()
     end
 end
 
-SettingTab:CreateToggle({
+Main3:CreateToggle({
     Name = "反 AFK",
     Description = "防止 Roblox 因闲置而踢出你。",
     CurrentValue = AntiAFK,
