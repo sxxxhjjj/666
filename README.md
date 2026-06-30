@@ -423,10 +423,11 @@ function GetDisplayName(map, englishValue)
     return englishValue
 end
 
--- ====================== WINDOW 2 ======================
-Players = game:GetService("Players")
-
 -- ====================== WINDOW ======================
+Players = game:GetService("Players")
+LocalPlayer = Players.LocalPlayer
+CoreGui = game:GetService("CoreGui")
+
 Window = WindUI:CreateWindow({
     Title = "至尊版",
     IconThemed = true,
@@ -488,10 +489,8 @@ VirtualInputManager = game:GetService("VirtualInputManager")
 RunService          = game:GetService("RunService")
 UserInputService    = game:GetService("UserInputService")
 Lighting            = game:GetService("Lighting")
-CoreGui             = game:GetService("CoreGui")
 
 -- ====================== PLAYER ======================
-LocalPlayer    = Players.LocalPlayer
 Client         = LocalPlayer
 Character      = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
@@ -6145,7 +6144,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ============================================================
--- ============== 抽奖增强功能 ================================
+-- ============== 抽奖增强功能（融合到抽奖开关中） ============
 -- ============================================================
 local MoneyUIExists = false
 local GachaHeartbeatConnection = nil
@@ -6458,7 +6457,7 @@ _G.__DYHUB_ShopSystems = function()
         return english
     end
 
-    -- ====================== 互斥抽奖循环 ======================
+    -- ====================== 互斥抽奖循环 + UI增强 ======================
     local function StartAutoGachaCharacter()
         if characterGachaRunning then return end
 
@@ -6480,7 +6479,7 @@ _G.__DYHUB_ShopSystems = function()
         end
 
         characterGachaRunning = true
-        StartGachaEnhancement()
+        StartGachaEnhancement()  -- UI增强启动
 
         task.spawn(function()
             while autoGachaCharacterEnabled do
@@ -6490,7 +6489,7 @@ _G.__DYHUB_ShopSystems = function()
             end
             characterGachaRunning = false
             if not skinGachaRunning then
-                StopGachaEnhancement()
+                StopGachaEnhancement()  -- 全部关闭才停止
             end
         end)
     end
@@ -6516,7 +6515,7 @@ _G.__DYHUB_ShopSystems = function()
         end
 
         skinGachaRunning = true
-        StartGachaEnhancement()
+        StartGachaEnhancement()  -- UI增强启动
 
         task.spawn(function()
             while autoGachaSkinEnabled do
@@ -6526,7 +6525,7 @@ _G.__DYHUB_ShopSystems = function()
             end
             skinGachaRunning = false
             if not characterGachaRunning then
-                StopGachaEnhancement()
+                StopGachaEnhancement()  -- 全部关闭才停止
             end
         end)
     end
