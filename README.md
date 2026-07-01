@@ -431,7 +431,7 @@ CoreGui = game:GetService("CoreGui")
 Window = WindUI:CreateWindow({
     Title = "至尊版",
     IconThemed = true,
-    Icon = "rbxassetid://104487529937663",
+    Icon = "rbxassetid://77631429078513",
     Author = "STBB | 至尊版",
     Folder = "YYa",
     Size = UDim2.fromOffset(550, 380),
@@ -5166,7 +5166,7 @@ Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
 Main:Paragraph({
     Title = "优先级设置",
     Desc = "中断：如果正在攻击低血量怪物且更高血量怪物出现，立即切换目标",
-    Image = "rbxassetid://104487529937663",
+    Image = "rbxassetid://77631429078513",
     ImageSize = 26,
 })
 
@@ -7253,7 +7253,7 @@ Main7:Divider()
 Main7:Paragraph({
     Title = "投票信息",
     Desc = "- [步骤 1] 点击恢复投票系统\n- [步骤 2] 在大厅中（游戏内）等待\n- [步骤 3] 设置自动投票并等待",
-    Image = "rbxassetid://104487529937663",
+    Image = "rbxassetid://77631429078513",
     ImageSize = 30,
 })
 Main7:Divider()
@@ -7448,7 +7448,7 @@ Main7:Divider()
 Main7:Paragraph({
     Title = "休闲模式任务选择",
     Desc = "- [步骤 1] 在大厅中（不在游戏内）\n- [步骤 2] 按 Play 并进入经典模式选择界面\n- [步骤 3] 选择休闲模式并完成传送\n- [步骤 4] 运行脚本",
-    Image = "rbxassetid://104487529937663",
+    Image = "rbxassetid://77631429078513",
     ImageSize = 30,
 })
 Main7:Divider()
