@@ -498,15 +498,7 @@ HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- ====================== GLOBAL TABLES ======================
 GlobalTables = {
-    redeemCodes = {
-        "100MVisit2",
-        "100MVisit1",
-        "CamArmada",
-        "CCTVBase",
-        "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad",
-        "ZOMBIEPART2",
-        "SORRYFORDELAY"
-    },
+    redeemCodes = { "100MVisit2", "100MVisit1", "CamArmada", "CCTVBase", "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad" },
     Weapon   = { "Stungun", "Flamethrower", "Harpoon Gun", "Shot Gun", "Pulse Rifle", "Shot Harpoon Gun", "EPD", "Small Laser Gun" },
     MiscShop = { "HeadPhone", "Grenade", "Jetpack", "Lens" },
     RequestTitanSpeaker = { "Titan-Request", "SpecialTitan-Request", "Speaker-Request" },
@@ -4279,7 +4271,6 @@ workspace.DescendantAdded:Connect(function(obj)
         CombatDebug("CollectItem", "新物品已缓存: " .. tostring(obj.Name), 3)
     end
 end)
-
 -- ============================================================
 -- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
 -- ============================================================
@@ -4870,6 +4861,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
     ApplyCameraMode(true)
 end)
+
 -- ====================== UI: MAIN TAB ======================
 Main:Section({ Title = "自动刷怪", Icon = "package" })
 
@@ -4911,7 +4903,6 @@ AutoFarmToggle = Main:Toggle({
     end
 })
 
--- 刷怪模式下拉框（完全开放，无付费限制）
 FarmTargetModeDropdown = Main:Dropdown({
     Title = "刷怪模式",
     Desc = "不同的刷怪模式。",
@@ -6377,7 +6368,6 @@ local function StopGachaEnhancement()
         GachaHeartbeatConnection = nil
     end
 
-    -- 删除金钱UI
     pcall(function()
         local parent = CoreGui or pg
         if parent then
@@ -6387,7 +6377,6 @@ local function StopGachaEnhancement()
     end)
     MoneyUIExists = false
 
-    -- 恢复摄像头到正常状态
     pcall(function()
         ApplyCameraMode(true)
         local cam = workspace.CurrentCamera
@@ -6400,7 +6389,6 @@ local function StopGachaEnhancement()
         end
     end)
 
-    -- 恢复投票系统（重置投票UI状态）
     pcall(function()
         local readyRemote = GetRemote("GetReadyRemote")
         if readyRemote then
@@ -6521,7 +6509,7 @@ _G.__YYA_ShopSystems = function()
         end
 
         characterGachaRunning = true
-        StartGachaEnhancement()  -- UI增强启动
+        StartGachaEnhancement()
 
         task.spawn(function()
             while autoGachaCharacterEnabled do
@@ -6531,7 +6519,7 @@ _G.__YYA_ShopSystems = function()
             end
             characterGachaRunning = false
             if not skinGachaRunning then
-                StopGachaEnhancement()  -- 全部关闭才停止
+                StopGachaEnhancement()
             end
         end)
     end
@@ -6557,7 +6545,7 @@ _G.__YYA_ShopSystems = function()
         end
 
         skinGachaRunning = true
-        StartGachaEnhancement()  -- UI增强启动
+        StartGachaEnhancement()
 
         task.spawn(function()
             while autoGachaSkinEnabled do
@@ -6567,7 +6555,7 @@ _G.__YYA_ShopSystems = function()
             end
             skinGachaRunning = false
             if not characterGachaRunning then
-                StopGachaEnhancement()  -- 全部关闭才停止
+                StopGachaEnhancement()
             end
         end)
     end
@@ -7329,128 +7317,28 @@ GameModeDropdown2 = Main7:Dropdown({
     end
 })
 
--- ====================== 自动投票 + 准备 ======================
-AutoVoteReadyEnabled = Config:Get("AutoVoteReadyEnabled", false)
-AutoVoteReadyLoading = false
-AutoVoteReadyLastFire = 0
-AutoVoteReadyLoopRunning = false
-AutoVoteLoadingNotified = false
-
-function FireAutoVoteReady()
-    local englishValue = AutoVoteValue
-    if englishValue == nil or englishValue == "" then
-        WindUI:Notify({
-            Title = "自动投票",
-            Content = "⚠️ 你未选择投票模式！请先在设置投票模式中选择一个模式。",
-            Duration = 4,
-            Icon = "alert-triangle"
-        })
-        return false
-    end
-
-    local now = tick()
-    if now - AutoVoteReadyLastFire < 1 then return false end
-    AutoVoteReadyLastFire = now
-
-    local voteRemote = GetRemote("Vote")
-    if voteRemote then
-        pcall(function() voteRemote:FireServer(englishValue) end)
-    end
-
-    task.wait(0.2)
-    local readyRemote = GetRemote("GetReadyRemote")
-    if readyRemote then
-        pcall(function()
-            readyRemote:FireServer("1", true)
-            task.wait(0.15)
-            readyRemote:FireServer("1", false)
-            task.wait(0.15)
-            readyRemote:FireServer("2", false)
-            task.wait(0.15)
-            readyRemote:FireServer("3", false)
-            task.wait(0.15)
-            readyRemote:FireServer("1", true)
-        end)
-    end
-
-    print("[YYa] 自动投票+准备已触发，模式:", englishValue)
-    return true
-end
-
-function StartAutoVoteReadyLoop()
-    if AutoVoteReadyLoopRunning then return end
-    AutoVoteReadyLoopRunning = true
-
-    task.spawn(function()
-        while AutoVoteReadyEnabled do
-            if IsVoteUIOpen() then
-                if not AutoVoteLoadingNotified then
-                    AutoVoteLoadingNotified = true
-                    WindUI:Notify({
-                        Title = "自动投票",
-                        Content = "⏳ 正在加载中...进入地图后提示加载成功",
-                        Duration = 3,
-                        Icon = "loader-circle"
-                    })
-                end
-                FireAutoVoteReady()
-            else
-                AutoVoteLoadingNotified = false
-            end
-            task.wait(0.5)
-        end
-
-        AutoVoteReadyLoopRunning = false
-    end)
-end
-
-AutoVoteReadyToggle = Main7:Toggle({
-    Title = "自动投票+准备（每轮）",
-    Desc = "每轮游戏自动投票并自动准备。开启前请先选择投票模式！",
-    Value = AutoVoteReadyEnabled,
+-- ====================== 自动投票 + 准备（已还原为原始 Auto Vote） ======================
+-- 注意：以下开关已替换为原始的 AutoVoteinGameEnabled，使用 StartAutoVoteLoop
+AutoVoteIGToggle = Main7:Toggle({
+    Title = "Auto Vote Mode (In-Game)",
+    Desc = "Automatically votes for the selected mode each round.",
+    Value = AutoVoteinGameEnabled,
     Callback = function(enabled)
+        AutoVoteinGameEnabled = enabled
+        Config:Set("AutoVoteinGameEnabled", enabled)
+        Config:Save()
         if enabled then
-            local englishValue = AutoVoteValue
-            if englishValue == nil or englishValue == "" then
-                WindUI:Notify({
-                    Title = "自动投票",
-                    Content = "⚠️ 你未选择投票模式！请先在设置投票模式中选择一个模式。",
-                    Duration = 4,
-                    Icon = "alert-triangle"
-                })
-                AutoVoteReadyToggle:Set(false)
-                return
+            if AutoStartEnabled and IsMiscFarmAllowed() then
+                FireGetReady(0)
+            else
+                FireAutoVote(true)
             end
-            AutoVoteReadyEnabled = true
-            Config:Set("AutoVoteReadyEnabled", true)
-            Config:Save()
-            StartAutoVoteReadyLoop()
-            WindUI:Notify({
-                Title = "自动投票",
-                Content = "✅ 自动投票+准备已启用，模式: " .. tostring(GetDisplayName(VoteMap, AutoVoteValue) or AutoVoteValue),
-                Duration = 3,
-                Icon = "check"
-            })
+            StartAutoVoteLoop()
         else
-            AutoVoteReadyEnabled = false
-            AutoVoteReadyLoopRunning = false
-            AutoVoteLoadingNotified = false
-            Config:Set("AutoVoteReadyEnabled", false)
-            Config:Save()
-            WindUI:Notify({
-                Title = "自动投票",
-                Content = "自动投票+准备已禁用",
-                Duration = 2,
-                Icon = "square"
-            })
+            print("[YYa] Auto Vote Mode disabled")
         end
     end
 })
-
-AutoVoteinGameEnabled = false
-if AutoVoteReadyEnabled then
-    StartAutoVoteReadyLoop()
-end
 
 Main7:Divider()
 Main7:Section({ Title = "休闲模式任务选择", TextXAlignment = "Center", TextSize = 17 })
@@ -8146,8 +8034,9 @@ function ApplySavedConfigOnStartup()
         StopAutoStart()
     end
 
-    if AutoVoteReadyEnabled then
-        StartAutoVoteReadyLoop()
+    -- 启动自动投票（还原为原始逻辑）
+    if AutoVoteinGameEnabled then
+        StartAutoVoteLoop()
     end
 end
 
