@@ -41,7 +41,7 @@ task.wait(2)
 
 -- ====================== WAITING PART / FPS UNLOCK ======================
 YYA_WAITING_PART_NAME = "YYA_WAITING_PART"
-iddyhub = "rbxassetid://77631429078513"
+iddyhub = "rbxassetid://103720636367587"
 YYA_WAITING_STAND_CF = CFrame.new(-23.3435822, 67, 0.341766357)
 YYA_WAITING_PART_CF = CFrame.new(-23.3435822, 63.95, 0.341766357)
 YYA_WAITING_PART_SIZE = Vector3.new(16, 1, 16)
@@ -431,7 +431,7 @@ CoreGui = game:GetService("CoreGui")
 Window = WindUI:CreateWindow({
     Title = "至尊版",
     IconThemed = true,
-    Icon = "rbxassetid://77631429078513",
+    Icon = "rbxassetid://103720636367587",
     Author = "STBB | 至尊版",
     Folder = "YYa",
     Size = UDim2.fromOffset(550, 380),
@@ -477,6 +477,8 @@ Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
     Desc = "更新日期: 06/02/2026 | CL: " .. ver .. "\n• [新增] 杂项刷怪中重置波次\n• [新增] 上帝模式滑条下的重置波次滑块\n• [修复] 重置波次现在保持重置点延迟并优先于刷怪锁定\n• [修复] 当前波次已高于/低于目标时重置波次滑块立即触发\n• [修复] 刷怪 Astro 模式计时器波次耗尽时的漏洞\n• [修复] 设置中的相机模式与刷怪同步\n• [优化] 刷怪循环/钩子后代扫描",
+    Image = "rbxassetid://103720636367587",
+    ImageSize = 26,
 })
 Info:Divider()
 
@@ -3381,7 +3383,7 @@ CollectLastFullScan = 0
 -- ============================================================
 -- ====================== FARM ASTRO TOKEN ====================
 -- ============================================================
-FARM_ASTRO_TOKEN_IMAGE = "rbxassetid://77631429078513"
+FARM_ASTRO_TOKEN_IMAGE = "rbxassetid://103720636367587"
 FARM_ASTRO_TOP_A       = CFrame.new(-680, 167, 505)
 FARM_ASTRO_TOP_B       = CFrame.new(495, 167, 505)
 
@@ -5166,7 +5168,7 @@ Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
 Main:Paragraph({
     Title = "优先级设置",
     Desc = "中断：如果正在攻击低血量怪物且更高血量怪物出现，立即切换目标",
-    Image = "rbxassetid://77631429078513",
+    Image = "rbxassetid://103720636367587",
     ImageSize = 26,
 })
 
@@ -7253,7 +7255,7 @@ Main7:Divider()
 Main7:Paragraph({
     Title = "投票信息",
     Desc = "- [步骤 1] 点击恢复投票系统\n- [步骤 2] 在大厅中（游戏内）等待\n- [步骤 3] 设置自动投票并等待",
-    Image = "rbxassetid://77631429078513",
+    Image = "rbxassetid://103720636367587",
     ImageSize = 30,
 })
 Main7:Divider()
@@ -7448,7 +7450,7 @@ Main7:Divider()
 Main7:Paragraph({
     Title = "休闲模式任务选择",
     Desc = "- [步骤 1] 在大厅中（不在游戏内）\n- [步骤 2] 按 Play 并进入经典模式选择界面\n- [步骤 3] 选择休闲模式并完成传送\n- [步骤 4] 运行脚本",
-    Image = "rbxassetid://77631429078513",
+    Image = "rbxassetid://103720636367587",
     ImageSize = 30,
 })
 Main7:Divider()
