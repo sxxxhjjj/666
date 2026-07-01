@@ -498,7 +498,15 @@ HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- ====================== GLOBAL TABLES ======================
 GlobalTables = {
-    redeemCodes = { "100MVisit2", "100MVisit1", "CamArmada", "CCTVBase", "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad" },
+    redeemCodes = {
+        "100MVisit2",
+        "100MVisit1",
+        "CamArmada",
+        "CCTVBase",
+        "ADelayedGameIsEventuallyGoodButRushedGameIsForeverBad",
+        "ZOMBIEPART2",
+        "SORRYFORDELAY"
+    },
     Weapon   = { "Stungun", "Flamethrower", "Harpoon Gun", "Shot Gun", "Pulse Rifle", "Shot Harpoon Gun", "EPD", "Small Laser Gun" },
     MiscShop = { "HeadPhone", "Grenade", "Jetpack", "Lens" },
     RequestTitanSpeaker = { "Titan-Request", "SpecialTitan-Request", "Speaker-Request" },
