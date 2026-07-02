@@ -2041,48 +2041,28 @@ function GetHighHPMob()
     return bestMob
 end
 
+-- ========== 修改点1：GetPriorityMob 改为只返回最近怪物（已过滤玩家和友军） ==========
 function GetPriorityMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
     if not HumanoidRootPart then return nil, nil, nil, 0 end
 
-    local giant, prompt = nil, nil
-    local heli, highMob, nearMob = nil, nil, nil
-    local bestHP, nearDist = HighHPThreshold, math.huge
     local candidates = GetFarmCandidateMobs(false)
+    local bestMob, bestDist = nil, math.huge
 
     for _, mob in ipairs(candidates) do
-        if not giant and FarmTargetMode ~= "Astro 坚守模式" and mob.Name == "Giant ST toilet" then
-            local lever = mob:FindFirstChild("lever")
-            if lever then
-                local pr = lever:FindFirstChildOfClass("ProximityPrompt")
-                if pr then giant = mob; prompt = pr end
-            end
-        end
-
-        if not heli and mob.Name:lower():find("helicopter") then
-            heli = mob
-        end
-
-        local hp = GetMobMaxHP(mob)
-        if hp > bestHP then
-            bestHP = hp
-            highMob = mob
-        end
-
         local mobRoot = mob:FindFirstChild("HumanoidRootPart")
-        if mobRoot and HumanoidRootPart then
+        if mobRoot then
             local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
-            if d < nearDist then
-                nearDist = d
-                nearMob = mob
+            if d < bestDist then
+                bestDist = d
+                bestMob = mob
             end
         end
     end
 
-    if giant and prompt then return giant, "GiantST", prompt, 4 end
-    if heli then return heli, "直升机", nil, 3 end
-    if highMob then return highMob, "高血量", nil, 2 end
-    if nearMob then return nearMob, "最近怪物", nil, 1 end
+    if bestMob then
+        return bestMob, nil, nil, 1
+    end
 
     return nil, nil, nil, 0
 end
@@ -3345,7 +3325,6 @@ function ActivateAllFlushPrompts()
         end
     end)
 end
-
 -- ============================================================
 -- ====================== COLLECT SYSTEM ======================
 -- ============================================================
@@ -3379,6 +3358,257 @@ CollectRunning    = false
 CollectCandidateCache = {}
 CollectCacheDirty = true
 CollectLastFullScan = 0
+
+function MatchesPattern(objectName, pattern)
+    local objL, patL = tostring(objectName or ""):lower(), tostring(pattern or ""):lower()
+    if objL == patL then return true end
+    if #objL > #patL and objL:sub(1, #patL) == patL then
+        local nc = objL:sub(#patL + 1, #patL + 1)
+        if nc == " " or nc == "#" or nc == "_" or nc == "-" then return true end
+    end
+    if CollectGroupMap[pattern] then
+        for _, gName in ipairs(CollectGroupMap[pattern]) do
+            if objL == gName:lower() then return true end
+        end
+    end
+    return false
+end
+
+function IsCollectTarget(objectName)
+    for _, pattern in ipairs(SelectedCollectItems) do
+        if MatchesPattern(objectName, pattern) then return true end
+    end
+    return false
+end
+
+function IsCollectObject(obj)
+    return obj and obj.Parent and (obj:IsA("Model") or obj:IsA("MeshPart") or obj:IsA("Part") or obj:IsA("BasePart"))
+end
+
+function AddCollectCandidate(obj)
+    if IsCollectObject(obj) and IsCollectTarget(obj.Name) then
+        CollectCandidateCache[obj] = true
+        return true
+    end
+    return false
+end
+
+function RebuildCollectCache()
+    CollectCandidateCache = {}
+    if #SelectedCollectItems > 0 then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            AddCollectCandidate(obj)
+        end
+    end
+    CollectCacheDirty = false
+    CollectLastFullScan = tick()
+end
+
+function FindNewCollectItems()
+    if CollectCacheDirty or tick() - CollectLastFullScan > 5 then
+        RebuildCollectCache()
+    end
+
+    local found = {}
+    for obj, _ in pairs(CollectCandidateCache) do
+        if not obj or not obj.Parent or not IsCollectTarget(obj.Name) then
+            CollectCandidateCache[obj] = nil
+            KnownCollectItems[obj] = nil
+        elseif not KnownCollectItems[obj] and IsCollectObject(obj) then
+            table.insert(found, obj)
+        end
+    end
+    return found
+end
+
+function GetItemRootPart(obj)
+    if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then return obj end
+    return nil
+end
+
+function GetItemTargetCFrame(itemRoot)
+    if not itemRoot then return nil end
+    return CFrame.new(itemRoot.Position + Vector3.new(0, 3, 0), itemRoot.Position)
+end
+
+function MoveToItem(itemRoot)
+    RefreshCombatCharacter()
+    if not itemRoot or not Character or not HumanoidRootPart then return false end
+
+    local targetCF = GetItemTargetCFrame(itemRoot)
+    if not targetCF then return false end
+
+    if CollectMovementMode == "传送" then
+        pcall(function()
+            Character:PivotTo(targetCF)
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        end)
+        return true
+    end
+
+    local ok = pcall(function()
+        local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = targetCF })
+        tween:Play()
+        local started = tick()
+        repeat
+            task.wait(0.05)
+            if not AutoCollectEnabled or IsItemGone(itemRoot) then
+                pcall(function() tween:Cancel() end)
+                break
+            end
+        until tween.PlaybackState ~= Enum.PlaybackState.Playing or tick() - started > math.max(TweenSpeed + 1, 3)
+        pcall(function()
+            Character:PivotTo(targetCF)
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end)
+
+    return ok
+end
+
+function ActivateItemPrompts(obj)
+    pcall(function()
+        for _, child in ipairs(obj:GetDescendants()) do
+            if child:IsA("ProximityPrompt") then
+                child.HoldDuration = 0
+                child.MaxActivationDistance = 50
+                if fireproximityprompt then fireproximityprompt(child) end
+                child:InputHoldBegin()
+                task.wait(0.04)
+                child:InputHoldEnd()
+            end
+        end
+    end)
+end
+
+function IsItemGone(obj) return not obj or not obj.Parent end
+
+function BeginCollectPause()
+    FarmCollecting = true
+    FarmForceRetarget = true
+    LockActive = false
+    if FarmAstroTokenEnabled then SetFarmAstroCollectPause(true) end
+    task.wait(0.08)
+end
+
+function EndCollectPause()
+    if FarmAstroTokenEnabled then SetFarmAstroCollectPause(false) end
+    FarmCollecting = false
+    FarmForceRetarget = true
+    if AutoFarmEnabled then
+        WaitingRespawn = false
+        StartFarmLoop()
+    end
+    HandleMiscOptions(MiscOptions)
+    task.delay(0.6, function() FarmForceRetarget = false end)
+end
+
+function CollectSingleItem(obj)
+    if IsItemGone(obj) then return end
+    local itemRoot = GetItemRootPart(obj)
+    if not itemRoot then return end
+
+    MoveToItem(itemRoot)
+
+    local timeout = 0
+    while AutoCollectEnabled and not IsItemGone(obj) and timeout < 8 do
+        itemRoot = GetItemRootPart(obj)
+        if not itemRoot then break end
+
+        if timeout == 0 or timeout % 0.3 < 0.16 then
+            local targetCF = GetItemTargetCFrame(itemRoot)
+            pcall(function()
+                if targetCF and Character and HumanoidRootPart then
+                    Character:PivotTo(targetCF)
+                    HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                    HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                end
+            end)
+        end
+
+        ActivateItemPrompts(obj)
+        task.wait(0.15)
+        timeout = timeout + 0.15
+    end
+
+    KnownCollectItems[obj] = true
+end
+
+function AllMobsDead()
+    return #GetFarmCandidateMobs(false) == 0
+end
+
+function StartAutoCollectLoop()
+    if CollectRunning then return end
+    CollectRunning = true
+    task.spawn(function()
+        while AutoCollectEnabled do
+            if FarmAstroTokenEnabled and CollectMode == "清洁" then
+                NotifyFarmAstroCleanMode()
+                task.wait(1)
+                continue
+            end
+
+            if #SelectedCollectItems > 0 then
+                local itemsToCollect = FindNewCollectItems()
+                if #itemsToCollect > 0 then
+                    if CollectMode == "IDGF" then
+                        BeginCollectPause()
+                        for _, obj in ipairs(itemsToCollect) do
+                            if not AutoCollectEnabled then break end
+                            if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
+                        end
+                        EndCollectPause()
+
+                    elseif CollectMode == "清洁" then
+                        local waitedClean = 0
+                        while not AllMobsDead() and AutoCollectEnabled do
+                            task.wait(0.5)
+                            waitedClean = waitedClean + 0.5
+                            if waitedClean >= 120 then break end
+                        end
+                        if not AutoCollectEnabled then break end
+
+                        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
+                        BeginCollectPause()
+                        for _, obj in ipairs(FindNewCollectItems()) do
+                            if not AutoCollectEnabled then break end
+                            if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
+                        end
+                        EndCollectPause()
+                        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(true) end
+
+                        if not IsPlayerHPFull() and AutoFillUpEnabled then
+                            local fw = 0
+                            while not IsPlayerHPFull() and AutoFillUpEnabled and AutoCollectEnabled do
+                                task.wait(0.5)
+                                fw = fw + 0.5
+                                if fw >= 60 then break end
+                            end
+                        end
+                    end
+                else
+                    for obj, _ in pairs(KnownCollectItems) do
+                        if IsItemGone(obj) then KnownCollectItems[obj] = nil end
+                    end
+                end
+            end
+            task.wait(0.65)
+        end
+        FarmCollecting = false
+        CollectRunning = false
+    end)
+end
+
+workspace.DescendantAdded:Connect(function(obj)
+    if not AutoCollectEnabled or #SelectedCollectItems == 0 then return end
+    if AddCollectCandidate(obj) then
+        CombatDebug("CollectItem", "新物品已缓存: " .. tostring(obj.Name), 3)
+    end
+end)
 
 -- ============================================================
 -- ====================== FARM ASTRO TOKEN ====================
@@ -4021,256 +4251,6 @@ task.spawn(function()
     end
 end)
 
-function MatchesPattern(objectName, pattern)
-    local objL, patL = tostring(objectName or ""):lower(), tostring(pattern or ""):lower()
-    if objL == patL then return true end
-    if #objL > #patL and objL:sub(1, #patL) == patL then
-        local nc = objL:sub(#patL + 1, #patL + 1)
-        if nc == " " or nc == "#" or nc == "_" or nc == "-" then return true end
-    end
-    if CollectGroupMap[pattern] then
-        for _, gName in ipairs(CollectGroupMap[pattern]) do
-            if objL == gName:lower() then return true end
-        end
-    end
-    return false
-end
-
-function IsCollectTarget(objectName)
-    for _, pattern in ipairs(SelectedCollectItems) do
-        if MatchesPattern(objectName, pattern) then return true end
-    end
-    return false
-end
-
-function IsCollectObject(obj)
-    return obj and obj.Parent and (obj:IsA("Model") or obj:IsA("MeshPart") or obj:IsA("Part") or obj:IsA("BasePart"))
-end
-
-function AddCollectCandidate(obj)
-    if IsCollectObject(obj) and IsCollectTarget(obj.Name) then
-        CollectCandidateCache[obj] = true
-        return true
-    end
-    return false
-end
-
-function RebuildCollectCache()
-    CollectCandidateCache = {}
-    if #SelectedCollectItems > 0 then
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            AddCollectCandidate(obj)
-        end
-    end
-    CollectCacheDirty = false
-    CollectLastFullScan = tick()
-end
-
-function FindNewCollectItems()
-    if CollectCacheDirty or tick() - CollectLastFullScan > 5 then
-        RebuildCollectCache()
-    end
-
-    local found = {}
-    for obj, _ in pairs(CollectCandidateCache) do
-        if not obj or not obj.Parent or not IsCollectTarget(obj.Name) then
-            CollectCandidateCache[obj] = nil
-            KnownCollectItems[obj] = nil
-        elseif not KnownCollectItems[obj] and IsCollectObject(obj) then
-            table.insert(found, obj)
-        end
-    end
-    return found
-end
-
-function GetItemRootPart(obj)
-    if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
-    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then return obj end
-    return nil
-end
-
-function GetItemTargetCFrame(itemRoot)
-    if not itemRoot then return nil end
-    return CFrame.new(itemRoot.Position + Vector3.new(0, 3, 0), itemRoot.Position)
-end
-
-function MoveToItem(itemRoot)
-    RefreshCombatCharacter()
-    if not itemRoot or not Character or not HumanoidRootPart then return false end
-
-    local targetCF = GetItemTargetCFrame(itemRoot)
-    if not targetCF then return false end
-
-    if CollectMovementMode == "传送" then
-        pcall(function()
-            Character:PivotTo(targetCF)
-            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-        end)
-        return true
-    end
-
-    local ok = pcall(function()
-        local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = targetCF })
-        tween:Play()
-        local started = tick()
-        repeat
-            task.wait(0.05)
-            if not AutoCollectEnabled or IsItemGone(itemRoot) then
-                pcall(function() tween:Cancel() end)
-                break
-            end
-        until tween.PlaybackState ~= Enum.PlaybackState.Playing or tick() - started > math.max(TweenSpeed + 1, 3)
-        pcall(function()
-            Character:PivotTo(targetCF)
-            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-        end)
-    end)
-
-    return ok
-end
-
-function ActivateItemPrompts(obj)
-    pcall(function()
-        for _, child in ipairs(obj:GetDescendants()) do
-            if child:IsA("ProximityPrompt") then
-                child.HoldDuration = 0
-                child.MaxActivationDistance = 50
-                if fireproximityprompt then fireproximityprompt(child) end
-                child:InputHoldBegin()
-                task.wait(0.04)
-                child:InputHoldEnd()
-            end
-        end
-    end)
-end
-
-function IsItemGone(obj) return not obj or not obj.Parent end
-
-function BeginCollectPause()
-    FarmCollecting = true
-    FarmForceRetarget = true
-    LockActive = false
-    if FarmAstroTokenEnabled then SetFarmAstroCollectPause(true) end
-    task.wait(0.08)
-end
-
-function EndCollectPause()
-    if FarmAstroTokenEnabled then SetFarmAstroCollectPause(false) end
-    FarmCollecting = false
-    FarmForceRetarget = true
-    if AutoFarmEnabled then
-        WaitingRespawn = false
-        StartFarmLoop()
-    end
-    HandleMiscOptions(MiscOptions)
-    task.delay(0.6, function() FarmForceRetarget = false end)
-end
-
-function CollectSingleItem(obj)
-    if IsItemGone(obj) then return end
-    local itemRoot = GetItemRootPart(obj)
-    if not itemRoot then return end
-
-    MoveToItem(itemRoot)
-
-    local timeout = 0
-    while AutoCollectEnabled and not IsItemGone(obj) and timeout < 8 do
-        itemRoot = GetItemRootPart(obj)
-        if not itemRoot then break end
-
-        if timeout == 0 or timeout % 0.3 < 0.16 then
-            local targetCF = GetItemTargetCFrame(itemRoot)
-            pcall(function()
-                if targetCF and Character and HumanoidRootPart then
-                    Character:PivotTo(targetCF)
-                    HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-                    HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-                end
-            end)
-        end
-
-        ActivateItemPrompts(obj)
-        task.wait(0.15)
-        timeout = timeout + 0.15
-    end
-
-    KnownCollectItems[obj] = true
-end
-
-function AllMobsDead()
-    return #GetFarmCandidateMobs(false) == 0
-end
-
-function StartAutoCollectLoop()
-    if CollectRunning then return end
-    CollectRunning = true
-    task.spawn(function()
-        while AutoCollectEnabled do
-            if FarmAstroTokenEnabled and CollectMode == "清洁" then
-                NotifyFarmAstroCleanMode()
-                task.wait(1)
-                continue
-            end
-
-            if #SelectedCollectItems > 0 then
-                local itemsToCollect = FindNewCollectItems()
-                if #itemsToCollect > 0 then
-                    if CollectMode == "IDGF" then
-                        BeginCollectPause()
-                        for _, obj in ipairs(itemsToCollect) do
-                            if not AutoCollectEnabled then break end
-                            if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
-                        end
-                        EndCollectPause()
-
-                    elseif CollectMode == "清洁" then
-                        local waitedClean = 0
-                        while not AllMobsDead() and AutoCollectEnabled do
-                            task.wait(0.5)
-                            waitedClean = waitedClean + 0.5
-                            if waitedClean >= 120 then break end
-                        end
-                        if not AutoCollectEnabled then break end
-
-                        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
-                        BeginCollectPause()
-                        for _, obj in ipairs(FindNewCollectItems()) do
-                            if not AutoCollectEnabled then break end
-                            if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
-                        end
-                        EndCollectPause()
-                        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(true) end
-
-                        if not IsPlayerHPFull() and AutoFillUpEnabled then
-                            local fw = 0
-                            while not IsPlayerHPFull() and AutoFillUpEnabled and AutoCollectEnabled do
-                                task.wait(0.5)
-                                fw = fw + 0.5
-                                if fw >= 60 then break end
-                            end
-                        end
-                    end
-                else
-                    for obj, _ in pairs(KnownCollectItems) do
-                        if IsItemGone(obj) then KnownCollectItems[obj] = nil end
-                    end
-                end
-            end
-            task.wait(0.65)
-        end
-        FarmCollecting = false
-        CollectRunning = false
-    end)
-end
-
-workspace.DescendantAdded:Connect(function(obj)
-    if not AutoCollectEnabled or #SelectedCollectItems == 0 then return end
-    if AddCollectCandidate(obj) then
-        CombatDebug("CollectItem", "新物品已缓存: " .. tostring(obj.Name), 3)
-    end
-end)
 -- ============================================================
 -- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
 -- ============================================================
@@ -5307,7 +5287,6 @@ Main:Toggle({
         end
     end
 })
-
 -- ============================================================
 -- ====================== ESP SYSTEM =========================
 -- ============================================================
@@ -7162,7 +7141,6 @@ _G.__YYA_ShopSystems = function()
 end
 _G.__YYA_ShopSystems()
 _G.__YYA_ShopSystems = nil
-
 -- ====================== UI: COLLECT TAB ======================
 Main6:Section({ Title = "自动收集", Icon = "package" })
 
