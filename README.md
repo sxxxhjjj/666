@@ -3103,7 +3103,7 @@ function ShouldBlockFarmAstroGodModePercent()
     return FarmAstroTokenEnabled == true and SyncFarmOnly == false and table.find(MiscOptions or {}, "上帝模式") ~= nil
 end
 
--- ====================== GOD MODE LOOP ======================
+-- ====================== GOD MODE LOOP（黑暗/天文模式专用） ======================
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -3121,6 +3121,29 @@ task.spawn(function()
 
                 if hpPercent < GodModeValue then
                     ForceGodModeOnce("血量低于上帝模式阈值")
+                end
+            end)
+        end
+    end
+end)
+
+-- ====================== 精简版上帝模式循环 ======================
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if SimpleFarmEnabled and SimpleGodModeEnabled then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+
+                local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
+                if not humanoid then return end
+                if humanoid.MaxHealth <= 0 then return end
+
+                local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
+
+                if hpPercent < SimpleGodModeValue then
+                    ForceGodModeOnce("精简版上帝模式")
                 end
             end)
         end
@@ -4297,7 +4320,7 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- ====================== MAIN FARM LOOP (黑暗/天文模式) =========
+-- ====================== MAIN FARM LOOP（黑暗/天文模式）=========
 -- ============================================================
 FarmLoopToken = FarmLoopToken or 0
 
@@ -4893,10 +4916,24 @@ end)
 -- ============================================================
 
 SimpleFarmEnabled = Config:Get("SimpleFarmEnabled", false)
-SimpleFarmMode = Config:Get("SimpleFarmMode", "补间")  -- "传送" 或 "补间"
+SimpleFarmMode = Config:Get("SimpleFarmMode", "补间")
 SimpleFarmRunning = false
 SimpleFarmThread = nil
 SimpleFarmLoopDelay = 0.1
+
+-- ====== 精简版专用自动化开关（独立于主脚本） ======
+SimpleAutoAttackEnabled = Config:Get("SimpleAutoAttackEnabled", false)
+SimpleAutoSkillEnabled = Config:Get("SimpleAutoSkillEnabled", false)
+SimpleSafeModeEnabled = Config:Get("SimpleSafeModeEnabled", false)
+SimpleGodModeEnabled = Config:Get("SimpleGodModeEnabled", false)
+SimpleAutoFillUpEnabled = Config:Get("SimpleAutoFillUpEnabled", false)
+SimpleSafeValue = Config:Get("SimpleSafeValue", 50)
+SimpleGodModeValue = Config:Get("SimpleGodModeValue", 50)
+SimpleSelectedSkills = Config:Get("SimpleSelectedSkills", { "全部" })
+
+-- 精简版技能列表
+SimpleSkillList = { "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
+SimpleSkillDropdownValues = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
 
 -- 精简版：获取最近怪物（复用原脚本过滤逻辑，自动排除玩家和友好AI）
 function SimpleGetNearestMob()
@@ -4955,9 +4992,43 @@ function SimpleAttackMob()
     end
 end
 
--- 精简版：启动循环
+-- 精简版：发送技能按键
+function SimpleSendSkill(key)
+    local keyCode = Enum.KeyCode[key]
+    if keyCode then
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+            task.wait(0.05)
+            VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+        end)
+    end
+end
+
+-- 精简版：启动循环（完整版，接入所有自动化功能）
 function StartSimpleFarm()
     if SimpleFarmRunning then return end
+    
+    -- 确保精简版自己的上帝模式循环在运行
+    task.spawn(function()
+        while true do
+            task.wait(0.1)
+            if SimpleFarmEnabled and SimpleGodModeEnabled then
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if not char then return end
+                    local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
+                    if not humanoid then return end
+                    if humanoid.MaxHealth <= 0 then return end
+                    local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
+                    if hpPercent < SimpleGodModeValue then
+                        ForceGodModeOnce("精简版上帝模式")
+                    end
+                end)
+            end
+            task.wait(0.1)
+        end
+    end)
+    
     SimpleFarmRunning = true
     
     SimpleFarmThread = task.spawn(function()
@@ -4973,16 +5044,55 @@ function StartSimpleFarm()
                 continue
             end
             
+            -- ====== 精简版安全模式：血量低时撤退 ======
+            if SimpleSafeModeEnabled and GetPlayerHealthPercent() < SimpleSafeValue then
+                local mob = SimpleGetNearestMob()
+                if mob then
+                    local mobRoot = mob:FindFirstChild("HumanoidRootPart")
+                    if mobRoot then
+                        local safePos = mobRoot.Position + Vector3.new(0, 111, 0)
+                        pcall(function()
+                            Character:PivotTo(CFrame.new(safePos))
+                            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                        end)
+                    end
+                end
+                task.wait(0.5)
+                continue
+            end
+            
+            -- ====== 精简版自动填充 ======
+            if SimpleAutoFillUpEnabled and not IsPlayerHPFull() then
+                local waited = 0
+                while not IsFillUpPartReady() and SimpleAutoFillUpEnabled do
+                    waited = waited + 0.2
+                    if waited >= 30 then break end
+                    task.wait(0.2)
+                end
+                if IsFillUpPartReady() and SimpleAutoFillUpEnabled then
+                    DoFillUp()
+                    task.wait(1)
+                end
+                task.wait(0.5)
+                continue
+            end
+            
             local mob = SimpleGetNearestMob()
             if mob then
                 local cf = GetTargetCFrame(mob, FarmPosition)
                 if cf then
                     SimpleMoveToCFrame(cf)
                     
-                    -- 持续攻击当前目标，直到怪物死亡或更近的怪物出现
+                    -- 持续攻击当前目标
                     while SimpleFarmEnabled and SimpleFarmRunning and mob and mob.Parent do
                         local humanoid = mob:FindFirstChild("Humanoid")
                         if not humanoid or humanoid.Health <= 0 then break end
+                        
+                        -- 精简版安全模式：攻击中血量过低则撤退
+                        if SimpleSafeModeEnabled and GetPlayerHealthPercent() < SimpleSafeValue then
+                            break
+                        end
                         
                         -- 检查是否有更近的怪物
                         local newMob = SimpleGetNearestMob()
@@ -4993,12 +5103,31 @@ function StartSimpleFarm()
                                 local newDist = (HumanoidRootPart.Position - newRoot.Position).Magnitude
                                 local oldDist = (HumanoidRootPart.Position - oldRoot.Position).Magnitude
                                 if newDist < oldDist - 10 then
-                                    break  -- 切换到更近的怪物
+                                    break
                                 end
                             end
                         end
                         
-                        SimpleAttackMob()
+                        -- ====== 精简版自动攻击 ======
+                        if SimpleAutoAttackEnabled then
+                            SimpleAttackMob()
+                        end
+                        
+                        -- ====== 精简版自动技能 ======
+                        if SimpleAutoSkillEnabled then
+                            local keysToPress = {}
+                            if table.find(SimpleSelectedSkills, "全部") then
+                                keysToPress = SimpleSkillList
+                            else
+                                keysToPress = SimpleSelectedSkills
+                            end
+                            for _, key in ipairs(keysToPress) do
+                                if not SimpleAutoSkillEnabled or not SimpleFarmEnabled then break end
+                                SimpleSendSkill(key)
+                                task.wait(SkillDelay or 1)
+                            end
+                        end
+                        
                         task.wait(0.12)
                     end
                 end
@@ -5124,7 +5253,7 @@ SimpleFarmToggle = Main:Toggle({
 
 Main:Divider()
 
-Main:Section({ Title = "普通模式设置", Icon = "settings" })
+Main:Section({ Title = "精简版设置", Icon = "settings" })
 
 SimplePositionDropdown = Main:Dropdown({
     Title = "刷怪位置",
@@ -5167,6 +5296,102 @@ SimpleHeightSlider = Main:Slider({
         for mob, _ in pairs(MobHeightOverride) do
             if MobConfirmedPadding[mob] == nil then MobHeightOverride[mob] = nil end
         end
+    end
+})
+
+Main:Divider()
+
+Main:Section({ Title = "精简版自动化", Icon = "cpu" })
+
+SimpleAutoAttackToggle = Main:Toggle({
+    Title = "自动攻击",
+    Desc = "精简版：自动攻击当前目标。",
+    Value = SimpleAutoAttackEnabled,
+    Callback = function(state)
+        SimpleAutoAttackEnabled = state
+        Config:Set("SimpleAutoAttackEnabled", state)
+        Config:Save()
+    end
+})
+
+SimpleAutoSkillToggle = Main:Toggle({
+    Title = "自动技能",
+    Desc = "精简版：自动释放技能。",
+    Value = SimpleAutoSkillEnabled,
+    Callback = function(state)
+        SimpleAutoSkillEnabled = state
+        Config:Set("SimpleAutoSkillEnabled", state)
+        Config:Save()
+    end
+})
+
+SimpleSkillDropdown = Main:Dropdown({
+    Title = "精简版技能按键",
+    Desc = "选择自动技能将按下的键盘技能键（精简版专用）。",
+    Values = SimpleSkillDropdownValues,
+    Multi = true,
+    Value = SimpleSelectedSkills,
+    Callback = function(values)
+        SimpleSelectedSkills = values
+        Config:Set("SimpleSelectedSkills", values)
+        Config:Save()
+    end
+})
+
+SimpleSafeModeToggle = Main:Toggle({
+    Title = "安全模式",
+    Desc = "精简版：血量低于阈值时自动撤退。",
+    Value = SimpleSafeModeEnabled,
+    Callback = function(state)
+        SimpleSafeModeEnabled = state
+        Config:Set("SimpleSafeModeEnabled", state)
+        Config:Save()
+    end
+})
+
+SimpleSafeSlider = Main:Slider({
+    Title = "精简版安全血量（%）",
+    Desc = "设置安全模式触发撤退的血量百分比。",
+    Value = { Min = 1, Max = 99, Default = SimpleSafeValue },
+    Step = 1,
+    Callback = function(value)
+        SimpleSafeValue = value
+        Config:Set("SimpleSafeValue", value)
+        Config:Save()
+    end
+})
+
+SimpleGodModeToggle = Main:Toggle({
+    Title = "上帝模式",
+    Desc = "精简版：血量低于阈值时自伤触发复活。",
+    Value = SimpleGodModeEnabled,
+    Callback = function(state)
+        SimpleGodModeEnabled = state
+        Config:Set("SimpleGodModeEnabled", state)
+        Config:Save()
+    end
+})
+
+SimpleGodSlider = Main:Slider({
+    Title = "精简版上帝血量（%）",
+    Desc = "设置上帝模式的血量百分比阈值。",
+    Value = { Min = 1, Max = 99, Default = SimpleGodModeValue },
+    Step = 1,
+    Callback = function(value)
+        SimpleGodModeValue = value
+        Config:Set("SimpleGodModeValue", value)
+        Config:Save()
+    end
+})
+
+SimpleAutoFillToggle = Main:Toggle({
+    Title = "自动填充",
+    Desc = "精简版：血量不满时自动前往商店补血。",
+    Value = SimpleAutoFillUpEnabled,
+    Callback = function(state)
+        SimpleAutoFillUpEnabled = state
+        Config:Set("SimpleAutoFillUpEnabled", state)
+        Config:Save()
     end
 })
 
