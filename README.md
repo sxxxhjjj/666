@@ -653,6 +653,52 @@ FarmCollecting         = false
 CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
+-- ============================================================
+-- ====================== 精简版独立变量 ======================
+-- ============================================================
+-- 精简版完全独立于主脚本，所有变量带 Simple 前缀
+-- 不与主脚本共用任何变量、函数或逻辑
+
+SimpleFarmEnabled = Config:Get("SimpleFarmEnabled", false)
+SimpleFarmMode = Config:Get("SimpleFarmMode", "补间")
+SimpleFarmPosition = Config:Get("SimpleFarmPosition", "上方")
+SimpleFarmHeight = Config:Get("SimpleFarmHeight", 3)
+SimpleFarmRunning = false
+SimpleFarmThread = nil
+SimpleFarmStopRequested = false
+
+-- 精简版独立自动化开关
+SimpleAutoAttackEnabled = Config:Get("SimpleAutoAttackEnabled", false)
+SimpleAutoSkillEnabled = Config:Get("SimpleAutoSkillEnabled", false)
+SimpleSafeModeEnabled = Config:Get("SimpleSafeModeEnabled", false)
+SimpleGodModeEnabled = Config:Get("SimpleGodModeEnabled", false)
+SimpleAutoFillEnabled = Config:Get("SimpleAutoFillEnabled", false)
+SimpleAutoStartEnabled = Config:Get("SimpleAutoStartEnabled", false)
+SimpleAutoSkipHeliEnabled = Config:Get("SimpleAutoSkipHeliEnabled", false)
+
+-- 精简版独立数值配置
+SimpleSafeValue = Config:Get("SimpleSafeValue", 50)
+SimpleGodValue = Config:Get("SimpleGodValue", 50)
+SimpleSkillDelay = Config:Get("SimpleSkillDelay", 1)
+SimpleSelectedSkills = Config:Get("SimpleSelectedSkills", { "全部" })
+SimpleAttackInterval = 0.12
+
+-- 精简版技能列表
+SimpleSkillList = { "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
+SimpleSkillDropdownValues = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
+
+-- 精简版UI显示名称映射
+SimplePositionDisplayNames = { "上方", "下方" }
+SimplePositionMap = {
+    ["上方"] = "Above",
+    ["下方"] = "Under",
+}
+SimpleMovementDisplayNames = { "传送", "补间" }
+SimpleMovementMap = {
+    ["传送"] = "Teleport",
+    ["补间"] = "Tween",
+}
+
 function UpdateYYAWaitingPartCollision()
     if AutoFarmEnabled ~= true then
         if DestroyYYAWaitingPart then DestroyYYAWaitingPart() end
@@ -1794,7 +1840,423 @@ function GetMobMaxHP(mob)
     if not humanoid then return 0 end
     return humanoid.MaxHealth or 0
 end
+-- ============================================================
+-- ====================== 精简版独立函数 ======================
+-- ============================================================
+-- 精简版所有函数完全独立，不调用主脚本任何函数
+-- 所有函数带 Simple 前缀，与主脚本完全隔离
+
+-- 获取远程事件（独立实现）
+local function SimpleGetRemote(name)
+    return ReplicatedStorage and ReplicatedStorage:FindFirstChild(name)
+end
+
+-- 判断是否为有效怪物（排除玩家和友军）
+local function SimpleIsValidMob(obj)
+    if not obj or not obj:IsA("Model") then return false end
+    local humanoid = obj:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return false end
+    if Players:GetPlayerFromCharacter(obj) then return false end
+
+    -- 友军列表
+    local allyNames = {
+        ["Heavy Soldier Toilet V2"] = true,
+        ["Quad Laser Toilet"] = true,
+        ["Strider Rocket Laser"] = true,
+        ["Helicopter Camera"] = true,
+        ["Heavy Soldier Toilet V1"] = true,
+        ["Rocket Heli v2"] = true,
+        ["Gunner Camera man"] = true,
+        ["Attack Helicopter"] = true,
+        ["Swat Mutant"] = true,
+        ["Huge DJ Toilet"] = true,
+    }
+    if allyNames[obj.Name] then return false end
+
+    return true
+end
+
+-- 获取所有存活怪物（独立实现）
+local function SimpleGetLivingMobs()
+    local mobs = {}
+    local living = workspace:FindFirstChild("Living")
+    if living then
+        for _, child in ipairs(living:GetChildren()) do
+            if SimpleIsValidMob(child) then table.insert(mobs, child) end
+        end
+    else
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and SimpleIsValidMob(obj) then
+                table.insert(mobs, obj)
+            end
+        end
+    end
+    return mobs
+end
+
+-- 获取最近怪物（独立实现）
+local function SimpleGetNearestMob()
+    if not HumanoidRootPart then return nil end
+    local best, bestDist = nil, math.huge
+    for _, mob in ipairs(SimpleGetLivingMobs()) do
+        local root = mob:FindFirstChild("HumanoidRootPart")
+        if root then
+            local d = (HumanoidRootPart.Position - root.Position).Magnitude
+            if d < bestDist then best, bestDist = mob, d end
+        end
+    end
+    return best
+end
+
+-- 计算怪物视觉边界（独立实现）
+local function SimpleGetMobVisualBounds(mob)
+    local minY, maxY = math.huge, -math.huge
+    local cx, cz, count = 0, 0, 0
+    for _, part in ipairs(mob:GetDescendants()) do
+        if part:IsA("BasePart") and part.Transparency < 0.9 and part.Size.Y > 0.1 then
+            local pos, hy = part.Position, part.Size.Y * 0.5
+            if pos.Y - hy < minY then minY = pos.Y - hy end
+            if pos.Y + hy > maxY then maxY = pos.Y + hy end
+            cx, cz, count = cx + pos.X, cz + pos.Z, count + 1
+        end
+    end
+    if count == 0 then
+        local hrp = mob:FindFirstChild("HumanoidRootPart")
+        if hrp then return hrp.Position, hrp.Position.Y - 2, hrp.Position.Y + 2 end
+        return Vector3.new(0, 0, 0), 0, 4
+    end
+    return Vector3.new(cx / count, (minY + maxY) / 2, cz / count), minY, maxY
+end
+
+-- 获取目标CFrame（独立实现）
+local function SimpleGetTargetCFrame(mob)
+    local root = mob:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local center, minY, maxY = SimpleGetMobVisualBounds(mob)
+    local padding = SimpleFarmHeight
+    if SimpleFarmPosition == "上方" then
+        local targetY = math.max(maxY + padding, maxY + 0.5)
+        return CFrame.new(center.X, targetY, center.Z)
+    else
+        local targetY = math.min(minY - padding, minY - 0.5)
+        return CFrame.new(center.X, targetY, center.Z)
+    end
+end
+
+-- 移动到目标（独立实现）
+local function SimpleMoveToCFrame(cf)
+    if not cf or not Character or not HumanoidRootPart then return end
+    local humanoid = Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then humanoid.Sit = false end
+
+    if SimpleFarmMode == "传送" then
+        Character:PivotTo(cf)
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+    else
+        local tween = TweenService:Create(
+            HumanoidRootPart,
+            TweenInfo.new(0.8, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+            { CFrame = cf }
+        )
+        tween:Play()
+        local started = tick()
+        while tick() - started < 1.2 do
+            if not SimpleFarmEnabled or SimpleFarmStopRequested then
+                pcall(function() tween:Cancel() end)
+                break
+            end
+            if tween.PlaybackState == Enum.PlaybackState.Completed then break end
+            task.wait(0.05)
+        end
+        Character:PivotTo(cf)
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+    end
+end
+
+-- 攻击（独立实现）
+local function SimpleAttackMob()
+    local lmb = SimpleGetRemote("LMB")
+    if lmb then
+        pcall(function() lmb:FireServer() end)
+    end
+end
+
+-- 发送技能按键（独立实现）
+local function SimpleSendSkill(key)
+    local keyCode = Enum.KeyCode[key]
+    if keyCode then
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+            task.wait(0.05)
+            VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+        end)
+    end
+end
+
+-- 获取血量百分比（独立实现）
+local function SimpleGetHealthPercent()
+    local humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.MaxHealth <= 0 then return 100 end
+    return (humanoid.Health / humanoid.MaxHealth) * 100
+end
+
+-- 上帝模式自伤（独立实现）
+local function SimpleForceGodMode()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then return end
+        local head = char:FindFirstChild("Head")
+        if head then head:Destroy() end
+        task.wait(0.05)
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+        if torso then torso:Destroy() end
+        if humanoid.Health > 0 then
+            humanoid.Health = 0
+        end
+    end)
+end
+
+-- 自动填充（独立实现）
+local function SimpleDoFillUp()
+    local remote = SimpleGetRemote("ShopSystem")
+    if remote then
+        pcall(function() remote:FireServer("Buy", "FillHP") end)
+    end
+end
+
+local function SimpleIsFillUpReady()
+    local obj = workspace:FindFirstChild("HelicopterShop")
+    if obj then
+        local shop = obj:FindFirstChild("ShopXDD")
+        if shop then
+            local target = shop:FindFirstChild("PartForShop")
+            if target then
+                return (target.Position - Vector3.new(44.2756729, 26.3595276, -32.7318268)).Magnitude < 0.5
+            end
+        end
+    end
+    return false
+end
+
+-- 自动开始（独立实现）
+local function SimpleFireGetReady()
+    local now = tick()
+    if now - (SimpleFarmLastReadyAt or 0) < 0.85 then return false end
+    SimpleFarmLastReadyAt = now
+
+    local remote = SimpleGetRemote("GetReadyRemote")
+    if not remote then return false end
+
+    local ok, err = pcall(function()
+        remote:FireServer("1", true)
+        task.wait(0.2)
+        remote:FireServer("1", false)
+        task.wait(0.2)
+        remote:FireServer("2", false)
+        task.wait(0.2)
+        remote:FireServer("3", false)
+        task.wait(0.2)
+        remote:FireServer("1", true)
+    end)
+
+    if not ok then warn("[YYa] SimpleGetReadyRemote 失败:", err) end
+    return ok
+end
+SimpleFarmLastReadyAt = 0
+
+-- 自动跳过直升机（独立实现）
+local function SimpleTriggerAutoSkipHeli(state)
+    local remote = SimpleGetRemote("SetSettingAutoSkipWave")
+    if remote then pcall(function() remote:FireServer(state) end) end
+end
+
+-- ====================== 精简版主循环（完全独立） ======================
+
+local function SimpleStartLoop()
+    if SimpleFarmRunning then return end
+    SimpleFarmRunning = true
+    SimpleFarmStopRequested = false
+
+    -- 如果自动开始开启，开局自动准备
+    if SimpleAutoStartEnabled then
+        task.spawn(function()
+            SimpleFireGetReady()
+            task.wait(2)
+            SimpleFireGetReady()
+        end)
+    end
+
+    -- 如果自动跳过直升机开启，立即启用
+    if SimpleAutoSkipHeliEnabled then
+        SimpleTriggerAutoSkipHeli(true)
+    end
+
+    SimpleFarmThread = task.spawn(function()
+        while SimpleFarmEnabled and SimpleFarmRunning and not SimpleFarmStopRequested do
+            -- 刷新角色引用
+            if not Character or not Character.Parent then
+                Character = LocalPlayer.Character
+                if Character then HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart") end
+            end
+            if not HumanoidRootPart then
+                task.wait(0.5)
+                continue
+            end
+
+            -- ====== 精简版安全模式 ======
+            if SimpleSafeModeEnabled and SimpleGetHealthPercent() < SimpleSafeValue then
+                local mob = SimpleGetNearestMob()
+                if mob then
+                    local root = mob:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        local safePos = root.Position + Vector3.new(0, 111, 0)
+                        pcall(function()
+                            Character:PivotTo(CFrame.new(safePos))
+                            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                        end)
+                    end
+                end
+                task.wait(0.5)
+                continue
+            end
+
+            -- ====== 精简版自动填充 ======
+            if SimpleAutoFillEnabled and SimpleGetHealthPercent() < 100 then
+                if SimpleIsFillUpReady() then
+                    SimpleDoFillUp()
+                    task.wait(1)
+                else
+                    task.wait(0.5)
+                end
+                continue
+            end
+
+            -- ====== 获取最近怪物 ======
+            local mob = SimpleGetNearestMob()
+            if mob then
+                local cf = SimpleGetTargetCFrame(mob)
+                if cf then
+                    SimpleMoveToCFrame(cf)
+
+                    -- ====== 持续攻击循环 ======
+                    while SimpleFarmEnabled and SimpleFarmRunning and not SimpleFarmStopRequested and mob and mob.Parent do
+                        local humanoid = mob:FindFirstChild("Humanoid")
+                        if not humanoid or humanoid.Health <= 0 then
+                            break
+                        end
+
+                        -- 安全模式检查
+                        if SimpleSafeModeEnabled and SimpleGetHealthPercent() < SimpleSafeValue then
+                            break
+                        end
+
+                        -- 检查是否有更近的怪物
+                        local newMob = SimpleGetNearestMob()
+                        if newMob and newMob ~= mob then
+                            local newRoot = newMob:FindFirstChild("HumanoidRootPart")
+                            local oldRoot = mob:FindFirstChild("HumanoidRootPart")
+                            if newRoot and oldRoot then
+                                local newDist = (HumanoidRootPart.Position - newRoot.Position).Magnitude
+                                local oldDist = (HumanoidRootPart.Position - oldRoot.Position).Magnitude
+                                if newDist < oldDist - 10 then
+                                    break
+                                end
+                            end
+                        end
+
+                        -- ====== 自动攻击 ======
+                        if SimpleAutoAttackEnabled then
+                            SimpleAttackMob()
+                        end
+
+                        -- ====== 自动技能 ======
+                        if SimpleAutoSkillEnabled then
+                            local keysToPress = {}
+                            if table.find(SimpleSelectedSkills, "全部") then
+                                keysToPress = SimpleSkillList
+                            else
+                                keysToPress = SimpleSelectedSkills
+                            end
+                            for _, key in ipairs(keysToPress) do
+                                if not SimpleFarmEnabled or not SimpleFarmRunning or SimpleFarmStopRequested then
+                                    break
+                                end
+                                SimpleSendSkill(key)
+                                task.wait(SimpleSkillDelay)
+                            end
+                        end
+
+                        task.wait(SimpleAttackInterval or 0.12)
+                    end
+                end
+            else
+                -- 没有怪物，待机
+                task.wait(0.3)
+            end
+            task.wait(0.1)
+        end
+
+        -- 退出时清理
+        if SimpleAutoSkipHeliEnabled then
+            SimpleTriggerAutoSkipHeli(false)
+        end
+        SimpleFarmRunning = false
+    end)
+end
+
+local function SimpleStopLoop()
+    SimpleFarmStopRequested = true
+    if SimpleFarmThread then
+        task.cancel(SimpleFarmThread)
+        SimpleFarmThread = nil
+    end
+    SimpleFarmRunning = false
+    if SimpleAutoSkipHeliEnabled then
+        SimpleTriggerAutoSkipHeli(false)
+    end
+end
+
+-- ====================== 精简版启动/停止接口 ======================
+
+function StartSimpleFarm()
+    if SimpleFarmEnabled then
+        SimpleStartLoop()
+    end
+end
+
+function StopSimpleFarm()
+    SimpleFarmEnabled = false
+    SimpleStopLoop()
+    RestoreFarmCameraAndMovement()
+end
+
+-- ====================== 精简版独立上帝模式循环 ======================
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if SimpleFarmEnabled and SimpleGodModeEnabled then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if not humanoid or humanoid.MaxHealth <= 0 then return end
+                if SimpleGetHealthPercent() < SimpleGodValue then
+                    SimpleForceGodMode()
+                end
+            end)
+        end
+    end
+end)
+
+-- ============================================================
 -- ====================== MOB CACHE SYSTEM ======================
+-- ============================================================
 MobCacheList = {}
 MobCacheDirty = true
 MobCacheFolder = nil
@@ -2107,7 +2569,6 @@ function GetPriorityMob()
         return nil, nil, nil, 0
     end
 
-    -- 普通模式不会调用这里（使用精简版独立系统）
     return nil, nil, nil, 0
 end
 
@@ -3127,29 +3588,6 @@ task.spawn(function()
     end
 end)
 
--- ====================== 精简版上帝模式循环 ======================
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        if SimpleFarmEnabled and SimpleGodModeEnabled then
-            pcall(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-
-                local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
-                if not humanoid then return end
-                if humanoid.MaxHealth <= 0 then return end
-
-                local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
-
-                if hpPercent < SimpleGodModeValue then
-                    ForceGodModeOnce("精简版上帝模式")
-                end
-            end)
-        end
-    end
-end)
-
 -- ====================== AUTO FILL UP ======================
 function DoFillUp()
     local remote = GetRemote("ShopSystem")
@@ -3394,1782 +3832,13 @@ function ActivateAllFlushPrompts()
     end)
 end
 -- ============================================================
--- ====================== COLLECT SYSTEM ======================
--- ============================================================
-
-CollectItems = {
-    "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
-    "Astro Samples", "Weird Prism", "Key Card", "Zombie Core",
-    "Flash Drives", "Presents",
-}
-
-CollectGroupMap = {
-    ["Astro Samples"] = {
-        "Trooper Blast","Trooper Spinner","Specialist Blaster","Specialist Spinner",
-        "Specialist Sword Arm","Strider Leg","Interceptor Wing","Interceptor Goggles",
-        "Interceptor Spinner","Impactor Cannon","Impactor Laser","High Impactor Cannon",
-        "High Impactor Laser","Destructor Laser","Destructor Blaster","Destructor Core",
-        "Obliterator Blaster","Obliterator Spinner",
-    },
-    ["Presents"] = {
-        "Gacha Capsule",
-    },
-}
-
-AutoCollectEnabled   = Config:Get("AutoCollectEnabled", false)
-SelectedCollectItems = Config:Get("SelectedCollectItems", {})
-CollectMode          = Config:Get("CollectMode", "清洁")
-CollectMovementMode  = NormalizeCollectMovement(Config:Get("CollectMovementMode", "补间"))
-
-KnownCollectItems = {}
-CollectRunning    = false
-CollectCandidateCache = {}
-CollectCacheDirty = true
-CollectLastFullScan = 0
-
-function MatchesPattern(objectName, pattern)
-    local objL, patL = tostring(objectName or ""):lower(), tostring(pattern or ""):lower()
-    if objL == patL then return true end
-    if #objL > #patL and objL:sub(1, #patL) == patL then
-        local nc = objL:sub(#patL + 1, #patL + 1)
-        if nc == " " or nc == "#" or nc == "_" or nc == "-" then return true end
-    end
-    if CollectGroupMap[pattern] then
-        for _, gName in ipairs(CollectGroupMap[pattern]) do
-            if objL == gName:lower() then return true end
-        end
-    end
-    return false
-end
-
-function IsCollectTarget(objectName)
-    for _, pattern in ipairs(SelectedCollectItems) do
-        if MatchesPattern(objectName, pattern) then return true end
-    end
-    return false
-end
-
-function IsCollectObject(obj)
-    return obj and obj.Parent and (obj:IsA("Model") or obj:IsA("MeshPart") or obj:IsA("Part") or obj:IsA("BasePart"))
-end
-
-function AddCollectCandidate(obj)
-    if IsCollectObject(obj) and IsCollectTarget(obj.Name) then
-        CollectCandidateCache[obj] = true
-        return true
-    end
-    return false
-end
-
-function RebuildCollectCache()
-    CollectCandidateCache = {}
-    if #SelectedCollectItems > 0 then
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            AddCollectCandidate(obj)
-        end
-    end
-    CollectCacheDirty = false
-    CollectLastFullScan = tick()
-end
-
-function FindNewCollectItems()
-    if CollectCacheDirty or tick() - CollectLastFullScan > 5 then
-        RebuildCollectCache()
-    end
-
-    local found = {}
-    for obj, _ in pairs(CollectCandidateCache) do
-        if not obj or not obj.Parent or not IsCollectTarget(obj.Name) then
-            CollectCandidateCache[obj] = nil
-            KnownCollectItems[obj] = nil
-        elseif not KnownCollectItems[obj] and IsCollectObject(obj) then
-            table.insert(found, obj)
-        end
-    end
-    return found
-end
-
-function GetItemRootPart(obj)
-    if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
-    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then return obj end
-    return nil
-end
-
-function GetItemTargetCFrame(itemRoot)
-    if not itemRoot then return nil end
-    return CFrame.new(itemRoot.Position + Vector3.new(0, 3, 0), itemRoot.Position)
-end
-
-function MoveToItem(itemRoot)
-    RefreshCombatCharacter()
-    if not itemRoot or not Character or not HumanoidRootPart then return false end
-
-    local targetCF = GetItemTargetCFrame(itemRoot)
-    if not targetCF then return false end
-
-    if CollectMovementMode == "传送" then
-        pcall(function()
-            Character:PivotTo(targetCF)
-            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-        end)
-        return true
-    end
-
-    local ok = pcall(function()
-        local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = targetCF })
-        tween:Play()
-        local started = tick()
-        repeat
-            task.wait(0.05)
-            if not AutoCollectEnabled or IsItemGone(itemRoot) then
-                pcall(function() tween:Cancel() end)
-                break
-            end
-        until tween.PlaybackState ~= Enum.PlaybackState.Playing or tick() - started > math.max(TweenSpeed + 1, 3)
-        pcall(function()
-            Character:PivotTo(targetCF)
-            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-        end)
-    end)
-
-    return ok
-end
-
-function ActivateItemPrompts(obj)
-    pcall(function()
-        for _, child in ipairs(obj:GetDescendants()) do
-            if child:IsA("ProximityPrompt") then
-                child.HoldDuration = 0
-                child.MaxActivationDistance = 50
-                if fireproximityprompt then fireproximityprompt(child) end
-                child:InputHoldBegin()
-                task.wait(0.04)
-                child:InputHoldEnd()
-            end
-        end
-    end)
-end
-
-function IsItemGone(obj) return not obj or not obj.Parent end
-
-function BeginCollectPause()
-    FarmCollecting = true
-    FarmForceRetarget = true
-    LockActive = false
-    if FarmAstroTokenEnabled then SetFarmAstroCollectPause(true) end
-    task.wait(0.08)
-end
-
-function EndCollectPause()
-    if FarmAstroTokenEnabled then SetFarmAstroCollectPause(false) end
-    FarmCollecting = false
-    FarmForceRetarget = true
-    if AutoFarmEnabled then
-        WaitingRespawn = false
-        StartFarmLoop()
-    end
-    HandleMiscOptions(MiscOptions)
-    task.delay(0.6, function() FarmForceRetarget = false end)
-end
-
-function CollectSingleItem(obj)
-    if IsItemGone(obj) then return end
-    local itemRoot = GetItemRootPart(obj)
-    if not itemRoot then return end
-
-    MoveToItem(itemRoot)
-
-    local timeout = 0
-    while AutoCollectEnabled and not IsItemGone(obj) and timeout < 8 do
-        itemRoot = GetItemRootPart(obj)
-        if not itemRoot then break end
-
-        if timeout == 0 or timeout % 0.3 < 0.16 then
-            local targetCF = GetItemTargetCFrame(itemRoot)
-            pcall(function()
-                if targetCF and Character and HumanoidRootPart then
-                    Character:PivotTo(targetCF)
-                    HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-                    HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-                end
-            end)
-        end
-
-        ActivateItemPrompts(obj)
-        task.wait(0.15)
-        timeout = timeout + 0.15
-    end
-
-    KnownCollectItems[obj] = true
-end
-
-function AllMobsDead()
-    return #GetFarmCandidateMobs(false) == 0
-end
-
-function StartAutoCollectLoop()
-    if CollectRunning then return end
-    CollectRunning = true
-    task.spawn(function()
-        while AutoCollectEnabled do
-            if FarmAstroTokenEnabled and CollectMode == "清洁" then
-                NotifyFarmAstroCleanMode()
-                task.wait(1)
-                continue
-            end
-
-            if #SelectedCollectItems > 0 then
-                local itemsToCollect = FindNewCollectItems()
-                if #itemsToCollect > 0 then
-                    if CollectMode == "IDGF" then
-                        BeginCollectPause()
-                        for _, obj in ipairs(itemsToCollect) do
-                            if not AutoCollectEnabled then break end
-                            if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
-                        end
-                        EndCollectPause()
-
-                    elseif CollectMode == "清洁" then
-                        local waitedClean = 0
-                        while not AllMobsDead() and AutoCollectEnabled do
-                            task.wait(0.5)
-                            waitedClean = waitedClean + 0.5
-                            if waitedClean >= 120 then break end
-                        end
-                        if not AutoCollectEnabled then break end
-
-                        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
-                        BeginCollectPause()
-                        for _, obj in ipairs(FindNewCollectItems()) do
-                            if not AutoCollectEnabled then break end
-                            if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
-                        end
-                        EndCollectPause()
-                        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(true) end
-
-                        if not IsPlayerHPFull() and AutoFillUpEnabled then
-                            local fw = 0
-                            while not IsPlayerHPFull() and AutoFillUpEnabled and AutoCollectEnabled do
-                                task.wait(0.5)
-                                fw = fw + 0.5
-                                if fw >= 60 then break end
-                            end
-                        end
-                    end
-                else
-                    for obj, _ in pairs(KnownCollectItems) do
-                        if IsItemGone(obj) then KnownCollectItems[obj] = nil end
-                    end
-                end
-            end
-            task.wait(0.65)
-        end
-        FarmCollecting = false
-        CollectRunning = false
-    end)
-end
-
-workspace.DescendantAdded:Connect(function(obj)
-    if not AutoCollectEnabled or #SelectedCollectItems == 0 then return end
-    if AddCollectCandidate(obj) then
-        CombatDebug("CollectItem", "新物品已缓存: " .. tostring(obj.Name), 3)
-    end
-end)
-
--- ============================================================
--- ====================== FARM ASTRO TOKEN ====================
--- ============================================================
-FARM_ASTRO_TOKEN_IMAGE = "rbxassetid://103720636367587"
-FARM_ASTRO_TOP_A       = CFrame.new(-680, 167, 505)
-FARM_ASTRO_TOP_B       = CFrame.new(495, 167, 505)
-
-FARM_ASTRO_LOW_A       = CFrame.new(-680, -15, -555)
-FARM_ASTRO_LOW_B       = CFrame.new(500, -15, -555)
-FARM_ASTRO_TIMER_TOP_CF = CFrame.new(-23.3435822, 67, 0.341766357)
-FARM_ASTRO_TIMER_BOTTOM_CF = CFrame.new(-23.3435822, 2, 0.341766357)
-FARM_ASTRO_TIMER_SAFE_CF = FARM_ASTRO_TIMER_BOTTOM_CF
-FARM_ASTRO_TIMER_PART_OFFSET = CFrame.new(0, -4, 0)
-FARM_ASTRO_TWEEN_TIME  = 0.3
-FARM_ASTRO_TIMER_DROP_TIME = 0.35
-
-function NotifyFarmAstroAutoFarm()
-    local now = tick()
-    if now - FarmAstroTokenLastAutoFarmNotify < 3 then return end
-    FarmAstroTokenLastAutoFarmNotify = now
-    WindUI:Notify({
-        Title = "Farm Astro Token",
-        Content = "请先关闭自动刷怪再使用 Farm Astro Token。",
-        Duration = 4,
-        Icon = "triangle-alert"
-    })
-end
-
-function NotifyFarmAstroCleanMode()
-    local now = tick()
-    if now - FarmAstroTokenLastCleanNotify < 5 then return end
-    FarmAstroTokenLastCleanNotify = now
-    WindUI:Notify({
-        Title = "Farm Astro Token",
-        Content = "Farm Astro Token 不会击杀怪物，因此清洁模式无法收集物品。请选择 IDGF 模式。",
-        Duration = 5,
-        Icon = "triangle-alert"
-    })
-end
-
-function CheckFarmAstroCollectMode()
-    if FarmAstroTokenEnabled and AutoCollectEnabled and CollectMode == "清洁" then
-        NotifyFarmAstroCleanMode()
-        return false
-    end
-    return true
-end
-
-function GetFarmAstroTimerLabel()
-    local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return nil end
-    local wavesGui = playerGui:FindFirstChild("WavesGui")
-    if not wavesGui then return nil end
-    local frame = wavesGui:FindFirstChild("Frame")
-    if not frame then return nil end
-    return frame:FindFirstChild("Timer")
-end
-
-function GetFarmAstroTimerValue()
-    local timerLabel = GetFarmAstroTimerLabel()
-    if not timerLabel then return nil end
-    local textValue = tostring(timerLabel.Text or "")
-    local numberText = textValue:match("(%d+)%s*$") or textValue:match("(%d+)")
-    if numberText then return tonumber(numberText) end
-    return nil
-end
-
-function UpdateFarmAstroWaveTimerArmed(timerValue)
-    FarmAstroLastWaveTimer = timerValue
-    if timerValue ~= nil and timerValue > 10 then
-        FarmAstroWaveTimerArmed = true
-    end
-end
-
-function IsFarmAstroTimerEnding()
-    if tick() < FarmAstroTokenTimerIgnoreUntil then return false end
-    local timerValue = GetFarmAstroTimerValue()
-    UpdateFarmAstroWaveTimerArmed(timerValue)
-    return timerValue ~= nil and timerValue <= 10 and FarmAstroWaveTimerArmed == true
-end
-
-function IsFarmAstroTimerResetForNextWave()
-    local timerValue = GetFarmAstroTimerValue()
-    return timerValue ~= nil and timerValue > 10
-end
-
-function ShouldKeepFarmAstroFinalLock()
-    if not FarmAstroTokenEnabled then return false end
-    if FarmAstroFinalLockActive or FarmAstroTokenTimerHold or FarmAstroTimerDropping then return true end
-    local timerValue = GetFarmAstroTimerValue()
-    return timerValue ~= nil and timerValue <= 3 and FarmAstroWaveTimerArmed == true
-end
-
-function HoldFarmAstroBottomLockOnce()
-    pcall(function()
-        local char, hrp, hum = GetFarmAstroCharacter()
-        if not char or not hrp then return end
-        if hum then
-            hum.Sit = false
-            hum.PlatformStand = false
-            hum.AutoRotate = true
-        end
-        char:PivotTo(FARM_ASTRO_TIMER_BOTTOM_CF)
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
-    end)
-end
-
-function IsFarmAstroGodModeSelected()
-    return table.find(MiscOptions or {}, "上帝模式") ~= nil
-end
-
-function PauseFarmAstroGodModeForTimer()
-    if not FarmAstroTokenEnabled then return false end
-    if SyncFarmOnly then return false end
-    if not IsFarmAstroGodModeSelected() then return false end
-    if FarmAstroGodModePaused then return true end
-    if tick() < FarmAstroTokenTimerIgnoreUntil then return false end
-
-    local timerValue = GetFarmAstroTimerValue()
-    UpdateFarmAstroWaveTimerArmed(timerValue)
-    if timerValue ~= nil and timerValue <= 10 and FarmAstroWaveTimerArmed == true then
-        FarmAstroGodModePaused = true
-        GodModeTriggered = false
-        CombatDebug("FarmAstroGodSync", "上帝模式百分比在波次计时器 " .. tostring(timerValue) .. " 时暂停", 2, false)
-        return true
-    end
-
-    return false
-end
-
-function ResumeFarmAstroGodModeAfterRespawn(reason)
-    local wasPaused = FarmAstroGodModePaused
-    FarmAstroGodModePaused = false
-    FarmAstroReviveGodTriggered = false
-    FarmAstroReviveTimerArmed = false
-    FarmAstroLastReviveTimer = nil
-    FarmAstroFinalLockActive = false
-    FarmAstroTimerDropping = false
-    FarmAstroBottomGodTriggered = false
-    FarmAstroReviveTimerArmed = false
-    FarmAstroLastReviveTimer = nil
-    FarmAstroWaveTimerArmed = false
-    FarmAstroLastWaveTimer = nil
-
-    if wasPaused and IsFarmAstroGodModeSelected() then
-        CombatDebug("FarmAstroGodSync", "上帝模式在 " .. tostring(reason or "重生") .. " 后恢复", 2, false)
-        task.defer(function() HandleMiscOptions(MiscOptions) end)
-    end
-end
-
-function IsFarmAstroReviveState()
-    local char, hrp, humanoid = GetFarmAstroCharacter()
-    if not char or not hrp or not humanoid then return false end
-    if humanoid.Health <= 0 then return false end
-    return humanoid.Health <= 1.05
-end
-
-function GetFarmAstroReviveTimerLabel()
-    if not IsFarmAstroReviveState() then return nil end
-    local char, hrp = GetFarmAstroCharacter()
-    if not char or not hrp then return nil end
-    local reviveUI = hrp:FindFirstChild("ReviveUI")
-    if not reviveUI then return nil end
-    if reviveUI.Enabled == false then return nil end
-    local frame = reviveUI:FindFirstChild("Frame")
-    if not frame then return nil end
-    if frame:IsA("GuiObject") and frame.Visible == false then return nil end
-    local label = frame:FindFirstChild("TextLabel")
-    if not label then return nil end
-    if label:IsA("GuiObject") and label.Visible == false then return nil end
-    return label
-end
-
-function GetFarmAstroReviveTimerValue()
-    local label = GetFarmAstroReviveTimerLabel()
-    if not label then return nil end
-    local textValue = tostring(label.Text or "")
-    local numberText = textValue:match("^%s*[Tt][Ii][Mm][Ee][Rr]%s*:%s*(%d+)%s*$")
-    if numberText then return tonumber(numberText) end
-    return nil
-end
-
-function UpdateFarmAstroReviveTimerArmed(timerValue)
-    FarmAstroLastReviveTimer = timerValue
-    if not IsFarmAstroReviveState() then
-        FarmAstroReviveTimerArmed = false
-        return
-    end
-    if timerValue ~= nil and timerValue > 5 then
-        FarmAstroReviveTimerArmed = true
-    end
-end
-
-function CheckFarmAstroReviveGodModeOnce()
-    if not FarmAstroTokenEnabled or not ShouldBlockFarmAstroGodModePercent() then
-        FarmAstroReviveGodTriggered = false
-        FarmAstroReviveTimerArmed = false
-        FarmAstroLastReviveTimer = nil
-        return
-    end
-
-    local reviveTimer = GetFarmAstroReviveTimerValue()
-    UpdateFarmAstroReviveTimerArmed(reviveTimer)
-
-    if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
-        if not FarmAstroReviveGodTriggered then
-            if ForceGodModeOnce("Farm Astro 复活计时器") then
-                FarmAstroReviveGodTriggered = true
-                FarmAstroReviveTimerArmed = false
-            end
-        end
-    elseif reviveTimer == nil then
-        FarmAstroReviveGodTriggered = false
-        FarmAstroReviveTimerArmed = false
-        FarmAstroLastReviveTimer = nil
-    elseif reviveTimer > 5 then
-        FarmAstroReviveGodTriggered = false
-    end
-end
-
-function CheckFarmAstroBottomGodMode()
-    if not FarmAstroTokenEnabled or not ShouldBlockFarmAstroGodModePercent() then return end
-    if not FarmAstroFinalLockActive then return end
-    if FarmAstroBottomGodTriggered then return end
-
-    local reviveTimer = GetFarmAstroReviveTimerValue()
-    UpdateFarmAstroReviveTimerArmed(reviveTimer)
-
-    if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
-        if ForceGodModeOnce("Farm Astro 底部锁定复活计时器") then
-            FarmAstroBottomGodTriggered = true
-            FarmAstroReviveGodTriggered = true
-            FarmAstroReviveTimerArmed = false
-        end
-    elseif reviveTimer == nil then
-        FarmAstroBottomGodTriggered = false
-        FarmAstroReviveTimerArmed = false
-        FarmAstroLastReviveTimer = nil
-    elseif reviveTimer > 5 then
-        FarmAstroBottomGodTriggered = false
-    end
-end
-
-function FarmAstroRuntimeChecks()
-    if not FarmAstroTokenEnabled then return end
-    PauseFarmAstroGodModeForTimer()
-    CheckFarmAstroReviveGodModeOnce()
-    CheckFarmAstroBottomGodMode()
-end
-
-function GetFarmAstroCharacter()
-    local char = LocalPlayer.Character or Character
-    if (not char or not char.Parent) and workspace:FindFirstChild("Living") then
-        char = workspace.Living:FindFirstChild(LocalPlayer.Name) or workspace.Living:FindFirstChild(LocalPlayer.DisplayName)
-    end
-    if char and char ~= Character then Character = char end
-    if char and (not HumanoidRootPart or HumanoidRootPart.Parent ~= char) then
-        HumanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-    end
-    return char, HumanoidRootPart, char and (char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid"))
-end
-
-function CreateFarmAstroTokenPart()
-    if FarmAstroTokenPart and FarmAstroTokenPart.Parent then return FarmAstroTokenPart end
-
-    local part = Instance.new("Part")
-    part.Name = "farm_astro_token"
-    part.Size = Vector3.new(10, 1, 10)
-    part.Anchored = true
-    part.CanCollide = true
-    part.CanTouch = false
-    part.CanQuery = false
-    part.Material = Enum.Material.Neon
-    part.Transparency = 1
-    part.CFrame = FARM_ASTRO_TOP_A
-    part.Parent = workspace
-
-    for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
-        local decal = Instance.new("Decal")
-        decal.Name = "farm_astro_token_image"
-        decal.Texture = FARM_ASTRO_TOKEN_IMAGE
-        decal.Face = face
-        decal.Transparency = 0
-        decal.Parent = part
-    end
-
-    FarmAstroTokenPart = part
-    return part
-end
-
-function FarmAstroSnapCharacterToPart()
-    if not FarmAstroTokenPart or FarmAstroTokenPauseCollect then return end
-    pcall(function()
-        local char, hrp, hum = GetFarmAstroCharacter()
-        if not char or not hrp then return end
-        if hum then
-            hum.Sit = false
-            hum.PlatformStand = false
-            hum.AutoRotate = true
-        end
-        char:PivotTo(FarmAstroTokenPart.CFrame * CFrame.new(0, 4, 0))
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
-    end)
-end
-
-function CancelFarmAstroTween()
-    if FarmAstroTokenTween then
-        pcall(function() FarmAstroTokenTween:Cancel() end)
-        FarmAstroTokenTween = nil
-    end
-end
-
-function MoveFarmAstroToTimerSafe()
-    if FarmAstroFinalLockActive then return end
-
-    CancelFarmAstroTween()
-    CreateFarmAstroTokenPart()
-
-    FarmAstroTokenTimerHold = false
-    FarmAstroTimerDropping = true
-    FarmAstroFinalLockActive = false
-    FarmAstroBottomGodTriggered = false
-    FarmAstroReviveTimerArmed = false
-    FarmAstroLastReviveTimer = nil
-    FarmAstroWaveTimerArmed = false
-    FarmAstroLastWaveTimer = nil
-
-    pcall(function()
-        if FarmAstroTokenPart and FarmAstroTokenPart.Parent then
-            FarmAstroTokenPart.CFrame = FARM_ASTRO_TIMER_BOTTOM_CF * FARM_ASTRO_TIMER_PART_OFFSET
-        end
-    end)
-
-    pcall(function()
-        local char, hrp, hum = GetFarmAstroCharacter()
-        if not char or not hrp then return end
-        if hum then
-            hum.Sit = false
-            hum.PlatformStand = false
-            hum.AutoRotate = true
-        end
-
-        char:PivotTo(FARM_ASTRO_TIMER_TOP_CF)
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
-    end)
-
-    pcall(function()
-        local char, hrp, hum = GetFarmAstroCharacter()
-        if not char or not hrp then return end
-        local tween = TweenService:Create(
-            hrp,
-            TweenInfo.new(FARM_ASTRO_TIMER_DROP_TIME, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
-            { CFrame = FARM_ASTRO_TIMER_BOTTOM_CF }
-        )
-        tween:Play()
-        WaitTweenWithTimeout(tween, (FARM_ASTRO_TIMER_DROP_TIME or 0.35) + 0.45)
-        if hum then
-            hum.Sit = false
-            hum.PlatformStand = false
-            hum.AutoRotate = true
-        end
-        char:PivotTo(FARM_ASTRO_TIMER_BOTTOM_CF)
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
-    end)
-
-    FarmAstroTimerDropping = false
-    FarmAstroTokenTimerHold = true
-    FarmAstroFinalLockActive = true
-    CheckFarmAstroBottomGodMode()
-end
-
-function WaitFarmAstroRespawnAfterTimer()
-    MoveFarmAstroToTimerSafe()
-    local lockStartedAt = tick()
-
-    while FarmAstroTokenEnabled do
-        FarmAstroRuntimeChecks()
-        if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
-            HoldFarmAstroBottomLockOnce()
-        end
-
-        if tick() - lockStartedAt >= 0.25 and IsFarmAstroTimerResetForNextWave() then
-            break
-        end
-
-        task.wait(0.1)
-    end
-
-    FarmAstroTokenTimerHold = false
-    FarmAstroFinalLockActive = false
-    FarmAstroTimerDropping = false
-    FarmAstroBottomGodTriggered = false
-    FarmAstroReviveGodTriggered = false
-    FarmAstroReviveTimerArmed = false
-    FarmAstroLastReviveTimer = nil
-    FarmAstroWaveTimerArmed = false
-    FarmAstroLastWaveTimer = nil
-    FarmAstroTokenTimerIgnoreUntil = tick() + 2
-    ResumeFarmAstroGodModeAfterRespawn("Farm Astro 计时器重置")
-end
-
-FarmAstroNoClipParts = FarmAstroNoClipParts or {}
-FarmAstroNoClipChar = nil
-FarmAstroNoClipPartsAt = 0
-
-function RebuildFarmAstroNoClipParts(char)
-    FarmAstroNoClipParts = {}
-    FarmAstroNoClipChar = char
-    FarmAstroNoClipPartsAt = tick()
-    if not char then return end
-
-    pcall(function()
-        for _, obj in ipairs(char:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                table.insert(FarmAstroNoClipParts, obj)
-            end
-        end
-    end)
-end
-
-function ApplyFarmAstroNoClipToCharacter(char)
-    if not char then return end
-    if FarmAstroNoClipChar ~= char or tick() - (FarmAstroNoClipPartsAt or 0) > 1.25 then
-        RebuildFarmAstroNoClipParts(char)
-    end
-
-    for i = #FarmAstroNoClipParts, 1, -1 do
-        local obj = FarmAstroNoClipParts[i]
-        if obj and obj.Parent then
-            obj.CanCollide = false
-        else
-            table.remove(FarmAstroNoClipParts, i)
-        end
-    end
-end
-
-function StartFarmAstroNoClip()
-    if FarmAstroTokenNoClipConnection then return end
-    FarmAstroTokenNoClipConnection = RunService.Heartbeat:Connect(function()
-        if not FarmAstroTokenEnabled then return end
-        pcall(function()
-            local char, hrp, hum = GetFarmAstroCharacter()
-            if not char then return end
-            ApplyFarmAstroNoClipToCharacter(char)
-            if hum then hum.Sit = false; hum.PlatformStand = false end
-            if not FarmAstroTokenPauseCollect and hrp then
-                if FarmAstroTimerDropping then
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    hrp.AssemblyAngularVelocity = Vector3.zero
-                elseif FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
-                    char:PivotTo(FARM_ASTRO_TIMER_BOTTOM_CF)
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    hrp.AssemblyAngularVelocity = Vector3.zero
-                elseif FarmAstroTokenPart and FarmAstroTokenPart.Parent then
-                    char:PivotTo(FarmAstroTokenPart.CFrame * CFrame.new(0, 4, 0))
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    hrp.AssemblyAngularVelocity = Vector3.zero
-                end
-            end
-        end)
-    end)
-end
-
-function StopFarmAstroNoClip()
-    if FarmAstroTokenNoClipConnection then
-        FarmAstroTokenNoClipConnection:Disconnect()
-        FarmAstroTokenNoClipConnection = nil
-    end
-end
-
-function SetFarmAstroCollectPause(state)
-    FarmAstroTokenPauseCollect = state == true
-    CancelFarmAstroTween()
-end
-
-function TweenFarmAstroTokenTo(cf, duration)
-    if not FarmAstroTokenPart or not FarmAstroTokenPart.Parent then return false end
-    FarmAstroRuntimeChecks()
-    if IsFarmAstroTimerEnding() then
-        MoveFarmAstroToTimerSafe()
-        return "timer_end"
-    end
-    CancelFarmAstroTween()
-
-    FarmAstroTokenTween = TweenService:Create(
-        FarmAstroTokenPart,
-        TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
-        { CFrame = cf }
-    )
-    FarmAstroTokenTween:Play()
-
-    while FarmAstroTokenEnabled do
-        FarmAstroRuntimeChecks()
-        if IsFarmAstroTimerEnding() then
-            MoveFarmAstroToTimerSafe()
-            return "timer_end"
-        end
-        if FarmAstroTokenPauseCollect then
-            CancelFarmAstroTween()
-            return true
-        end
-        if not FarmAstroTokenTween or FarmAstroTokenTween.PlaybackState ~= Enum.PlaybackState.Playing then break end
-        task.wait(0.05)
-    end
-
-    if not FarmAstroTokenEnabled then
-        CancelFarmAstroTween()
-        return false
-    end
-
-    FarmAstroTokenTween = nil
-    pcall(function() FarmAstroTokenPart.CFrame = cf end)
-    return true
-end
-
-function StartFarmAstroToken()
-    if FarmAstroTokenRunning then return end
-    if AutoFarmEnabled then
-        FarmAstroTokenEnabled = false
-        Config:Set("FarmAstroTokenEnabled", false)
-        Config:Save()
-        NotifyFarmAstroAutoFarm()
-        return
-    end
-
-    FarmAstroTokenRunning = true
-    NeedNoClip = true
-    LockActive = false
-    AutoAttackEnabled = false
-    AutoSkillEnabled = false
-    FarmAstroTokenTimerHold = false
-    FarmAstroWaveTimerArmed = false
-    FarmAstroLastWaveTimer = nil
-    CreateFarmAstroTokenPart()
-    StartFarmAstroNoClip()
-    CheckFarmAstroCollectMode()
-    HandleMiscOptions(MiscOptions)
-
-    task.spawn(function()
-        while FarmAstroTokenEnabled do
-            if FarmAstroTokenPauseCollect then
-                repeat task.wait(0.2) until not FarmAstroTokenPauseCollect or not FarmAstroTokenEnabled
-            end
-            if not FarmAstroTokenEnabled then break end
-
-            FarmAstroRuntimeChecks()
-
-            if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
-                WaitFarmAstroRespawnAfterTimer()
-                continue
-            end
-
-            if IsFarmAstroTimerEnding() then
-                WaitFarmAstroRespawnAfterTimer()
-                continue
-            end
-
-            CreateFarmAstroTokenPart()
-            FarmAstroTokenPart.CFrame = FARM_ASTRO_TOP_A
-            FarmAstroSnapCharacterToPart()
-
-            local topResult = TweenFarmAstroTokenTo(FARM_ASTRO_TOP_B, FARM_ASTRO_TWEEN_TIME)
-            if topResult == "timer_end" then
-                WaitFarmAstroRespawnAfterTimer()
-                continue
-            end
-            if not topResult then break end
-
-            if FarmAstroTokenPauseCollect then continue end
-            if IsFarmAstroTimerEnding() then
-                WaitFarmAstroRespawnAfterTimer()
-                continue
-            end
-
-            FarmAstroTokenPart.CFrame = FARM_ASTRO_LOW_A
-            FarmAstroSnapCharacterToPart()
-
-            local lowResult = TweenFarmAstroTokenTo(FARM_ASTRO_LOW_B, FARM_ASTRO_TWEEN_TIME)
-            if lowResult == "timer_end" then
-                WaitFarmAstroRespawnAfterTimer()
-                continue
-            end
-            if not lowResult then break end
-        end
-
-        CancelFarmAstroTween()
-        StopFarmAstroNoClip()
-        if FarmAstroTokenPart then pcall(function() FarmAstroTokenPart:Destroy() end) end
-        FarmAstroTokenPart = nil
-        FarmAstroTokenPauseCollect = false
-        FarmAstroTokenTimerHold = false
-        FarmAstroFinalLockActive = false
-        FarmAstroTimerDropping = false
-        FarmAstroBottomGodTriggered = false
-        FarmAstroReviveGodTriggered = false
-        FarmAstroWaveTimerArmed = false
-        FarmAstroLastWaveTimer = nil
-        FarmAstroTokenRunning = false
-        RestoreFarmCameraAndMovement()
-        ResumeFarmAstroGodModeAfterRespawn("Farm Astro 停止")
-        HandleMiscOptions(MiscOptions)
-    end)
-end
-
-function StopFarmAstroToken(saveState)
-    FarmAstroTokenEnabled = false
-    FarmAstroTokenTimerHold = false
-    FarmAstroFinalLockActive = false
-    FarmAstroTimerDropping = false
-    FarmAstroBottomGodTriggered = false
-    FarmAstroReviveGodTriggered = false
-    FarmAstroReviveTimerArmed = false
-    FarmAstroLastReviveTimer = nil
-    FarmAstroWaveTimerArmed = false
-    FarmAstroLastWaveTimer = nil
-    ResumeFarmAstroGodModeAfterRespawn("Farm Astro 已禁用")
-    if saveState then
-        Config:Set("FarmAstroTokenEnabled", false)
-        Config:Save()
-    end
-    CancelFarmAstroTween()
-end
-
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        if FarmAstroTokenEnabled then
-            FarmAstroRuntimeChecks()
-        else
-            FarmAstroReviveGodTriggered = false
-            FarmAstroBottomGodTriggered = false
-            FarmAstroWaveTimerArmed = false
-            FarmAstroLastWaveTimer = nil
-        end
-    end
-end)
-
--- ============================================================
--- ====================== MAIN FARM LOOP（黑暗/天文模式）=========
--- ============================================================
-FarmLoopToken = FarmLoopToken or 0
-
-function StartFarmLoop()
-    if FarmLoopRunning then return end
-    FarmLoopRunning = true
-    FarmLoopToken = (FarmLoopToken or 0) + 1
-    local thisFarmLoopToken = FarmLoopToken
-
-    task.spawn(function()
-        local ok, err = pcall(function()
-            task.spawn(function()
-                while AutoFarmEnabled and FarmLoopRunning and FarmLoopToken == thisFarmLoopToken do
-                    if WaitingRespawn and not LockActive and not FarmCollecting then
-                        pcall(function()
-                            RefreshCombatCharacter()
-                            UpdateYYAWaitingPartCollision()
-                            if Character and HumanoidRootPart then
-                                if IsNearIdlePosition() then
-                                    IdlePositionReached = true
-                                    HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-                                    HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-                                else
-                                    TeleportToIdle(false)
-                                end
-                            end
-                        end)
-                    else
-                        IdlePositionReached = false
-                    end
-                    task.wait(0.35)
-                end
-            end)
-
-            while AutoFarmEnabled and FarmLoopToken == thisFarmLoopToken do
-                RefreshCombatCharacter()
-
-                if ResetWaveTeleporting then
-                    LockActive = false
-                    FarmForceRetarget = true
-                    _interruptSignal = true
-                    task.wait(0.12)
-                    continue
-                end
-
-                if not Character or not HumanoidRootPart then
-                    task.wait(0.5)
-                    continue
-                end
-
-                if FarmCollecting then
-                    task.wait(0.2)
-                    continue
-                end
-
-                -- 黑暗模式：理智值收集
-                if FarmTargetMode == "黑暗维度模式" and HandleDarkDimensionSanity() then
-                    task.wait(0.1)
-                    continue
-                end
-
-                if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(nil) then
-                    task.wait(0.12)
-                    continue
-                end
-
-                local mob, mobType, extraData, priority = SafeGetPriorityMob()
-
-                if mob and ValidateFarmTargetBeforeMove and not ValidateFarmTargetBeforeMove(mob, "预目标检查") then
-                    task.wait(0.18)
-                    continue
-                end
-
-                if mob then
-                    if FarmTargetMode == "Astro 坚守模式" then AstroModeFinalRunning = false end
-                    WaitingRespawn = false
-                    IdlePositionReached = false
-                    _currentTargetPriority = priority
-
-                    if mobType == "GiantST" and extraData then
-                        if ValidateFarmTargetBeforeMove and not ValidateFarmTargetBeforeMove(mob, "巨人目标检查") then
-                            task.wait(0.18)
-                            continue
-                        end
-                        TeleportToMob(mob)
-                        if ValidateFarmTargetBeforeMove and not ValidateFarmTargetBeforeMove(mob, "巨人移动后检查") then
-                            task.wait(0.18)
-                            continue
-                        end
-                        if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(mob) then
-                            task.wait(0.12)
-                            continue
-                        end
-
-                        local giantLockConn
-                        giantLockConn = RunService.Heartbeat:Connect(function()
-                            if IsMobDead(mob) or not mob.Parent or not AutoFarmEnabled or FarmCollecting or FarmForceRetarget or (IsAntiJeffreyEscapePauseActive and IsAntiJeffreyEscapePauseActive()) or IsDarkDimensionSanityLow() or (IsFarmJeffreyAvoidActive and IsFarmJeffreyAvoidActive() and IsMobBlockedByJeffrey(mob, GetFarmTargetDangerRange and GetFarmTargetDangerRange() or 70)) then
-                                if giantLockConn then giantLockConn:Disconnect() end
-                                return
-                            end
-                            local lockCF = GetTargetCFrame(mob, FarmPosition)
-                            if lockCF and Character and HumanoidRootPart then
-                                MoveCharacterToFarmCFrame(lockCF)
-                            end
-                        end)
-
-                        repeat
-                            task.wait(0.2)
-                            if HandleDarkDimensionSanityEmergency and HandleDarkDimensionSanityEmergency() then break end
-                            if FarmCollecting or FarmForceRetarget then break end
-                            if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(mob) then break end
-                            ActivateProximityPrompt(extraData)
-                            ActivateAllFlushPrompts()
-                        until IsMobDead(mob) or not mob.Parent or not AutoFarmEnabled
-
-                        if giantLockConn then pcall(function() giantLockConn:Disconnect() end) end
-
-                    else
-                        if SafeModeEnabled and GetPlayerHealthPercent() < SafeValue then
-                            local mobRoot = mob:FindFirstChild("HumanoidRootPart")
-                            if mobRoot then
-                                local safePos = mobRoot.Position + Vector3.new(0, 111, 0)
-                                pcall(function()
-                                    Character:PivotTo(CFrame.new(safePos))
-                                    HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-                                    HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-                                end)
-                            end
-                            task.wait(0.5)
-                        else
-                            if ValidateFarmTargetBeforeMove and not ValidateFarmTargetBeforeMove(mob, "普通目标检查") then
-                                task.wait(0.18)
-                                ResetMobOverride(mob)
-                                ClearMobBoundsCache(mob)
-                                continue
-                            end
-                            StartDamageChecker(mob)
-                            TeleportToMob(mob)
-                            if ValidateFarmTargetBeforeMove and not ValidateFarmTargetBeforeMove(mob, "普通移动后检查") then
-                                task.wait(0.18)
-                                ResetMobOverride(mob)
-                                ClearMobBoundsCache(mob)
-                                continue
-                            end
-                            if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(mob) then
-                                task.wait(0.12)
-                                ResetMobOverride(mob)
-                                ClearMobBoundsCache(mob)
-                                continue
-                            end
-
-                            LockActive = true
-                            local lockConn
-                            lockConn = RunService.Heartbeat:Connect(function()
-                                if not AutoFarmEnabled or IsMobDead(mob) or not LockActive or FarmCollecting or FarmForceRetarget or (IsAntiJeffreyEscapePauseActive and IsAntiJeffreyEscapePauseActive()) or IsDarkDimensionSanityLow() or (IsFarmJeffreyAvoidActive and IsFarmJeffreyAvoidActive() and IsMobBlockedByJeffrey(mob, GetFarmTargetDangerRange and GetFarmTargetDangerRange() or 70)) then
-                                    if lockConn then lockConn:Disconnect() end
-                                    LockActive = false
-                                    return
-                                end
-                                if not Character or not HumanoidRootPart then return end
-                                local cf = GetTargetCFrame(mob, FarmPosition)
-                                if cf then
-                                    MoveCharacterToFarmCFrame(cf)
-                                end
-                            end)
-
-                            repeat
-                                task.wait(0.15)
-                                if HandleDarkDimensionSanityEmergency and HandleDarkDimensionSanityEmergency() then break end
-                                if FarmCollecting or FarmForceRetarget then break end
-                                if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(mob) then break end
-
-                                local shouldInterrupt, newPriority = CheckInterrupt(priority)
-                                if shouldInterrupt then
-                                    _interruptSignal = true
-                                    break
-                                end
-                            until IsMobDead(mob) or not AutoFarmEnabled
-
-                            if lockConn then pcall(function() lockConn:Disconnect() end) end
-                            LockActive = false
-                            if ResetWaveTeleporting then
-                                FarmForceRetarget = true
-                                _interruptSignal = true
-                            else
-                                _interruptSignal = false
-                                FarmForceRetarget = false
-                            end
-                            ResetMobOverride(mob)
-                            ClearMobBoundsCache(mob)
-                        end
-                    end
-
-                else
-                    _currentTargetPriority = 0
-                    if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(nil) then
-                        task.wait(0.25)
-                    elseif IsFarmJeffreyAvoidActive and IsFarmJeffreyAvoidActive() and HasAnyJeffreyRoot and HasAnyJeffreyRoot() and tick() - (JeffreyLastUnsafeTargetAt or 0) <= 2.5 then
-                        MoveToJeffreySafeHold("没有安全的刷怪目标")
-                        task.wait(0.25)
-                    elseif FarmTargetMode == "Astro 坚守模式" then
-                        CombatDebug("AstroMode", "未找到 Astro 怪物，进入最终门。", 5)
-                        DoAstroModeFinalDoor()
-                    else
-                        TeleportToIdle()
-                    end
-                    repeat
-                        task.wait(0.5)
-                        if HandleFarmJeffreyEmergency and HandleFarmJeffreyEmergency(nil) then break end
-                    until ResetWaveTeleporting or FarmCollecting or SafeGetPriorityMob() ~= nil or not AutoFarmEnabled
-                    WaitingRespawn = false
-                end
-
-                task.wait(0.12)
-            end
-        end)
-
-        if not ok then
-            warn("[YYa] 刷怪循环错误:", tostring(err))
-            CombatDebug("FarmLoopError", tostring(err), 3, true)
-        end
-
-        WaitingRespawn = false
-        FarmCollecting = false
-        if ResetWaveTeleporting then
-            FarmForceRetarget = true
-            _interruptSignal = true
-        else
-            FarmForceRetarget = false
-            _interruptSignal = false
-            RestoreFarmCameraAndMovement()
-        end
-        _currentTargetPriority = 0
-        FarmLoopRunning = false
-
-        if AutoFarmEnabled and not ResetWaveTeleporting then
-            task.delay(0.5, function()
-                if AutoFarmEnabled and not ResetWaveTeleporting then StartFarmLoop() end
-            end)
-        end
-    end)
-end
-
--- ====================== RESET WAVE SYSTEM ======================
-function GetResetWaveLabel()
-    local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return nil end
-
-    local wavesGui = playerGui:FindFirstChild("WavesGui")
-    if not wavesGui then return nil end
-
-    local frame = wavesGui:FindFirstChild("Frame")
-    if not frame then return nil end
-
-    return frame:FindFirstChild("TextLabel")
-end
-
-function GetCurrentResetWave()
-    local label = GetResetWaveLabel()
-    if not label then return nil end
-
-    local ok, textValue = pcall(function() return tostring(label.Text or "") end)
-    if not ok then return nil end
-
-    local waveText = textValue:match("[Ww]ave%s*=?%s*(%d+)")
-    if not waveText then waveText = textValue:match("(%d+)") end
-
-    return tonumber(waveText)
-end
-
-function GetResetWaveTargetValue()
-    local value = tonumber(ResetWaveValue) or 10
-    value = math.floor(value)
-    if value < 1 then value = 1 end
-    return value
-end
-
-function GetResetWaveTriggerKey(currentWave, targetWave)
-    return tostring(tonumber(currentWave) or "nil") .. ":" .. tostring(tonumber(targetWave) or "nil")
-end
-
-function ClearResetWaveTrigger(reason)
-    ResetWaveLastTriggeredWave = nil
-    ResetWaveLastTriggeredKey = nil
-    CombatDebug("ResetWave", "触发已清除: " .. tostring(reason or "重置"), 3, false)
-end
-
-function IsResetWaveCharacterReady()
-    RefreshCombatCharacter()
-    if not Character or not Character.Parent or not HumanoidRootPart or not HumanoidRootPart.Parent then return false end
-
-    local humanoid = Character:FindFirstChildOfClass("Humanoid") or Character:FindFirstChild("Humanoid")
-    if humanoid and humanoid.Health <= 0 then return false end
-
-    return true
-end
-
-function BreakFarmLockForResetWave()
-    ResetWaveTeleporting = true
-    FarmForceRetarget = true
-    FarmCollecting = false
-    LockActive = false
-    _interruptSignal = true
-    WaitingRespawn = false
-    _currentTargetPriority = 0
-
-    pcall(function()
-        RefreshCombatCharacter()
-        if Character then
-            local humanoid = Character:FindFirstChildOfClass("Humanoid") or Character:FindFirstChild("Humanoid")
-            if humanoid then
-                humanoid.Sit = false
-                humanoid.PlatformStand = false
-                humanoid.AutoRotate = true
-            end
-        end
-        if HumanoidRootPart then
-            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-        end
-    end)
-
-    pcall(function() RunService.Heartbeat:Wait() end)
-end
-
-function HoldResetWavePosition(token)
-    local holdUntil = tick() + (ResetWaveHoldTime or 2)
-
-    while ResetWaveEnabled and ResetWaveTeleporting and token == ResetWaveToken and tick() < holdUntil do
-        if not IsMiscFarmAllowed() then return false end
-        if not IsResetWaveCharacterReady() then return false end
-
-        pcall(function()
-            local humanoid = Character:FindFirstChildOfClass("Humanoid") or Character:FindFirstChild("Humanoid")
-            if humanoid then
-                humanoid.Sit = false
-                humanoid.PlatformStand = false
-                humanoid.AutoRotate = true
-            end
-
-            NeedNoClip = true
-            Character:PivotTo(ResetWaveTargetCF)
-            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-            StabilizeFarmCamera()
-        end)
-
-        task.wait(0.1)
-    end
-
-    return ResetWaveEnabled and token == ResetWaveToken and IsResetWaveCharacterReady()
-end
-
-function FinishResetWaveTeleport(token, completed, currentWave, targetWave)
-    if token ~= ResetWaveToken then return end
-
-    ResetWaveTeleporting = false
-
-    if completed then
-        ResetWaveLastTriggeredWave = currentWave
-        ResetWaveLastTriggeredKey = GetResetWaveTriggerKey(currentWave, targetWave)
-        CombatDebug("ResetWave", "已保持重置点 " .. tostring(ResetWaveHoldTime or 2) .. " 秒，波次 " .. tostring(currentWave), 2, false)
-    else
-        ClearResetWaveTrigger("传送中断")
-    end
-
-    FarmForceRetarget = false
-    _interruptSignal = false
-    LockActive = false
-
-    if completed and ResetWaveEnabled and AutoFarmEnabled and StartFarmLoop then
-        task.defer(function()
-            if ResetWaveEnabled and AutoFarmEnabled and not ResetWaveTeleporting then StartFarmLoop() end
-        end)
-    end
-end
-
-function TeleportResetWave(currentWave, targetWave, force, reason)
-    if ResetWaveTeleporting then return false end
-
-    local now = tick()
-    if not force and now - (ResetWaveLastTeleportAt or 0) < 0.6 then return false end
-    ResetWaveLastTeleportAt = now
-
-    currentWave = tonumber(currentWave) or GetCurrentResetWave()
-    targetWave = tonumber(targetWave) or GetResetWaveTargetValue()
-    if not currentWave or currentWave < targetWave then return false end
-
-    ResetWaveToken = (ResetWaveToken or 0) + 1
-    local token = ResetWaveToken
-
-    BreakFarmLockForResetWave()
-
-    local ok, completed = pcall(function()
-        if not IsResetWaveCharacterReady() then return false end
-
-        pcall(function()
-            NeedNoClip = true
-            Character:PivotTo(ResetWaveTargetCF)
-            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-        end)
-
-        return HoldResetWavePosition(token)
-    end)
-
-    FinishResetWaveTeleport(token, ok and completed == true, currentWave, targetWave)
-    return ok and completed == true
-end
-
-function EvaluateResetWaveNow(reason, force)
-    if not ResetWaveEnabled or not IsMiscFarmAllowed() or ResetWaveTeleporting then return false end
-
-    local currentWave = GetCurrentResetWave()
-    local targetWave = GetResetWaveTargetValue()
-
-    if currentWave == nil then return false end
-
-    if currentWave >= targetWave then
-        local key = GetResetWaveTriggerKey(currentWave, targetWave)
-        if force or ResetWaveLastTriggeredKey ~= key then
-            return TeleportResetWave(currentWave, targetWave, force == true, reason)
-        end
-    else
-        ClearResetWaveTrigger("波次低于目标")
-    end
-
-    return false
-end
-
-function StartResetWaveLoop()
-    if ResetWaveLoopRunning then return end
-    ResetWaveLoopRunning = true
-
-    task.spawn(function()
-        while ResetWaveEnabled do
-            pcall(function() EvaluateResetWaveNow("循环", false) end)
-            task.wait(ResetWaveTeleporting and 0.1 or 0.25)
-        end
-
-        ResetWaveLoopRunning = false
-    end)
-end
-
--- ====================== MISC OPTIONS HANDLER ======================
-function HandleMiscOptions(selectedOptions)
-    selectedOptions = selectedOptions or {}
-    MiscOptions = selectedOptions
-
-    local canRun = IsMiscFarmAllowed()
-
-    local hasAutoAttack = table.find(selectedOptions, "自动攻击") ~= nil
-    if hasAutoAttack and canRun then
-        AutoAttackEnabled = true
-        StartAutoAttack()
-    else
-        AutoAttackEnabled = false
-    end
-
-    local hasAutoSkill = table.find(selectedOptions, "自动技能") ~= nil
-    if hasAutoSkill and canRun then
-        AutoSkillEnabled = true
-        StartAutoSkill()
-    else
-        AutoSkillEnabled = false
-    end
-
-    local hasAutoSkipHeli = table.find(selectedOptions, "自动跳过直升机")
-    if hasAutoSkipHeli and canRun then
-        if not AutoSkipHeliEnabled then AutoSkipHeliEnabled = true; TriggerAutoSkipHeli(true) end
-    else
-        if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
-        AutoSkipHeliEnabled = false
-    end
-
-    local hasBoostFPS = table.find(selectedOptions, "删除地图")
-    if hasBoostFPS and canRun then
-        if not BoostFPS_Active then SaveAndBoostFPS() end
-    elseif BoostFPS_Active then
-        RestoreBoostFPS()
-    end
-
-    SafeModeEnabled = table.find(selectedOptions, "安全模式") ~= nil and canRun
-    GodModeEnabled  = table.find(selectedOptions, "上帝模式") ~= nil and canRun
-
-    local hasResetWave = table.find(selectedOptions, "重置波次")
-    if hasResetWave and canRun then
-        if not ResetWaveEnabled then ClearResetWaveTrigger("已启用") end
-        ResetWaveEnabled = true
-        StartResetWaveLoop()
-        task.defer(function() EvaluateResetWaveNow("已启用", true) end)
-    else
-        ResetWaveEnabled = false
-        ResetWaveTeleporting = false
-        ResetWaveToken = (ResetWaveToken or 0) + 1
-        ClearResetWaveTrigger("已禁用")
-    end
-
-    local hasAutoStart = table.find(selectedOptions, "自动开始")
-    if hasAutoStart and canRun then
-        if not AutoStartEnabled then StartAutoStart() end
-    else
-        if AutoStartEnabled then StopAutoStart() end
-    end
-
-    local hasAutoFillUp = table.find(selectedOptions, "自动填充")
-    if hasAutoFillUp and canRun then
-        if not AutoFillUpEnabled then AutoFillUpEnabled = true; StartAutoFillUpLoop() end
-    else
-        AutoFillUpEnabled = false
-        FillUpRunning = false
-    end
-
-    Config:Set("MiscOptions", selectedOptions)
-    Config:Set("AutoStartEnabled", hasAutoStart ~= nil)
-    Config:Save()
-end
-
--- ====================== CHARACTER RESPAWN HANDLER ======================
-LocalPlayer.CharacterAdded:Connect(function(char)
-    local keepFarmAstroBottomLock = ShouldKeepFarmAstroFinalLock and ShouldKeepFarmAstroFinalLock()
-
-    Character        = char
-    HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
-    Client           = LocalPlayer
-    FarmAstroTokenRespawnCounter = FarmAstroTokenRespawnCounter + 1
-
-    ResetWaveToken = (ResetWaveToken or 0) + 1
-    ResetWaveTeleporting = false
-    ClearResetWaveTrigger("角色重生")
-
-    if keepFarmAstroBottomLock then
-        FarmAstroTokenTimerHold = true
-        FarmAstroFinalLockActive = true
-        FarmAstroTimerDropping = false
-        FarmAstroReviveGodTriggered = false
-        FarmAstroReviveTimerArmed = false
-        FarmAstroLastReviveTimer = nil
-        FarmAstroTokenTimerIgnoreUntil = 0
-        if FarmAstroTokenEnabled then CancelFarmAstroTween() end
-        task.defer(function()
-            for _ = 1, 25 do
-                if not FarmAstroTokenEnabled then break end
-                if not (FarmAstroFinalLockActive or FarmAstroTokenTimerHold) then break end
-                HoldFarmAstroBottomLockOnce()
-                task.wait(0.05)
-            end
-        end)
-    else
-        FarmAstroTokenTimerHold = false
-        FarmAstroFinalLockActive = false
-        FarmAstroTimerDropping = false
-        FarmAstroBottomGodTriggered = false
-        FarmAstroReviveGodTriggered = false
-        FarmAstroReviveTimerArmed = false
-        FarmAstroLastReviveTimer = nil
-        FarmAstroWaveTimerArmed = false
-        FarmAstroLastWaveTimer = nil
-        FarmAstroTokenTimerIgnoreUntil = tick() + 2
-        ResumeFarmAstroGodModeAfterRespawn("角色重生")
-        if FarmAstroTokenEnabled then CancelFarmAstroTween() end
-    end
-
-    JeffreyCacheAt = 0
-    UpdateYYAWaitingPartCollision()
-    MobHeightOverride   = {}
-    MobConfirmedPadding = {}
-    MobLastHealth       = {}
-    IdlePositionReached = false
-    LastIdleTeleportAt  = 0
-    InvalidateMobCache("角色重生")
-    ClearMobBoundsCache()
-    FarmForceRetarget = true
-    FarmCollecting = false
-    task.delay(0.25, function()
-        RestartCombatLoopsIfNeeded("角色重生")
-        if AutoFarmEnabled and not ResetWaveTeleporting then StartFarmLoop(); StartJeffreyGuardLoop() end
-        if ResetWaveEnabled then
-            StartResetWaveLoop()
-            EvaluateResetWaveNow("角色重生", true)
-        end
-        if BypassJeffreyEnabled then StartBypassJeffreyLoop(); ScanBypassJeffreys(true) end
-    end)
-    task.delay(0.8, function()
-        if not ResetWaveTeleporting then FarmForceRetarget = false end
-    end)
-    task.wait(1)
-    ApplyCameraMode(true)
-end)
-
--- ============================================================
--- ====================== 精简版普通模式 ======================
--- ============================================================
-
-SimpleFarmEnabled = Config:Get("SimpleFarmEnabled", false)
-SimpleFarmMode = Config:Get("SimpleFarmMode", "补间")
-SimpleFarmRunning = false
-SimpleFarmThread = nil
-SimpleFarmLoopDelay = 0.1
-
--- ====== 精简版专用自动化开关（独立于主脚本） ======
-SimpleAutoAttackEnabled = Config:Get("SimpleAutoAttackEnabled", false)
-SimpleAutoSkillEnabled = Config:Get("SimpleAutoSkillEnabled", false)
-SimpleSafeModeEnabled = Config:Get("SimpleSafeModeEnabled", false)
-SimpleGodModeEnabled = Config:Get("SimpleGodModeEnabled", false)
-SimpleAutoFillUpEnabled = Config:Get("SimpleAutoFillUpEnabled", false)
-SimpleSafeValue = Config:Get("SimpleSafeValue", 50)
-SimpleGodModeValue = Config:Get("SimpleGodModeValue", 50)
-SimpleSelectedSkills = Config:Get("SimpleSelectedSkills", { "全部" })
-
--- 精简版技能列表
-SimpleSkillList = { "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
-SimpleSkillDropdownValues = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" }
-
--- 精简版：获取最近怪物（复用原脚本过滤逻辑，自动排除玩家和友好AI）
-function SimpleGetNearestMob()
-    RefreshCombatCharacter()
-    if not HumanoidRootPart then return nil end
-    
-    local candidates = GetCachedLivingMobs(false)
-    local bestMob, bestDist = nil, math.huge
-    
-    for _, mob in ipairs(candidates) do
-        if IsValidMob(mob) then
-            local mobRoot = mob:FindFirstChild("HumanoidRootPart")
-            if mobRoot then
-                local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
-                if d < bestDist then
-                    bestDist = d
-                    bestMob = mob
-                end
-            end
-        end
-    end
-    
-    return bestMob
-end
-
--- 精简版：移动到目标（支持传送/补间）
-function SimpleMoveToCFrame(cf)
-    if not cf or not Character or not HumanoidRootPart then return end
-    
-    local humanoid = Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then humanoid.Sit = false end
-    
-    if SimpleFarmMode == "传送" then
-        Character:PivotTo(cf)
-        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-    else
-        local tween = TweenService:Create(
-            HumanoidRootPart,
-            TweenInfo.new(TweenSpeed or 0.8, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
-            { CFrame = cf }
-        )
-        tween:Play()
-        WaitTweenWithTimeout(tween, (TweenSpeed or 0.8) + 0.45)
-        Character:PivotTo(cf)
-        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-    end
-end
-
--- 精简版：攻击
-function SimpleAttackMob()
-    local lmb = GetRemote("LMB")
-    if lmb then
-        pcall(function() lmb:FireServer() end)
-    end
-end
-
--- 精简版：发送技能按键
-function SimpleSendSkill(key)
-    local keyCode = Enum.KeyCode[key]
-    if keyCode then
-        pcall(function()
-            VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-            task.wait(0.05)
-            VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
-        end)
-    end
-end
-
--- 精简版：启动循环（完整版，接入所有自动化功能）
-function StartSimpleFarm()
-    if SimpleFarmRunning then return end
-    
-    -- 确保精简版自己的上帝模式循环在运行
-    task.spawn(function()
-        while true do
-            task.wait(0.1)
-            if SimpleFarmEnabled and SimpleGodModeEnabled then
-                pcall(function()
-                    local char = LocalPlayer.Character
-                    if not char then return end
-                    local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
-                    if not humanoid then return end
-                    if humanoid.MaxHealth <= 0 then return end
-                    local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
-                    if hpPercent < SimpleGodModeValue then
-                        ForceGodModeOnce("精简版上帝模式")
-                    end
-                end)
-            end
-            task.wait(0.1)
-        end
-    end)
-    
-    SimpleFarmRunning = true
-    
-    SimpleFarmThread = task.spawn(function()
-        while SimpleFarmEnabled and SimpleFarmRunning do
-            RefreshCombatCharacter()
-            
-            if not Character or not Character.Parent then
-                Character = LocalPlayer.Character
-                if Character then HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart") end
-            end
-            if not HumanoidRootPart then
-                task.wait(0.5)
-                continue
-            end
-            
-            -- ====== 精简版安全模式：血量低时撤退 ======
-            if SimpleSafeModeEnabled and GetPlayerHealthPercent() < SimpleSafeValue then
-                local mob = SimpleGetNearestMob()
-                if mob then
-                    local mobRoot = mob:FindFirstChild("HumanoidRootPart")
-                    if mobRoot then
-                        local safePos = mobRoot.Position + Vector3.new(0, 111, 0)
-                        pcall(function()
-                            Character:PivotTo(CFrame.new(safePos))
-                            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-                            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-                        end)
-                    end
-                end
-                task.wait(0.5)
-                continue
-            end
-            
-            -- ====== 精简版自动填充 ======
-            if SimpleAutoFillUpEnabled and not IsPlayerHPFull() then
-                local waited = 0
-                while not IsFillUpPartReady() and SimpleAutoFillUpEnabled do
-                    waited = waited + 0.2
-                    if waited >= 30 then break end
-                    task.wait(0.2)
-                end
-                if IsFillUpPartReady() and SimpleAutoFillUpEnabled then
-                    DoFillUp()
-                    task.wait(1)
-                end
-                task.wait(0.5)
-                continue
-            end
-            
-            local mob = SimpleGetNearestMob()
-            if mob then
-                local cf = GetTargetCFrame(mob, FarmPosition)
-                if cf then
-                    SimpleMoveToCFrame(cf)
-                    
-                    -- 持续攻击当前目标
-                    while SimpleFarmEnabled and SimpleFarmRunning and mob and mob.Parent do
-                        local humanoid = mob:FindFirstChild("Humanoid")
-                        if not humanoid or humanoid.Health <= 0 then break end
-                        
-                        -- 精简版安全模式：攻击中血量过低则撤退
-                        if SimpleSafeModeEnabled and GetPlayerHealthPercent() < SimpleSafeValue then
-                            break
-                        end
-                        
-                        -- 检查是否有更近的怪物
-                        local newMob = SimpleGetNearestMob()
-                        if newMob and newMob ~= mob then
-                            local newRoot = newMob:FindFirstChild("HumanoidRootPart")
-                            local oldRoot = mob:FindFirstChild("HumanoidRootPart")
-                            if newRoot and oldRoot then
-                                local newDist = (HumanoidRootPart.Position - newRoot.Position).Magnitude
-                                local oldDist = (HumanoidRootPart.Position - oldRoot.Position).Magnitude
-                                if newDist < oldDist - 10 then
-                                    break
-                                end
-                            end
-                        end
-                        
-                        -- ====== 精简版自动攻击 ======
-                        if SimpleAutoAttackEnabled then
-                            SimpleAttackMob()
-                        end
-                        
-                        -- ====== 精简版自动技能 ======
-                        if SimpleAutoSkillEnabled then
-                            local keysToPress = {}
-                            if table.find(SimpleSelectedSkills, "全部") then
-                                keysToPress = SimpleSkillList
-                            else
-                                keysToPress = SimpleSelectedSkills
-                            end
-                            for _, key in ipairs(keysToPress) do
-                                if not SimpleAutoSkillEnabled or not SimpleFarmEnabled then break end
-                                SimpleSendSkill(key)
-                                task.wait(SkillDelay or 1)
-                            end
-                        end
-                        
-                        task.wait(0.12)
-                    end
-                end
-            else
-                TeleportToIdle()
-                task.wait(0.3)
-            end
-            task.wait(SimpleFarmLoopDelay)
-        end
-        SimpleFarmRunning = false
-    end)
-end
-
-function StopSimpleFarm()
-    SimpleFarmEnabled = false
-    SimpleFarmRunning = false
-    if SimpleFarmThread then
-        task.cancel(SimpleFarmThread)
-        SimpleFarmThread = nil
-    end
-    RestoreFarmCameraAndMovement()
-end
-
--- 简单位置和移动方式配置
-SimplePositionDisplayNames = { "上方", "下方" }
-SimplePositionMap = {
-    ["上方"] = "Above",
-    ["下方"] = "Under",
-}
-SimpleMovementDisplayNames = { "传送", "补间" }
-SimpleMovementMap = {
-    ["传送"] = "Teleport",
-    ["补间"] = "Tween",
-}
--- ============================================================
 -- ====================== UI: MAIN TAB ======================
 -- ============================================================
 
-Main:Section({ Title = "自动刷怪", Icon = "package" })
+Main:Section({ Title = "自动刷怪（黑暗/天文模式）", Icon = "package" })
 
 AutoFarmToggle = Main:Toggle({
-    Title = "自动刷怪（黑暗/天文模式）",
+    Title = "自动刷怪",
     Desc = "启用黑暗维度或Astro坚守模式的自动刷怪。",
     Value = AutoFarmEnabled,
     Callback = function(state)
@@ -5228,7 +3897,7 @@ FarmTargetModeDropdown = Main:Dropdown({
 Main:Divider()
 
 -- ============================================================
--- ====================== 精简版普通模式 UI ======================
+-- ====================== 精简版普通模式 UI（完全独立） ======================
 -- ============================================================
 
 Main:Section({ Title = "普通模式（精简版）", Icon = "target" })
@@ -5260,11 +3929,11 @@ SimplePositionDropdown = Main:Dropdown({
     Desc = "选择在怪物上方或下方攻击。",
     Values = SimplePositionDisplayNames,
     Multi = false,
-    Value = GetDisplayName(SimplePositionMap, FarmPosition) or FarmPosition,
+    Value = GetDisplayName(SimplePositionMap, SimpleFarmPosition) or SimpleFarmPosition,
     Callback = function(value)
         local english = SimplePositionMap[value] or value
-        FarmPosition = english
-        Config:Set("FarmPosition", english)
+        SimpleFarmPosition = english
+        Config:Set("SimpleFarmPosition", english)
         Config:Save()
     end
 })
@@ -5287,15 +3956,12 @@ SimpleModeDropdown = Main:Dropdown({
 SimpleHeightSlider = Main:Slider({
     Title = "刷怪高度（±Y）",
     Desc = "调整在怪物上方或下方刷怪时的垂直偏移。",
-    Value = { Min = -150, Max = 150, Default = HeightValue },
+    Value = { Min = -150, Max = 150, Default = SimpleFarmHeight },
     Step = 1,
     Callback = function(value)
-        HeightValue = value
-        Config:Set("HeightValue", value)
+        SimpleFarmHeight = value
+        Config:Set("SimpleFarmHeight", value)
         Config:Save()
-        for mob, _ in pairs(MobHeightOverride) do
-            if MobConfirmedPadding[mob] == nil then MobHeightOverride[mob] = nil end
-        end
     end
 })
 
@@ -5338,6 +4004,18 @@ SimpleSkillDropdown = Main:Dropdown({
     end
 })
 
+SimpleSkillDelaySlider = Main:Slider({
+    Title = "技能延迟（秒）",
+    Desc = "精简版：每个技能按键之间的延迟。",
+    Value = { Min = 0.1, Max = 5, Default = SimpleSkillDelay },
+    Step = 0.1,
+    Callback = function(value)
+        SimpleSkillDelay = value
+        Config:Set("SimpleSkillDelay", value)
+        Config:Save()
+    end
+})
+
 SimpleSafeModeToggle = Main:Toggle({
     Title = "安全模式",
     Desc = "精简版：血量低于阈值时自动撤退。",
@@ -5375,11 +4053,11 @@ SimpleGodModeToggle = Main:Toggle({
 SimpleGodSlider = Main:Slider({
     Title = "精简版上帝血量（%）",
     Desc = "设置上帝模式的血量百分比阈值。",
-    Value = { Min = 1, Max = 99, Default = SimpleGodModeValue },
+    Value = { Min = 1, Max = 99, Default = SimpleGodValue },
     Step = 1,
     Callback = function(value)
-        SimpleGodModeValue = value
-        Config:Set("SimpleGodModeValue", value)
+        SimpleGodValue = value
+        Config:Set("SimpleGodValue", value)
         Config:Save()
     end
 })
@@ -5387,11 +4065,41 @@ SimpleGodSlider = Main:Slider({
 SimpleAutoFillToggle = Main:Toggle({
     Title = "自动填充",
     Desc = "精简版：血量不满时自动前往商店补血。",
-    Value = SimpleAutoFillUpEnabled,
+    Value = SimpleAutoFillEnabled,
     Callback = function(state)
-        SimpleAutoFillUpEnabled = state
-        Config:Set("SimpleAutoFillUpEnabled", state)
+        SimpleAutoFillEnabled = state
+        Config:Set("SimpleAutoFillEnabled", state)
         Config:Save()
+    end
+})
+
+SimpleAutoStartToggle = Main:Toggle({
+    Title = "自动开始",
+    Desc = "精简版：游戏开局自动准备。",
+    Value = SimpleAutoStartEnabled,
+    Callback = function(state)
+        SimpleAutoStartEnabled = state
+        Config:Set("SimpleAutoStartEnabled", state)
+        Config:Save()
+        if state and SimpleFarmEnabled then
+            task.spawn(function() SimpleFireGetReady() end)
+        end
+    end
+})
+
+SimpleAutoSkipHeliToggle = Main:Toggle({
+    Title = "自动跳过直升机",
+    Desc = "精简版：自动跳过直升机波次。",
+    Value = SimpleAutoSkipHeliEnabled,
+    Callback = function(state)
+        SimpleAutoSkipHeliEnabled = state
+        Config:Set("SimpleAutoSkipHeliEnabled", state)
+        Config:Save()
+        if state and SimpleFarmEnabled then
+            SimpleTriggerAutoSkipHeli(true)
+        elseif not state and SimpleFarmEnabled then
+            SimpleTriggerAutoSkipHeli(false)
+        end
     end
 })
 
@@ -5434,7 +4142,7 @@ ModeDropdown = Main:Dropdown({
 
 MiscDropdown = Main:Dropdown({
     Title = "杂项功能",
-    Desc = "选择与自动刷怪一起运行的额外系统。",
+    Desc = "选择与自动刷怪一起运行的额外系统（仅黑暗/天文模式）。",
     Values = { "自动攻击", "自动技能", "自动开始", "自动跳过直升机", "自动填充", "安全模式", "上帝模式", "重置波次", "删除地图" },
     Multi = true,
     Value = MiscOptions,
@@ -8507,6 +7215,7 @@ function ApplySavedConfigOnStartup()
         StartAutoCollectLoop()
     end
 
+    -- 启动精简版普通模式
     if SimpleFarmEnabled then
         StartSimpleFarm()
     end
@@ -8521,6 +7230,19 @@ function ApplySavedConfigOnStartup()
     if AutoVoteinGameEnabled then
         StartAutoVoteLoop()
     end
+
+    -- 精简版自动开始（如果已开启）
+    if SimpleAutoStartEnabled and SimpleFarmEnabled then
+        task.spawn(function()
+            task.wait(2)
+            SimpleFireGetReady()
+        end)
+    end
+
+    -- 精简版自动跳过直升机（如果已开启）
+    if SimpleAutoSkipHeliEnabled and SimpleFarmEnabled then
+        SimpleTriggerAutoSkipHeli(true)
+    end
 end
 
 ApplySavedConfigOnStartup()
@@ -8532,3 +7254,5 @@ print("[YYa] 至尊版")
 -- ============================================================
 -- ====================== 脚本结束 =============================
 -- ============================================================
+```
+
