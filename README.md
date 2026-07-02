@@ -287,9 +287,9 @@ GamepassMap = {
     ["传奇幸运加成"] = "LegendaryLuckyBoost",
 }
 
-FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式" }
+-- ====== 修改点：从下拉菜单移除普通模式 ======
+FarmModeDisplayNames = { "Astro 坚守模式", "黑暗维度模式" }
 FarmModeMap = {
-    ["普通模式"] = "Normal Mode",
     ["Astro 坚守模式"] = "Astro Holdout Mode",
     ["黑暗维度模式"] = "Dark Dimension Mode",
 }
@@ -519,8 +519,8 @@ function NormalizeFarmMode(mode)
 end
 
 function NormalizeFarmTargetMode(mode)
-    mode = tostring(mode or "普通模式")
-    if mode ~= "普通模式" and mode ~= "Astro 坚守模式" and mode ~= "黑暗维度模式" then return "普通模式" end
+    mode = tostring(mode or "Astro 坚守模式")
+    if mode ~= "Astro 坚守模式" and mode ~= "黑暗维度模式" then return "Astro 坚守模式" end
     return mode
 end
 
@@ -541,7 +541,7 @@ end
 AutoFarmEnabled        = Config:Get("AutoFarmEnabled", false)
 FarmPosition           = Config:Get("FarmPosition", "上方")
 FarmMode               = NormalizeFarmMode(Config:Get("FarmMode", "补间"))
-FarmTargetMode         = NormalizeFarmTargetMode(Config:Get("FarmTargetMode", "普通模式"))
+FarmTargetMode         = NormalizeFarmTargetMode(Config:Get("FarmTargetMode", "Astro 坚守模式"))
 DarkDimensionCollecting = false
 DarkDimensionLowValue   = 0.900
 DarkDimensionSafeValue  = 0.950
@@ -1794,7 +1794,6 @@ function GetMobMaxHP(mob)
     if not humanoid then return 0 end
     return humanoid.MaxHealth or 0
 end
-
 -- ====================== MOB CACHE SYSTEM ======================
 MobCacheList = {}
 MobCacheDirty = true
@@ -2041,29 +2040,74 @@ function GetHighHPMob()
     return bestMob
 end
 
--- ========== 修改点1：GetPriorityMob 改为只返回最近怪物（已过滤玩家和友军） ==========
+-- ====================== 天文模式专用：获取Astro怪物 ======================
+function GetAstroMob()
+    for _, mob in ipairs(GetCachedLivingMobs(false)) do
+        if IsAstroMob(mob) then
+            return mob
+        end
+    end
+    return nil
+end
+
 function GetPriorityMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
     if not HumanoidRootPart then return nil, nil, nil, 0 end
 
-    local candidates = GetFarmCandidateMobs(false)
-    local bestMob, bestDist = nil, math.huge
+    -- 天文模式：只返回 Astro 怪物
+    if FarmTargetMode == "Astro 坚守模式" then
+        local astroMob = GetAstroMob()
+        if astroMob then
+            return astroMob, "Astro", nil, 1
+        end
+        return nil, nil, nil, 0
+    end
 
-    for _, mob in ipairs(candidates) do
-        local mobRoot = mob:FindFirstChild("HumanoidRootPart")
-        if mobRoot then
-            local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
-            if d < bestDist then
-                bestDist = d
-                bestMob = mob
+    -- 黑暗模式：使用原有优先级系统（仅用于黑暗模式）
+    if FarmTargetMode == "黑暗维度模式" then
+        local giant, prompt = nil, nil
+        local heli, highMob, nearMob = nil, nil, nil
+        local bestHP, nearDist = HighHPThreshold, math.huge
+        local candidates = GetFarmCandidateMobs(false)
+
+        for _, mob in ipairs(candidates) do
+            if not giant and mob.Name == "Giant ST toilet" then
+                local lever = mob:FindFirstChild("lever")
+                if lever then
+                    local pr = lever:FindFirstChildOfClass("ProximityPrompt")
+                    if pr then giant = mob; prompt = pr end
+                end
+            end
+
+            if not heli and mob.Name:lower():find("helicopter") then
+                heli = mob
+            end
+
+            local hp = GetMobMaxHP(mob)
+            if hp > bestHP then
+                bestHP = hp
+                highMob = mob
+            end
+
+            local mobRoot = mob:FindFirstChild("HumanoidRootPart")
+            if mobRoot and HumanoidRootPart then
+                local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
+                if d < nearDist then
+                    nearDist = d
+                    nearMob = mob
+                end
             end
         end
+
+        if giant and prompt then return giant, "GiantST", prompt, 4 end
+        if heli then return heli, "直升机", nil, 3 end
+        if highMob then return highMob, "高血量", nil, 2 end
+        if nearMob then return nearMob, "最近怪物", nil, 1 end
+
+        return nil, nil, nil, 0
     end
 
-    if bestMob then
-        return bestMob, nil, nil, 1
-    end
-
+    -- 普通模式不会调用这里（使用精简版独立系统）
     return nil, nil, nil, 0
 end
 
@@ -2841,6 +2885,7 @@ function IsLivingDescendant(obj)
     end
     return false
 end
+
 -- ====================== Delete Map (Delete Map) SYSTEM ======================
 BoostFPS_OriginalData = {}
 BoostFPS_Active = false
@@ -4252,7 +4297,7 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
+-- ====================== MAIN FARM LOOP (黑暗/天文模式) =========
 -- ============================================================
 FarmLoopToken = FarmLoopToken or 0
 
@@ -4308,6 +4353,7 @@ function StartFarmLoop()
                     continue
                 end
 
+                -- 黑暗模式：理智值收集
                 if FarmTargetMode == "黑暗维度模式" and HandleDarkDimensionSanity() then
                     task.wait(0.1)
                     continue
@@ -4842,12 +4888,160 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     ApplyCameraMode(true)
 end)
 
+-- ============================================================
+-- ====================== 精简版普通模式 ======================
+-- ============================================================
+
+SimpleFarmEnabled = Config:Get("SimpleFarmEnabled", false)
+SimpleFarmMode = Config:Get("SimpleFarmMode", "补间")  -- "传送" 或 "补间"
+SimpleFarmRunning = false
+SimpleFarmThread = nil
+SimpleFarmLoopDelay = 0.1
+
+-- 精简版：获取最近怪物（复用原脚本过滤逻辑，自动排除玩家和友好AI）
+function SimpleGetNearestMob()
+    RefreshCombatCharacter()
+    if not HumanoidRootPart then return nil end
+    
+    local candidates = GetCachedLivingMobs(false)
+    local bestMob, bestDist = nil, math.huge
+    
+    for _, mob in ipairs(candidates) do
+        if IsValidMob(mob) then
+            local mobRoot = mob:FindFirstChild("HumanoidRootPart")
+            if mobRoot then
+                local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
+                if d < bestDist then
+                    bestDist = d
+                    bestMob = mob
+                end
+            end
+        end
+    end
+    
+    return bestMob
+end
+
+-- 精简版：移动到目标（支持传送/补间）
+function SimpleMoveToCFrame(cf)
+    if not cf or not Character or not HumanoidRootPart then return end
+    
+    local humanoid = Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then humanoid.Sit = false end
+    
+    if SimpleFarmMode == "传送" then
+        Character:PivotTo(cf)
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+    else
+        local tween = TweenService:Create(
+            HumanoidRootPart,
+            TweenInfo.new(TweenSpeed or 0.8, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+            { CFrame = cf }
+        )
+        tween:Play()
+        WaitTweenWithTimeout(tween, (TweenSpeed or 0.8) + 0.45)
+        Character:PivotTo(cf)
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+    end
+end
+
+-- 精简版：攻击
+function SimpleAttackMob()
+    local lmb = GetRemote("LMB")
+    if lmb then
+        pcall(function() lmb:FireServer() end)
+    end
+end
+
+-- 精简版：启动循环
+function StartSimpleFarm()
+    if SimpleFarmRunning then return end
+    SimpleFarmRunning = true
+    
+    SimpleFarmThread = task.spawn(function()
+        while SimpleFarmEnabled and SimpleFarmRunning do
+            RefreshCombatCharacter()
+            
+            if not Character or not Character.Parent then
+                Character = LocalPlayer.Character
+                if Character then HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart") end
+            end
+            if not HumanoidRootPart then
+                task.wait(0.5)
+                continue
+            end
+            
+            local mob = SimpleGetNearestMob()
+            if mob then
+                local cf = GetTargetCFrame(mob, FarmPosition)
+                if cf then
+                    SimpleMoveToCFrame(cf)
+                    
+                    -- 持续攻击当前目标，直到怪物死亡或更近的怪物出现
+                    while SimpleFarmEnabled and SimpleFarmRunning and mob and mob.Parent do
+                        local humanoid = mob:FindFirstChild("Humanoid")
+                        if not humanoid or humanoid.Health <= 0 then break end
+                        
+                        -- 检查是否有更近的怪物
+                        local newMob = SimpleGetNearestMob()
+                        if newMob and newMob ~= mob then
+                            local newRoot = newMob:FindFirstChild("HumanoidRootPart")
+                            local oldRoot = mob:FindFirstChild("HumanoidRootPart")
+                            if newRoot and oldRoot then
+                                local newDist = (HumanoidRootPart.Position - newRoot.Position).Magnitude
+                                local oldDist = (HumanoidRootPart.Position - oldRoot.Position).Magnitude
+                                if newDist < oldDist - 10 then
+                                    break  -- 切换到更近的怪物
+                                end
+                            end
+                        end
+                        
+                        SimpleAttackMob()
+                        task.wait(0.12)
+                    end
+                end
+            else
+                TeleportToIdle()
+                task.wait(0.3)
+            end
+            task.wait(SimpleFarmLoopDelay)
+        end
+        SimpleFarmRunning = false
+    end)
+end
+
+function StopSimpleFarm()
+    SimpleFarmEnabled = false
+    SimpleFarmRunning = false
+    if SimpleFarmThread then
+        task.cancel(SimpleFarmThread)
+        SimpleFarmThread = nil
+    end
+    RestoreFarmCameraAndMovement()
+end
+
+-- 简单位置和移动方式配置
+SimplePositionDisplayNames = { "上方", "下方" }
+SimplePositionMap = {
+    ["上方"] = "Above",
+    ["下方"] = "Under",
+}
+SimpleMovementDisplayNames = { "传送", "补间" }
+SimpleMovementMap = {
+    ["传送"] = "Teleport",
+    ["补间"] = "Tween",
+}
+-- ============================================================
 -- ====================== UI: MAIN TAB ======================
+-- ============================================================
+
 Main:Section({ Title = "自动刷怪", Icon = "package" })
 
 AutoFarmToggle = Main:Toggle({
-    Title = "自动刷怪",
-    Desc = "基于优先级系统自动刷怪。",
+    Title = "自动刷怪（黑暗/天文模式）",
+    Desc = "启用黑暗维度或Astro坚守模式的自动刷怪。",
     Value = AutoFarmEnabled,
     Callback = function(state)
         if state and FarmAstroTokenEnabled then
@@ -4885,7 +5079,7 @@ AutoFarmToggle = Main:Toggle({
 
 FarmTargetModeDropdown = Main:Dropdown({
     Title = "刷怪模式",
-    Desc = "不同的刷怪模式。",
+    Desc = "选择黑暗维度或Astro坚守模式。",
     Values = FarmModeDisplayNames,
     Multi = false,
     Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
@@ -4902,7 +5096,87 @@ FarmTargetModeDropdown = Main:Dropdown({
     end
 })
 
-Main:Section({ Title = "刷怪设置", Icon = "settings" })
+Main:Divider()
+
+-- ============================================================
+-- ====================== 精简版普通模式 UI ======================
+-- ============================================================
+
+Main:Section({ Title = "普通模式（精简版）", Icon = "target" })
+
+SimpleFarmToggle = Main:Toggle({
+    Title = "普通模式刷怪",
+    Desc = "使用精简版逻辑：自动寻找最近怪物并攻击（自动过滤玩家和友好AI）。",
+    Value = SimpleFarmEnabled,
+    Callback = function(state)
+        SimpleFarmEnabled = state
+        Config:Set("SimpleFarmEnabled", state)
+        Config:Save()
+        if state then
+            StartSimpleFarm()
+            WindUI:Notify({ Title = "普通模式", Content = "已启用（精简版）", Duration = 2, Icon = "play" })
+        else
+            StopSimpleFarm()
+            WindUI:Notify({ Title = "普通模式", Content = "已关闭", Duration = 2, Icon = "square" })
+        end
+    end
+})
+
+Main:Divider()
+
+Main:Section({ Title = "普通模式设置", Icon = "settings" })
+
+SimplePositionDropdown = Main:Dropdown({
+    Title = "刷怪位置",
+    Desc = "选择在怪物上方或下方攻击。",
+    Values = SimplePositionDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(SimplePositionMap, FarmPosition) or FarmPosition,
+    Callback = function(value)
+        local english = SimplePositionMap[value] or value
+        FarmPosition = english
+        Config:Set("FarmPosition", english)
+        Config:Save()
+    end
+})
+
+SimpleModeDropdown = Main:Dropdown({
+    Title = "移动方式",
+    Desc = "选择移动到目标的方式。",
+    Values = SimpleMovementDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(SimpleMovementMap, SimpleFarmMode) or SimpleFarmMode,
+    Callback = function(value)
+        local english = SimpleMovementMap[value] or value
+        SimpleFarmMode = english
+        Config:Set("SimpleFarmMode", english)
+        Config:Save()
+        WindUI:Notify({ Title = "移动方式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "mouse-pointer-click" })
+    end
+})
+
+SimpleHeightSlider = Main:Slider({
+    Title = "刷怪高度（±Y）",
+    Desc = "调整在怪物上方或下方刷怪时的垂直偏移。",
+    Value = { Min = -150, Max = 150, Default = HeightValue },
+    Step = 1,
+    Callback = function(value)
+        HeightValue = value
+        Config:Set("HeightValue", value)
+        Config:Save()
+        for mob, _ in pairs(MobHeightOverride) do
+            if MobConfirmedPadding[mob] == nil then MobHeightOverride[mob] = nil end
+        end
+    end
+})
+
+Main:Divider()
+
+-- ============================================================
+-- ====================== 黑暗/天文模式共享设置 ======================
+-- ============================================================
+
+Main:Section({ Title = "黑暗/天文模式设置", Icon = "settings" })
 
 PositionDropdown = Main:Dropdown({
     Title = "刷怪位置",
@@ -5287,6 +5561,7 @@ Main:Toggle({
         end
     end
 })
+
 -- ============================================================
 -- ====================== ESP SYSTEM =========================
 -- ============================================================
@@ -7141,6 +7416,7 @@ _G.__YYA_ShopSystems = function()
 end
 _G.__YYA_ShopSystems()
 _G.__YYA_ShopSystems = nil
+
 -- ====================== UI: COLLECT TAB ======================
 Main6:Section({ Title = "自动收集", Icon = "package" })
 
@@ -8006,6 +8282,10 @@ function ApplySavedConfigOnStartup()
         StartAutoCollectLoop()
     end
 
+    if SimpleFarmEnabled then
+        StartSimpleFarm()
+    end
+
     if AutoStartEnabled and IsMiscFarmAllowed() then
         SetupAutoStartOnly(true)
     elseif AutoStartEnabled then
@@ -8023,3 +8303,7 @@ ApplySavedConfigOnStartup()
 print("[YYa] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成功！")
 print("[YYa] 配置系统已激活 | 自动保存间隔 " .. tostring(AutoSaveDelay) .. " 秒")
 print("[YYa] 至尊版")
+
+-- ============================================================
+-- ====================== 脚本结束 =============================
+-- ============================================================
