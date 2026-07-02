@@ -545,11 +545,9 @@ JeffreyTargetBlockUntil = {}
 JeffreyLastUnsafeTargetAt = 0
 JeffreySafeHoldUntil = 0
 JeffreySafeRetargetDelay = 0.85
+-- 删除 BypassJeffreyEnabled 变量
 AntiJeffreyRange = Config:Get("AntiJeffreyRange", 50)
-BypassJeffreyEnabled = Config:Get("BypassJeffreyEnabled", false)
-BypassJeffreyLoopRunning = false
-BypassJeffreyLastFullScanAt = 0
-BypassJeffreyFullScanDelay = 3
+-- 删除 BypassJeffrey 相关变量
 AntiJeffreyLoopRunning = false
 AntiJeffreyGuardLoopRunning = false
 AntiJeffreyLastPushAt = 0
@@ -1590,153 +1588,6 @@ function PushAwayFromJeffrey()
         HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
     end)
     return true
-end
-
--- ============================================================
--- ====================== BYPASS JEFFREY ======================
--- ============================================================
-function GetBypassJeffreyObject(obj)
-    if not obj then return nil end
-    if IsJeffreyName(obj.Name) then return obj end
-
-    local cur = obj.Parent
-    while cur and cur ~= workspace do
-        if IsJeffreyName(cur.Name) then return cur end
-        cur = cur.Parent
-    end
-
-    return nil
-end
-
-function SetBypassJeffreySit(jeffrey)
-    if not BypassJeffreyEnabled then return false end
-    if not jeffrey or not jeffrey.Parent then return false end
-
-    local target = GetBypassJeffreyObject(jeffrey)
-    if not target or not target.Parent then return false end
-
-    local notHumanoid = nil
-    pcall(function()
-        notHumanoid = target:FindFirstChild("NotHumanoid") or target:FindFirstChild("NotHumanoid", true)
-    end)
-    if not notHumanoid then return false end
-
-    local ok = pcall(function()
-        if notHumanoid.Sit ~= true then
-            notHumanoid.Sit = true
-        end
-    end)
-
-    return ok
-end
-
-function ScanBypassJeffreys(forceFullScan)
-    if not BypassJeffreyEnabled then return 0 end
-
-    local count = 0
-    local seen = {}
-
-    local function try(obj)
-        local target = GetBypassJeffreyObject(obj)
-        if target and not seen[target] then
-            seen[target] = true
-            if SetBypassJeffreySit(target) then
-                count = count + 1
-            end
-        end
-    end
-
-    pcall(function()
-        for _, obj in ipairs(workspace:GetChildren()) do
-            if IsJeffreyName(obj.Name) then try(obj) end
-        end
-
-        local living = workspace:FindFirstChild("Living")
-        if living then
-            for _, obj in ipairs(living:GetChildren()) do
-                if IsJeffreyName(obj.Name) then try(obj) end
-            end
-            for _, obj in ipairs(living:GetDescendants()) do
-                if obj.Name == "NotHumanoid" then try(obj) end
-            end
-        end
-
-        local now = tick()
-        if forceFullScan or now - (BypassJeffreyLastFullScanAt or 0) >= (BypassJeffreyFullScanDelay or 3) then
-            BypassJeffreyLastFullScanAt = now
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if IsJeffreyName(obj.Name) or obj.Name == "NotHumanoid" then try(obj) end
-            end
-        end
-    end)
-
-    return count
-end
-
-function StartBypassJeffreyLoop()
-    if BypassJeffreyLoopRunning then return end
-    BypassJeffreyLoopRunning = true
-
-    task.spawn(function()
-        while BypassJeffreyEnabled do
-            pcall(function()
-                ScanBypassJeffreys(false)
-            end)
-            task.wait(0.75)
-        end
-
-        BypassJeffreyLoopRunning = false
-    end)
-end
-
-function HandleBypassJeffreyObject(obj)
-    if not BypassJeffreyEnabled or not obj then return end
-
-    if IsJeffreyName(obj.Name) or obj.Name == "NotHumanoid" or GetBypassJeffreyObject(obj) then
-        task.defer(function()
-            if BypassJeffreyEnabled then
-                SetBypassJeffreySit(obj)
-                task.wait(0.15)
-                SetBypassJeffreySit(obj)
-            end
-        end)
-    end
-end
-
-workspace.DescendantAdded:Connect(function(obj)
-    if obj and IsJeffreyName(obj.Name) then
-        JeffreyCacheAt = 0
-        HandleBypassJeffreyObject(obj)
-        if EnhancedDarkDimensionEnabled then
-            FarmForceRetarget = true
-            task.delay(0.25, function()
-                if not IsAntiJeffreyEscapePauseActive() then
-                    FarmForceRetarget = false
-                end
-            end)
-        end
-    elseif obj and obj.Name == "NotHumanoid" then
-        HandleBypassJeffreyObject(obj)
-    end
-end)
-
-workspace.DescendantRemoving:Connect(function(obj)
-    if obj and IsJeffreyName(obj.Name) then
-        JeffreyCacheAt = 0
-        if BypassJeffreyEnabled then
-            task.delay(0.15, function()
-                if BypassJeffreyEnabled then
-                    ScanBypassJeffreys(false)
-                end
-            end)
-        end
-    end
-end)
-
-function GetMobMaxHP(mob)
-    local humanoid = mob and mob:FindFirstChild("Humanoid")
-    if not humanoid then return 0 end
-    return humanoid.MaxHealth or 0
 end
 -- ====================== MOB CACHE SYSTEM ======================
 MobCacheList = {}
@@ -2839,225 +2690,597 @@ function IsLivingDescendant(obj)
     end
     return false
 end
--- ============================================================
--- ====================== ESP SYSTEM =========================
--- ============================================================
+-- ====================== Delete Map (Delete Map) SYSTEM ======================
+BoostFPS_OriginalData = {}
+BoostFPS_Active = false
+BoostFPS_RestoreConnection = nil
+BoostFPS_LightingData = {}
 
-ESP = {
-    Enabled       = Config:Get("EspEnabled", false),
-    MobEnabled    = Config:Get("EspMobEnabled", true),
-    PlayerEnabled = Config:Get("EspPlayerEnabled", true),
-    ItemEnabled   = Config:Get("EspItemEnabled", true),
-    Settings      = Config:Get("EspSettings", { "高亮", "距离", "血量", "名称" }),
-    SelectedItems = Config:Get("EspSelectedItems", {}),
-    MaxDistance   = 1500,
-    _mobHighlights    = {},
-    _playerHighlights = {},
-    _itemHighlights   = {},
-    ItemList = {
-        "时钟蜘蛛","X-18 核心","绿色能量核心","奇怪发射器",
-        "礼物","奇怪棱镜","钥匙卡","僵尸核心","闪存驱动器","Astro 样本",
-    },
-}
+function SaveAndBoostFPS()
+    if BoostFPS_Active then return end
+    BoostFPS_Active = true
+    BoostFPS_OriginalData = {}
+    BoostFPS_LightingData = {}
 
-function IsESPItemTarget(objectName, selectedList)
-    for _, pattern in ipairs(selectedList) do
-        if objectName == pattern then return true end
-    end
-    for _, pattern in ipairs(selectedList) do
-        local english = CollectMap[pattern] or pattern
-        if objectName == english then return true end
-    end
-    return false
-end
-
-function CreateESPLabel(parent, labelText)
-    local existing = parent:FindFirstChild("YYA_ESP_LABEL")
-    if existing then existing:Destroy() end
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "YYA_ESP_LABEL"
-    billboard.Size = UDim2.new(0, 120, 0, 40)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.AlwaysOnTop = true
-    billboard.ResetOnSpawn = false
-    billboard.Adornee = parent
-    billboard.Parent = parent
-    local frame = Instance.new("Frame")
-    frame.BackgroundTransparency = 1
-    frame.Size = UDim2.fromScale(1, 1)
-    frame.Parent = billboard
-    local label = Instance.new("TextLabel")
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.fromScale(1, 1)
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 11
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextStrokeTransparency = 0.4
-    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    label.Text = labelText
-    label.Parent = frame
-    return billboard, label
-end
-
-function CreateHighlight(model, outlineColor, fillColor, fillTransparency)
-    local existing = model:FindFirstChild("YYA_ESP_HIGHLIGHT")
-    if existing then existing:Destroy() end
-    local hl = Instance.new("Highlight")
-    hl.Name = "YYA_ESP_HIGHLIGHT"
-    hl.OutlineColor = outlineColor
-    hl.FillColor = fillColor
-    hl.FillTransparency = fillTransparency or 0.9
-    hl.OutlineTransparency = 0
-    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Adornee = model
-    hl.Parent = model
-    return hl
-end
-
-function RemoveESP(model)
+    local Lighting = game:GetService("Lighting")
+    BoostFPS_LightingData = {
+        Brightness = Lighting.Brightness,
+        GlobalShadows = Lighting.GlobalShadows,
+        FogEnd = Lighting.FogEnd,
+        FogStart = Lighting.FogStart,
+    }
     pcall(function()
-        local hl = model:FindFirstChild("YYA_ESP_HIGHLIGHT")
-        if hl then hl:Destroy() end
-        local hb = model:FindFirstChild("YYA_ESP_LABEL")
-        if hb then hb:Destroy() end
-        local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local lb = hrp:FindFirstChild("YYA_ESP_LABEL")
-            if lb then lb:Destroy() end
+        Lighting.GlobalShadows = false
+        Lighting.Brightness = 1
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 100000
+    end)
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        pcall(function()
+            if effect:IsA("Atmosphere") or effect:IsA("BloomEffect") or
+               effect:IsA("ColorCorrectionEffect") or effect:IsA("DepthOfFieldEffect") or
+               effect:IsA("SunRaysEffect") or effect:IsA("Sky") then
+                BoostFPS_LightingData["effect_" .. effect.Name] = { class = effect.ClassName, inst = effect }
+                effect.Parent = nil
+            end
+        end)
+    end
+
+    pcall(function()
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if IsLivingDescendant(obj) then continue end
+
+            if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") or obj:IsA("SpecialMesh") then
+                if not IsLivingDescendant(obj) then
+                    if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+                        BoostFPS_OriginalData[obj] = {
+                            Transparency = obj.Transparency,
+                            CastShadow = obj.CastShadow,
+                            Material = obj.Material,
+                        }
+                        obj.Transparency = 1
+                        obj.CastShadow = false
+                        pcall(function() obj.Material = Enum.Material.SmoothPlastic end)
+                    end
+                end
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                BoostFPS_OriginalData[obj] = { Transparency = obj.Transparency }
+                obj.Transparency = 1
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or
+                   obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") or obj:IsA("SelectionBox") then
+                BoostFPS_OriginalData[obj] = { Enabled = obj.Enabled }
+                pcall(function() obj.Enabled = false end)
+            elseif obj:IsA("SpecialMesh") then
+                BoostFPS_OriginalData[obj] = { TextureId = obj.TextureId }
+                obj.TextureId = ""
+            end
+        end
+    end)
+
+    BoostFPS_RestoreConnection = workspace.DescendantAdded:Connect(function(obj)
+        if not BoostFPS_Active then return end
+        if IsLivingDescendant(obj) then return end
+        task.wait(0.05)
+        pcall(function()
+            if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+                if not IsLivingDescendant(obj) then
+                    obj.Transparency = 1
+                    obj.CastShadow = false
+                end
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                obj.Transparency = 1
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or
+                   obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+                pcall(function() obj.Enabled = false end)
+            end
+        end)
+    end)
+
+    print("[YYa] 删除地图: ON")
+end
+
+function RestoreBoostFPS()
+    if not BoostFPS_Active then return end
+    BoostFPS_Active = false
+
+    if BoostFPS_RestoreConnection then
+        BoostFPS_RestoreConnection:Disconnect()
+        BoostFPS_RestoreConnection = nil
+    end
+
+    local Lighting = game:GetService("Lighting")
+    pcall(function()
+        if BoostFPS_LightingData.Brightness ~= nil then Lighting.Brightness = BoostFPS_LightingData.Brightness end
+        if BoostFPS_LightingData.GlobalShadows ~= nil then Lighting.GlobalShadows = BoostFPS_LightingData.GlobalShadows end
+        if BoostFPS_LightingData.FogEnd ~= nil then Lighting.FogEnd = BoostFPS_LightingData.FogEnd end
+        if BoostFPS_LightingData.FogStart ~= nil then Lighting.FogStart = BoostFPS_LightingData.FogStart end
+    end)
+    for key, data in pairs(BoostFPS_LightingData) do
+        if type(key) == "string" and key:sub(1, 7) == "effect_" then
+            pcall(function()
+                if data.inst then data.inst.Parent = Lighting end
+            end)
+        end
+    end
+
+    for obj, data in pairs(BoostFPS_OriginalData) do
+        pcall(function()
+            if not obj or not obj.Parent then return end
+            if data.Transparency ~= nil and (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") or obj:IsA("Decal") or obj:IsA("Texture")) then
+                obj.Transparency = data.Transparency
+            end
+            if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
+            if data.Material ~= nil then pcall(function() obj.Material = data.Material end) end
+            if data.Enabled ~= nil then pcall(function() obj.Enabled = data.Enabled end) end
+            if data.TextureId ~= nil then obj.TextureId = data.TextureId end
+        end)
+    end
+
+    BoostFPS_OriginalData = {}
+    BoostFPS_LightingData = {}
+    print("[YYa] 删除地图: OFF (已恢复)")
+end
+
+task.spawn(function()
+    while true do
+        task.wait(3)
+        if BoostFPS_Active then
+            pcall(function()
+                for _, obj in ipairs(workspace:GetDescendants()) do
+                    if IsLivingDescendant(obj) then continue end
+                    if (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then
+                        if not IsLivingDescendant(obj) then
+                            if obj.Transparency < 0.99 and not BoostFPS_OriginalData[obj] then
+                                obj.Transparency = 1
+                                obj.CastShadow = false
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ====================== PLAYER HP HELPERS ======================
+function GetPlayerHPInfo()
+    local humanoid = Character and Character:FindFirstChild("Humanoid")
+    if not humanoid then return 100, 100 end
+    return humanoid.Health, humanoid.MaxHealth
+end
+
+function IsPlayerHPFull()
+    local hp, maxHp = GetPlayerHPInfo()
+    if maxHp <= 0 then return true end
+    return hp >= maxHp
+end
+
+function GetPlayerHealthPercent()
+    local humanoid = Character and Character:FindFirstChild("Humanoid")
+    if not humanoid then return 100 end
+    if humanoid.MaxHealth <= 0 then return 100 end
+    return (humanoid.Health / humanoid.MaxHealth) * 100
+end
+
+-- ====================== GOD MODE CORE ======================
+function IsCharacterDeadForGodMode(char, humanoid)
+    return not char or not char.Parent or not humanoid or not humanoid.Parent
+        or humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead
+end
+
+function ForceGodModeOnce(reason)
+    local ok, result = pcall(function()
+        local char = LocalPlayer.Character
+        if not char then return false end
+
+        local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
+        if not humanoid then return false end
+        if IsCharacterDeadForGodMode(char, humanoid) then return false end
+
+        local destroyed = false
+
+        local head = char:FindFirstChild("Head")
+        if head then
+            head:Destroy()
+            destroyed = true
+        end
+
+        task.wait(0.05)
+
+        if IsCharacterDeadForGodMode(char, humanoid) then
+            CombatDebug("GodMode", "上帝模式已触发: " .. tostring(reason or "手动"), 2)
+            return true
+        end
+
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+        if torso then
+            torso:Destroy()
+            destroyed = true
+        end
+
+        if not destroyed and not IsCharacterDeadForGodMode(char, humanoid) then
+            humanoid.Health = 0
+        end
+
+        CombatDebug("GodMode", "上帝模式已触发: " .. tostring(reason or "手动"), 2)
+        return true
+    end)
+
+    return ok and result == true
+end
+
+-- ====================== GOD MODE LOOP (所有模式强制启用) ======================
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if AutoFarmEnabled then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+
+                local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
+                if not humanoid then return end
+                if humanoid.MaxHealth <= 0 then return end
+
+                local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
+
+                if hpPercent < GodModeValue then
+                    ForceGodModeOnce("血量低于上帝模式阈值")
+                end
+            end)
+        end
+    end
+end)
+
+-- ====================== AUTO FILL UP (所有模式常驻) ======================
+function DoFillUp()
+    local remote = GetRemote("ShopSystem")
+    if not remote then return end
+    for i = 1, 2 do
+        pcall(function() remote:FireServer("Buy", "FillHP") end)
+        if i < 2 then task.wait(0.3) end
+    end
+end
+
+function StartAutoFillUpLoop()
+    if FillUpRunning then return end
+    FillUpRunning = true
+    task.spawn(function()
+        while AutoFarmEnabled do
+            if not IsPlayerHPFull() then
+                if AutoSkipHeliEnabled then
+                    TriggerAutoSkipHeli(false)
+                end
+                local waited = 0
+                while not IsFillUpPartReady() and AutoFarmEnabled do
+                    waited = waited + 0.2
+                    if waited >= 30 then break end
+                    task.wait(0.2)
+                end
+                if IsFillUpPartReady() and AutoFarmEnabled then
+                    DoFillUp()
+                    task.wait(1)
+                end
+                if AutoSkipHeliEnabled then
+                    TriggerAutoSkipHeli(true)
+                end
+            end
+            task.wait(1)
+        end
+        FillUpRunning = false
+    end)
+end
+
+-- ====================== BARRIER BYPASS ======================
+function startNoBarrier()
+    if noBarrierConnection then return end
+    noBarrierConnection = RunService.Heartbeat:Connect(function()
+        pcall(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local pos = hrp.Position
+            if math.abs(pos.X) > 1000 or math.abs(pos.Y) > 1000 or math.abs(pos.Z) > 1000 then
+                hrp.CFrame = CFrame.new(Vector3.new(0, 50, 0))
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.Health = humanoid.MaxHealth
+                end
+            end
+        end)
+    end)
+end
+
+function stopNoBarrier()
+    if noBarrierConnection then
+        noBarrierConnection:Disconnect()
+        noBarrierConnection = nil
+    end
+end
+
+-- ============================================================
+-- ====================== AUTO START MODE ======================
+function FireGetReady(delayBefore)
+    if delayBefore == nil then delayBefore = 0 end
+    if delayBefore > 0 then task.wait(delayBefore) end
+
+    local now = tick()
+    if now - (AutoStartLastReadyAt or 0) < 0.85 then return false end
+    AutoStartLastReadyAt = now
+
+    if AutoVoteinGameEnabled then
+        FireAutoVote(true)
+        task.wait(0.2)
+    end
+
+    local remote = GetRemote("GetReadyRemote")
+    if not remote then return false end
+
+    local ok, err = pcall(function()
+        remote:FireServer("1", true)
+        task.wait(0.2)
+        remote:FireServer("1", false)
+        task.wait(0.2)
+        remote:FireServer("2", false)
+        task.wait(0.2)
+        remote:FireServer("3", false)
+        task.wait(0.2)
+        remote:FireServer("1", true)
+    end)
+
+    if not ok then warn("[YYa] GetReadyRemote 失败:", err) end
+    return ok
+end
+
+function SetupAutoStartOnly(enabled)
+    if AutoStartConnection then
+        AutoStartConnection:Disconnect()
+        AutoStartConnection = nil
+    end
+
+    if not enabled then return end
+
+    FireGetReady(0)
+
+    AutoStartConnection = LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1)
+        if AutoStartEnabled then
+            task.spawn(function() FireGetReady(1) end)
         end
     end)
 end
 
-function IsInRange(targetPart)
-    if not targetPart or not HumanoidRootPart then return false end
-    return (HumanoidRootPart.Position - targetPart.Position).Magnitude <= ESP.MaxDistance
+function StartAutoStart()
+    AutoStartEnabled = true
+    SetupAutoStartOnly(true)
 end
 
-function BuildLabelText(model, showName, showHealth, showDistance)
-    local parts = {}
-    if showName then table.insert(parts, model.Name) end
-    if showHealth then
-        local humanoid = model:FindFirstChild("Humanoid")
-        if humanoid then
-            table.insert(parts, "❤ " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth))
+function StopAutoStart()
+    AutoStartEnabled = false
+    SetupAutoStartOnly(false)
+end
+
+-- ====================== TELEPORT TO IDLE ======================
+function StopIdleVelocity()
+    pcall(function()
+        if HumanoidRootPart then
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
+    end)
+end
+
+function IsNearIdlePosition()
+    if not HumanoidRootPart then return false end
+    return (HumanoidRootPart.Position - IdlePosition.Position).Magnitude <= IdleHoldDistance
+end
+
+function TeleportToIdle(force)
+    LockActive = false
+    WaitingRespawn = true
+    IdlePosition = GetYYAWaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
+    UpdateYYAWaitingPartCollision()
+
+    if not Character or not Character.Parent or not HumanoidRootPart then return end
+
+    local now = tick()
+
+    if not force and IsNearIdlePosition() then
+        IdlePositionReached = true
+        StopIdleVelocity()
+        return
     end
-    if showDistance then
-        local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp and HumanoidRootPart then
-            table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - hrp.Position).Magnitude) .. "m")
+
+    if not force and (now - LastIdleTeleportAt) < IdleTeleportCooldown then
+        StopIdleVelocity()
+        return
+    end
+
+    LastIdleTeleportAt = now
+    IdlePositionReached = true
+
+    pcall(function()
+        Character:PivotTo(IdlePosition)
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+    end)
+end
+
+-- ====================== PROXIMITY PROMPT HELPERS ======================
+function ActivateProximityPrompt(prompt)
+    pcall(function()
+        prompt.HoldDuration = 0
+        prompt.MaxActivationDistance = 50
+        if fireproximityprompt then fireproximityprompt(prompt) end
+        prompt:InputHoldBegin()
+        task.wait(0.03)
+        prompt:InputHoldEnd()
+    end)
+end
+
+FlushPromptCache = {}
+FlushPromptCacheDirty = true
+FlushPromptCacheLastScan = 0
+FlushPromptCacheTTL = 8
+
+function IsFlushPrompt(prompt)
+    if not prompt or not prompt:IsA("ProximityPrompt") then return false end
+    local actionText = tostring(prompt.ActionText or ""):lower()
+    local objectText = tostring(prompt.ObjectText or ""):lower()
+    local combined = actionText .. " " .. objectText .. " " .. tostring(prompt.Name or ""):lower()
+    return combined:find("flush", 1, true) ~= nil
+        or combined:find("flash", 1, true) ~= nil
+        or combined:find("dragon", 1, true) ~= nil
+end
+
+function RegisterFlushPrompt(obj)
+    if obj and obj:IsA("ProximityPrompt") and IsFlushPrompt(obj) then
+        FlushPromptCache[obj] = true
+    end
+end
+
+function RebuildFlushPromptCache()
+    FlushPromptCache = {}
+    pcall(function()
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            RegisterFlushPrompt(obj)
         end
-    end
-    return table.concat(parts, "\n")
+    end)
+    FlushPromptCacheDirty = false
+    FlushPromptCacheLastScan = tick()
 end
 
-function BuildItemLabelText(obj, showName, showDistance)
-    local parts = {}
-    if showName then table.insert(parts, obj.Name) end
-    if showDistance then
-        local root = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")) or (obj:IsA("BasePart") and obj or nil)
-        if root and HumanoidRootPart then
-            table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - root.Position).Magnitude) .. "m")
+workspace.DescendantAdded:Connect(function(obj)
+    if obj and obj:IsA("ProximityPrompt") then
+        task.defer(function() RegisterFlushPrompt(obj) end)
+    end
+end)
+
+workspace.DescendantRemoving:Connect(function(obj)
+    if obj and FlushPromptCache[obj] then
+        FlushPromptCache[obj] = nil
+    end
+end)
+
+LastFlushPromptActivateAllAt = 0
+
+function ActivateAllFlushPrompts()
+    local now = tick()
+    if now - (LastFlushPromptActivateAllAt or 0) < 0.35 then return end
+    LastFlushPromptActivateAllAt = now
+
+    pcall(function()
+        if FlushPromptCacheDirty or tick() - (FlushPromptCacheLastScan or 0) > (FlushPromptCacheTTL or 8) then
+            RebuildFlushPromptCache()
         end
-    end
-    return table.concat(parts, "\n")
-end
 
-function GetESPSettings()
-    local s = ESP.Settings
-    return {
-        highlight = table.find(s, "高亮") ~= nil,
-        distance  = table.find(s, "距离") ~= nil,
-        health    = table.find(s, "血量") ~= nil,
-        name      = table.find(s, "名称") ~= nil,
-    }
-end
-
-function ApplyMobESP(mob)
-    if not mob or not mob.Parent then return end
-    local hrp = mob:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local settings = GetESPSettings()
-    if settings.highlight then
-        CreateHighlight(mob, Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 255, 255), 0.9)
-    end
-    if settings.name or settings.health or settings.distance then
-        local _, label = CreateESPLabel(hrp, "")
-        task.spawn(function()
-            while mob and mob.Parent and ESP.Enabled and ESP.MobEnabled do
-                local humanoid = mob:FindFirstChild("Humanoid")
-                if not humanoid or humanoid.Health <= 0 then break end
-                if not IsInRange(hrp) then
-                    label.Visible = false
-                    task.wait(0.5)
-                else
-                    label.Visible = true
-                    label.Text = BuildLabelText(mob, settings.name, settings.health, settings.distance)
-                    task.wait(0.35)
-                end
+        for prompt in pairs(FlushPromptCache) do
+            if prompt and prompt.Parent and IsFlushPrompt(prompt) then
+                ActivateProximityPrompt(prompt)
+            else
+                FlushPromptCache[prompt] = nil
             end
-            RemoveESP(mob)
-            ESP._mobHighlights[mob] = nil
-        end)
-    end
-    ESP._mobHighlights[mob] = true
+        end
+    end)
 end
+-- ============================================================
+-- ====================== COLLECT SYSTEM ======================
+-- ============================================================
 
-function ScanMobs()
-    local livingFolder = workspace:FindFirstChild("Living")
-    if not livingFolder then return end
-    for _, mob in ipairs(livingFolder:GetChildren()) do
-        if IsValidMob(mob) and not ESP._mobHighlights[mob] then
-            local hrp = mob:FindFirstChild("HumanoidRootPart")
-            if hrp and IsInRange(hrp) then ApplyMobESP(mob) end
+CollectItems = {
+    "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
+    "Astro Samples", "Weird Prism", "Key Card", "Zombie Core",
+    "Flash Drives", "Presents",
+}
+
+CollectGroupMap = {
+    ["Astro Samples"] = {
+        "Trooper Blast","Trooper Spinner","Specialist Blaster","Specialist Spinner",
+        "Specialist Sword Arm","Strider Leg","Interceptor Wing","Interceptor Goggles",
+        "Interceptor Spinner","Impactor Cannon","Impactor Laser","High Impactor Cannon",
+        "High Impactor Laser","Destructor Laser","Destructor Blaster","Destructor Core",
+        "Obliterator Blaster","Obliterator Spinner",
+    },
+    ["Presents"] = {
+        "Gacha Capsule",
+    },
+}
+
+AutoCollectEnabled   = Config:Get("AutoCollectEnabled", false)
+SelectedCollectItems = Config:Get("SelectedCollectItems", {})
+CollectMode          = Config:Get("CollectMode", "清洁")
+CollectMovementMode  = NormalizeCollectMovement(Config:Get("CollectMovementMode", "补间"))
+
+KnownCollectItems = {}
+CollectRunning    = false
+CollectCandidateCache = {}
+CollectCacheDirty = true
+CollectLastFullScan = 0
+
+function MatchesPattern(objectName, pattern)
+    local objL, patL = tostring(objectName or ""):lower(), tostring(pattern or ""):lower()
+    if objL == patL then return true end
+    if #objL > #patL and objL:sub(1, #patL) == patL then
+        local nc = objL:sub(#patL + 1, #patL + 1)
+        if nc == " " or nc == "#" or nc == "_" or nc == "-" then return true end
+    end
+    if CollectGroupMap[pattern] then
+        for _, gName in ipairs(CollectGroupMap[pattern]) do
+            if objL == gName:lower() then return true end
         end
     end
+    return false
 end
 
-function ApplyPlayerESP(playerChar)
-    if not playerChar or not playerChar.Parent then return end
-    local hrp = playerChar:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    if playerChar == LocalPlayer.Character then return end
-    local settings = GetESPSettings()
-    if settings.highlight then
-        CreateHighlight(playerChar, Color3.fromRGB(50, 255, 50), Color3.fromRGB(255, 255, 255), 0.9)
+function IsCollectTarget(objectName)
+    for _, pattern in ipairs(SelectedCollectItems) do
+        if MatchesPattern(objectName, pattern) then return true end
     end
-    if settings.name or settings.health or settings.distance then
-        local _, label = CreateESPLabel(hrp, "")
-        task.spawn(function()
-            while playerChar and playerChar.Parent and ESP.Enabled and ESP.PlayerEnabled do
-                local humanoid = playerChar:FindFirstChild("Humanoid")
-                if not humanoid or humanoid.Health <= 0 then break end
-                if not IsInRange(hrp) then
-                    label.Visible = false
-                    task.wait(0.5)
-                else
-                    label.Visible = true
-                    label.Text = BuildLabelText(playerChar, settings.name, settings.health, settings.distance)
-                    task.wait(0.35)
-                end
-            end
-            RemoveESP(playerChar)
-            ESP._playerHighlights[playerChar] = nil
-        end)
-    end
-    ESP._playerHighlights[playerChar] = true
+    return false
 end
 
-function ScanPlayers()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local char = player.Character
-            if not ESP._playerHighlights[char] then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
-            end
+function IsCollectObject(obj)
+    return obj and obj.Parent and (obj:IsA("Model") or obj:IsA("MeshPart") or obj:IsA("Part") or obj:IsA("BasePart"))
+end
+
+function AddCollectCandidate(obj)
+    if IsCollectObject(obj) and IsCollectTarget(obj.Name) then
+        CollectCandidateCache[obj] = true
+        return true
+    end
+    return false
+end
+
+function RebuildCollectCache()
+    CollectCandidateCache = {}
+    if #SelectedCollectItems > 0 then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            AddCollectCandidate(obj)
         end
     end
+    CollectCacheDirty = false
+    CollectLastFullScan = tick()
 end
 
-function GetItemRoot(obj)
+function FindNewCollectItems()
+    if CollectCacheDirty or tick() - CollectLastFullScan > 5 then
+        RebuildCollectCache()
+    end
+
+    local found = {}
+    for obj, _ in pairs(CollectCandidateCache) do
+        if not obj or not obj.Parent or not IsCollectTarget(obj.Name) then
+            CollectCandidateCache[obj] = nil
+            KnownCollectItems[obj] = nil
+        elseif not KnownCollectItems[obj] and IsCollectObject(obj) then
+            table.insert(found, obj)
+        end
+    end
+    return found
+end
+
+function GetItemRootPart(obj)
     if obj:IsA("Model") then
         return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
     elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then
@@ -3066,1728 +3289,1123 @@ function GetItemRoot(obj)
     return nil
 end
 
-function ApplyItemESP(obj)
-    if not obj or not obj.Parent then return end
-    local root = GetItemRoot(obj)
-    if not root then return end
-    local settings = GetESPSettings()
-    if settings.highlight then
-        CreateHighlight(obj, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 255, 255), 0.9)
-    end
-    if settings.name or settings.distance then
-        local _, label = CreateESPLabel(root, "")
-        task.spawn(function()
-            while obj and obj.Parent and ESP.Enabled and ESP.ItemEnabled do
-                local currentRoot = GetItemRoot(obj)
-                if not currentRoot then break end
-                if not IsInRange(currentRoot) then
-                    label.Visible = false
-                    task.wait(0.5)
-                else
-                    label.Visible = true
-                    label.Text = BuildItemLabelText(obj, settings.name, settings.distance)
-                    task.wait(0.5)
-                end
-            end
-            RemoveESP(obj)
-            ESP._itemHighlights[obj] = nil
+function GetItemTargetCFrame(itemRoot)
+    if not itemRoot then return nil end
+    return CFrame.new(itemRoot.Position + Vector3.new(0, 3, 0), itemRoot.Position)
+end
+
+function MoveToItem(itemRoot)
+    RefreshCombatCharacter()
+    if not itemRoot or not Character or not HumanoidRootPart then return false end
+
+    local targetCF = GetItemTargetCFrame(itemRoot)
+    if not targetCF then return false end
+
+    if CollectMovementMode == "传送" then
+        pcall(function()
+            Character:PivotTo(targetCF)
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end)
+        return true
     end
-    ESP._itemHighlights[obj] = true
+
+    local ok = pcall(function()
+        local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = targetCF })
+        tween:Play()
+        local started = tick()
+        repeat
+            task.wait(0.05)
+            if not AutoCollectEnabled or IsItemGone(itemRoot) then
+                pcall(function() tween:Cancel() end)
+                break
+            end
+        until tween.PlaybackState ~= Enum.PlaybackState.Playing or tick() - started > math.max(TweenSpeed + 1, 3)
+        pcall(function()
+            Character:PivotTo(targetCF)
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end)
+
+    return ok
 end
 
-function ScanItems()
-    if #ESP.SelectedItems == 0 then return end
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if not ESP._itemHighlights[obj] and IsESPItemTarget(obj.Name, ESP.SelectedItems) then
-            local root = GetItemRoot(obj)
-            if root and IsInRange(root) then ApplyItemESP(obj) end
-        end
-    end
-end
-
-function ClearAllESP()
-    for mob, _ in pairs(ESP._mobHighlights) do RemoveESP(mob) end
-    ESP._mobHighlights = {}
-    for char, _ in pairs(ESP._playerHighlights) do RemoveESP(char) end
-    ESP._playerHighlights = {}
-    for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
-    ESP._itemHighlights = {}
-end
-
-ESPConnection = nil
-
-function StartESPLoop()
-    if ESPConnection then
-        ESPConnection:Disconnect()
-        ESPConnection = nil
-    end
-    local lastMobScan, lastPlayerScan, lastItemScan = 0, 0, 0
-    ESPConnection = RunService.Heartbeat:Connect(function()
-        if not ESP.Enabled then return end
-        local now = tick()
-        if ESP.MobEnabled and now - lastMobScan >= 0.8 then
-            lastMobScan = now
-            pcall(ScanMobs)
-        end
-        if ESP.PlayerEnabled and now - lastPlayerScan >= 1.0 then
-            lastPlayerScan = now
-            pcall(ScanPlayers)
-        end
-        if ESP.ItemEnabled and now - lastItemScan >= 4.0 then
-            lastItemScan = now
-            pcall(ScanItems)
+function ActivateItemPrompts(obj)
+    pcall(function()
+        for _, child in ipairs(obj:GetDescendants()) do
+            if child:IsA("ProximityPrompt") then
+                child.HoldDuration = 0
+                child.MaxActivationDistance = 50
+                if fireproximityprompt then fireproximityprompt(child) end
+                child:InputHoldBegin()
+                task.wait(0.04)
+                child:InputHoldEnd()
+            end
         end
     end)
 end
 
-function StopESPLoop()
-    if ESPConnection then
-        ESPConnection:Disconnect()
-        ESPConnection = nil
+function IsItemGone(obj)
+    return not obj or not obj.Parent
+end
+
+function BeginCollectPause()
+    FarmCollecting = true
+    FarmForceRetarget = true
+    LockActive = false
+    if FarmAstroTokenEnabled then
+        SetFarmAstroCollectPause(true)
     end
-    ClearAllESP()
+    task.wait(0.08)
+end
+
+function EndCollectPause()
+    if FarmAstroTokenEnabled then
+        SetFarmAstroCollectPause(false)
+    end
+    FarmCollecting = false
+    FarmForceRetarget = true
+    if AutoFarmEnabled then
+        WaitingRespawn = false
+        StartFarmLoop()
+    end
+    task.delay(0.6, function()
+        FarmForceRetarget = false
+    end)
+end
+
+function CollectSingleItem(obj)
+    if IsItemGone(obj) then return end
+    local itemRoot = GetItemRootPart(obj)
+    if not itemRoot then return end
+
+    MoveToItem(itemRoot)
+
+    local timeout = 0
+    while AutoCollectEnabled and not IsItemGone(obj) and timeout < 8 do
+        itemRoot = GetItemRootPart(obj)
+        if not itemRoot then break end
+
+        if timeout == 0 or timeout % 0.3 < 0.16 then
+            local targetCF = GetItemTargetCFrame(itemRoot)
+            pcall(function()
+                if targetCF and Character and HumanoidRootPart then
+                    Character:PivotTo(targetCF)
+                    HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                    HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                end
+            end)
+        end
+
+        ActivateItemPrompts(obj)
+        task.wait(0.15)
+        timeout = timeout + 0.15
+    end
+
+    KnownCollectItems[obj] = true
+end
+
+function AllMobsDead()
+    return #GetFarmCandidateMobs(false) == 0
+end
+
+function StartAutoCollectLoop()
+    if CollectRunning then return end
+    CollectRunning = true
+    task.spawn(function()
+        while AutoCollectEnabled do
+            if FarmAstroTokenEnabled and CollectMode == "清洁" then
+                NotifyFarmAstroCleanMode()
+                task.wait(1)
+                continue
+            end
+
+            if #SelectedCollectItems > 0 then
+                local itemsToCollect = FindNewCollectItems()
+                if #itemsToCollect > 0 then
+                    if CollectMode == "IDGF" then
+                        BeginCollectPause()
+                        for _, obj in ipairs(itemsToCollect) do
+                            if not AutoCollectEnabled then break end
+                            if not IsItemGone(obj) then
+                                CollectSingleItem(obj)
+                            else
+                                KnownCollectItems[obj] = true
+                            end
+                        end
+                        EndCollectPause()
+
+                    elseif CollectMode == "清洁" then
+                        local waitedClean = 0
+                        while not AllMobsDead() and AutoCollectEnabled do
+                            task.wait(0.5)
+                            waitedClean = waitedClean + 0.5
+                            if waitedClean >= 120 then break end
+                        end
+                        if not AutoCollectEnabled then break end
+
+                        if AutoSkipHeliEnabled then
+                            TriggerAutoSkipHeli(false)
+                        end
+                        BeginCollectPause()
+                        for _, obj in ipairs(FindNewCollectItems()) do
+                            if not AutoCollectEnabled then break end
+                            if not IsItemGone(obj) then
+                                CollectSingleItem(obj)
+                            else
+                                KnownCollectItems[obj] = true
+                            end
+                        end
+                        EndCollectPause()
+                        if AutoSkipHeliEnabled then
+                            TriggerAutoSkipHeli(true)
+                        end
+
+                        if not IsPlayerHPFull() and AutoFillUpEnabled then
+                            local fw = 0
+                            while not IsPlayerHPFull() and AutoFillUpEnabled and AutoCollectEnabled do
+                                task.wait(0.5)
+                                fw = fw + 0.5
+                                if fw >= 60 then break end
+                            end
+                        end
+                    end
+                else
+                    for obj, _ in pairs(KnownCollectItems) do
+                        if IsItemGone(obj) then
+                            KnownCollectItems[obj] = nil
+                        end
+                    end
+                end
+            end
+            task.wait(0.65)
+        end
+        FarmCollecting = false
+        CollectRunning = false
+    end)
 end
 
 workspace.DescendantAdded:Connect(function(obj)
-    if not ESP.Enabled or not ESP.ItemEnabled or #ESP.SelectedItems == 0 then return end
-    task.wait(0.1)
-    if IsESPItemTarget(obj.Name, ESP.SelectedItems) and not ESP._itemHighlights[obj] then
-        local root = GetItemRoot(obj)
-        if root and IsInRange(root) then ApplyItemESP(obj) end
+    if not AutoCollectEnabled or #SelectedCollectItems == 0 then return end
+    if AddCollectCandidate(obj) then
+        CombatDebug("CollectItem", "新物品已缓存: " .. tostring(obj.Name), 3)
     end
 end)
 
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(char)
-        if not ESP.Enabled or not ESP.PlayerEnabled then return end
-        task.wait(1)
-        if not ESP._playerHighlights[char] then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
-        end
-    end)
-end)
+-- ============================================================
+-- ====================== FARM ASTRO TOKEN ====================
+-- ============================================================
+FARM_ASTRO_TOKEN_IMAGE = "rbxassetid://103720636367587"
+FARM_ASTRO_TOP_A       = CFrame.new(-680, 167, 505)
+FARM_ASTRO_TOP_B       = CFrame.new(495, 167, 505)
 
-function WatchLivingFolder()
-    local living = workspace:FindFirstChild("Living")
-    if living then
-        living.ChildAdded:Connect(function(obj)
-            if not ESP.Enabled or not ESP.MobEnabled then return end
-            task.wait(0.2)
-            if IsValidMob(obj) and not ESP._mobHighlights[obj] then
-                local hrp = obj:FindFirstChild("HumanoidRootPart")
-                if hrp and IsInRange(hrp) then ApplyMobESP(obj) end
-            end
-        end)
-    end
+FARM_ASTRO_LOW_A       = CFrame.new(-680, -15, -555)
+FARM_ASTRO_LOW_B       = CFrame.new(500, -15, -555)
+FARM_ASTRO_TIMER_TOP_CF = CFrame.new(-23.3435822, 67, 0.341766357)
+FARM_ASTRO_TIMER_BOTTOM_CF = CFrame.new(-23.3435822, 2, 0.341766357)
+FARM_ASTRO_TIMER_SAFE_CF = FARM_ASTRO_TIMER_BOTTOM_CF
+FARM_ASTRO_TIMER_PART_OFFSET = CFrame.new(0, -4, 0)
+FARM_ASTRO_TWEEN_TIME  = 0.3
+FARM_ASTRO_TIMER_DROP_TIME = 0.35
+
+function NotifyFarmAstroAutoFarm()
+    local now = tick()
+    if now - FarmAstroTokenLastAutoFarmNotify < 3 then return end
+    FarmAstroTokenLastAutoFarmNotify = now
+    WindUI:Notify({
+        Title = "Farm Astro Token",
+        Content = "请先关闭自动刷怪再使用 Farm Astro Token。",
+        Duration = 4,
+        Icon = "triangle-alert"
+    })
 end
 
-task.spawn(function()
-    if not workspace:FindFirstChild("Living") then
-        workspace.ChildAdded:Connect(function(child)
-            if child.Name == "Living" then WatchLivingFolder() end
-        end)
-    else
-        WatchLivingFolder()
-    end
-end)
--- ============================================================
--- ====================== UI: MAIN4 (ESP TAB) ======================
--- ============================================================
-
-Main4:Section({ Title = "启用透视", Icon = "eye" })
-
-EspEnableToggle = Main4:Toggle({
-    Title = "启用透视",
-    Value = ESP.Enabled,
-    Desc = "启用所有透视视觉效果。",
-    Callback = function(state)
-        ESP.Enabled = state
-        Config:Set("EspEnabled", state)
-        Config:Save()
-        if state then StartESPLoop() else StopESPLoop() end
-    end
-})
-
-EspMobToggle = Main4:Toggle({
-    Title = "怪物透视",
-    Value = ESP.MobEnabled,
-    Desc = "在敌人怪物上方显示高亮和信息标签。",
-    Callback = function(state)
-        ESP.MobEnabled = state
-        Config:Set("EspMobEnabled", state)
-        Config:Save()
-        if not state then
-            for mob, _ in pairs(ESP._mobHighlights) do RemoveESP(mob) end
-            ESP._mobHighlights = {}
-        end
-    end
-})
-
-EspPlayerToggle = Main4:Toggle({
-    Title = "玩家透视",
-    Value = ESP.PlayerEnabled,
-    Desc = "在其他玩家上方显示高亮和信息标签。",
-    Callback = function(state)
-        ESP.PlayerEnabled = state
-        Config:Set("EspPlayerEnabled", state)
-        Config:Save()
-        if not state then
-            for char, _ in pairs(ESP._playerHighlights) do RemoveESP(char) end
-            ESP._playerHighlights = {}
-        end
-    end
-})
-
-EspItemToggle = Main4:Toggle({
-    Title = "物品透视",
-    Value = ESP.ItemEnabled,
-    Desc = "在可收集物品上显示高亮和信息标签。",
-    Callback = function(state)
-        ESP.ItemEnabled = state
-        Config:Set("EspItemEnabled", state)
-        Config:Save()
-        if not state then
-            for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
-            ESP._itemHighlights = {}
-        end
-    end
-})
-
-Main4:Section({ Title = "透视设置", Icon = "settings" })
-
-EspSettingsDropdown = Main4:Dropdown({
-    Title = "透视选项",
-    Desc = "选择显示的额外透视标签和视觉效果。",
-    Multi = true,
-    Values = { "高亮", "距离", "血量", "名称" },
-    Value = ESP.Settings,
-    Callback = function(value)
-        ESP.Settings = value or {}
-        Config:Set("EspSettings", value)
-        Config:Save()
-        if ESP.Enabled then ClearAllESP() end
-    end,
-})
-
-EspItemDropdown = Main4:Dropdown({
-    Title = "透视物品",
-    Desc = "选择哪些可收集物品名称应接收物品透视。",
-    Multi = true,
-    Values = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物" },
-    Value = ESP.SelectedItems,
-    Callback = function(value)
-        ESP.SelectedItems = value or {}
-        Config:Set("EspSelectedItems", value)
-        Config:Save()
-        for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
-        ESP._itemHighlights = {}
-        if ESP.Enabled and ESP.ItemEnabled then pcall(ScanItems) end
-    end,
-})
-
--- ============================================================
--- ====================== UI: MAIN2 (玩家 TAB) ======================
--- ============================================================
-
-Main2:Section({ Title = "玩家", Icon = "user" })
-
-WSValue = Config:Get("WSValue", 16)
-JPValue = Config:Get("JPValue", 50)
-NoClip  = Config:Get("NoClip", false)
-LockMovementStats = Config:Get("LockMovementStats", true)
-
-FlyEnabled = Config:Get("FlyEnabled", false)
-FlySpeed = Config:Get("FlySpeed", 1)
-FlyHeight = Config:Get("FlyHeight", 10)
-FlyBodyVelocity = nil
-FlyBodyGyro = nil
-FlyRenderConnection = nil
-FlyNowe = false
-FlySpeeds = 1
-
-function FlyCleanupForces()
-    if FlyBodyVelocity then
-        pcall(function() FlyBodyVelocity:Destroy() end)
-        FlyBodyVelocity = nil
-    end
-    if FlyBodyGyro then
-        pcall(function() FlyBodyGyro:Destroy() end)
-        FlyBodyGyro = nil
-    end
+function NotifyFarmAstroCleanMode()
+    local now = tick()
+    if now - FarmAstroTokenLastCleanNotify < 5 then return end
+    FarmAstroTokenLastCleanNotify = now
+    WindUI:Notify({
+        Title = "Farm Astro Token",
+        Content = "Farm Astro Token 不会击杀怪物，因此清洁模式无法收集物品。请选择 IDGF 模式。",
+        Duration = 5,
+        Icon = "triangle-alert"
+    })
 end
 
-function FlyStopAll()
-    FlyNowe = false
-    FlyCleanupForces()
-    local plr = game.Players.LocalPlayer
-    local char = plr.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
-        if hum then
-            hum.PlatformStand = false
-            for _, state in pairs(Enum.HumanoidStateType:GetEnumItems()) do
-                pcall(function() hum:SetStateEnabled(state, true) end)
-            end
-            pcall(function() hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics) end)
-        end
-        local animate = char:FindFirstChild("Animate")
-        if animate then animate.Disabled = false end
-    end
-    if FlyRenderConnection then
-        FlyRenderConnection:Disconnect()
-        FlyRenderConnection = nil
-    end
-end
-
-function FlyStart()
-    if FlyNowe then return end
-    FlyNowe = true
-
-    local plr = game.Players.LocalPlayer
-    local char = plr.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
-    if not hum then return end
-
-    for _, state in pairs(Enum.HumanoidStateType:GetEnumItems()) do
-        pcall(function() hum:SetStateEnabled(state, false) end)
-    end
-    pcall(function() hum:ChangeState(Enum.HumanoidStateType.Swimming) end)
-
-    local animate = char:FindFirstChild("Animate")
-    if animate then animate.Disabled = true end
-
-    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-    if not torso then return end
-
-    FlyCleanupForces()
-
-    FlyBodyGyro = Instance.new("BodyGyro", torso)
-    FlyBodyGyro.P = 9e4
-    FlyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    FlyBodyGyro.CFrame = torso.CFrame
-
-    FlyBodyVelocity = Instance.new("BodyVelocity", torso)
-    FlyBodyVelocity.Velocity = Vector3.new(0, 0.1, 0)
-    FlyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-
-    hum.PlatformStand = true
-
-    if FlyRenderConnection then FlyRenderConnection:Disconnect() end
-    FlyRenderConnection = RunService.RenderStepped:Connect(function()
-        if not FlyNowe or not char or not char.Parent then
-            FlyStopAll()
-            return
-        end
-
-        local cam = workspace.CurrentCamera
-        if not cam or not torso or not FlyBodyVelocity or not FlyBodyGyro then return end
-
-        local moveDir = hum.MoveDirection
-        local vertical = 0
-        pcall(function()
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or UserInputService:IsKeyDown(Enum.KeyCode.E) then
-                vertical = vertical + 1
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.Q) then
-                vertical = vertical - 1
-            end
-        end)
-
-        local velocity = moveDir + Vector3.new(0, vertical * (FlyHeight or 10), 0)
-        if velocity.Magnitude > 0 then
-            velocity = velocity.Unit
-        end
-
-        local speed = (FlySpeeds or 1) * 50
-        FlyBodyVelocity.Velocity = velocity * speed
-        FlyBodyGyro.CFrame = cam.CFrame
-    end)
-end
-
-Main2:Slider({
-    Title = "设置移动速度",
-    Desc = "设置你保存的移动速度值。",
-    Value = { Min = 1, Max = 200, Default = WSValue },
-    Step = 1,
-    Callback = function(value)
-        WSValue = value
-        Config:Set("WSValue", value)
-        Config:Save()
-        updatePlayerStats(true)
-    end
-})
-
-Main2:Slider({
-    Title = "设置跳跃力",
-    Desc = "设置你保存的跳跃力值。",
-    Value = { Min = 1, Max = 500, Default = JPValue },
-    Step = 1,
-    Callback = function(value)
-        JPValue = value
-        Config:Set("JPValue", value)
-        Config:Save()
-        updatePlayerStats(true)
-    end
-})
-
-Main2:Toggle({
-    Title = "锁定移动属性",
-    Desc = "当游戏降低移动速度和跳跃力时恢复。",
-    Value = LockMovementStats,
-    Callback = function(state)
-        LockMovementStats = state
-        Config:Set("LockMovementStats", state)
-        Config:Save()
-        if state then updatePlayerStats(true) end
-    end
-})
-
-nocliptoggle = Main2:Toggle({
-    Title = "无碰撞",
-    Value = NoClip,
-    Desc = "允许角色穿过墙壁和部件。",
-    Callback = function(state)
-        NoClip = state
-        Config:Set("NoClip", state)
-        Config:Save()
-    end
-})
-
-Main2:Section({ Title = "飞行控制", Icon = "plane" })
-
-FlyToggle = Main2:Toggle({
-    Title = "飞行",
-    Desc = "启用飞行。按 Space/E 上升，Ctrl/Q 下降。",
-    Value = FlyEnabled,
-    Callback = function(state)
-        FlyEnabled = state
-        Config:Set("FlyEnabled", state)
-        Config:Save()
-        if state then
-            FlyStart()
-            WindUI:Notify({ Title = "飞行", Content = "飞行已开启", Duration = 2, Icon = "plane" })
-        else
-            FlyStopAll()
-            WindUI:Notify({ Title = "飞行", Content = "飞行已关闭", Duration = 2, Icon = "plane" })
-        end
-    end
-})
-
-Main2:Slider({
-    Title = "飞行速度",
-    Desc = "调整飞行移动速度（数值越大越快）。",
-    Value = { Min = 1, Max = 20, Default = FlySpeed },
-    Step = 1,
-    Callback = function(value)
-        FlySpeed = value
-        FlySpeeds = value
-        Config:Set("FlySpeed", value)
-        Config:Save()
-    end
-})
-
-Main2:Slider({
-    Title = "飞行高度",
-    Desc = "调整飞行时垂直上升/下降的速度倍率（数值越大升降越快）。",
-    Value = { Min = 1, Max = 50, Default = FlyHeight },
-    Step = 1,
-    Callback = function(value)
-        FlyHeight = value
-        Config:Set("FlyHeight", value)
-        Config:Save()
-    end
-})
-
-Main2:Section({ Title = "无限跳跃", Icon = "sun" })
-
-Main2:Toggle({
-    Title = "无限跳跃",
-    Desc = "允许在空中重复跳跃。",
-    Value = InfiniteJumpEnabled,
-    Callback = function(state)
-        InfiniteJumpEnabled = state
-        Config:Set("InfiniteJumpEnabled", state)
-        Config:Save()
-    end
-})
-
-Main2:Toggle({
-    Title = "全亮",
-    Desc = "提高地图亮度，禁用时恢复原有光照。",
-    Value = FullBrightEnabled,
-    Callback = function(state)
-        FullBrightEnabled = state
-        Config:Set("FullBrightEnabled", state)
-        Config:Save()
-        if state then ApplyFullBright() else RestoreFullBright() end
-    end
-})
-
-Main2:Toggle({
-    Title = "无雾",
-    Desc = "移除距离雾气，禁用时恢复原有雾设置。",
-    Value = NoFogEnabled,
-    Callback = function(state)
-        NoFogEnabled = state
-        Config:Set("NoFogEnabled", state)
-        Config:Save()
-        if state then ApplyNoFog() else RestoreNoFog() end
-    end
-})
-
-Main2:Section({ Title = "兑换码", Icon = "bird" })
-
-SelectedCodes = Config:Get("SelectedCodes", {})
-
-CodeDropdown = Main2:Dropdown({
-    Title = "选择兑换码",
-    Desc = "选择将要兑换的代码。",
-    Multi = true,
-    Values = GlobalTables.redeemCodes,
-    Value = SelectedCodes,
-    Callback = function(value)
-        SelectedCodes = value or {}
-        Config:Set("SelectedCodes", value)
-        Config:Save()
-    end,
-})
-
-Main2:Button({
-    Title = "兑换代码",
-    Desc = "仅兑换你在下拉菜单中选中的代码。",
-    Callback = function()
-        for _, code in ipairs(SelectedCodes or {}) do
-            pcall(function()
-                local remote = GetRemote("RedeemCode")
-                if remote then remote:FireServer(code) end
-                task.wait(0.2)
-            end)
-        end
-    end,
-})
-
-Main2:Button({
-    Title = "兑换全部代码",
-    Desc = "一次性兑换所有可用代码。",
-    Callback = function()
-        for _, code in ipairs(GlobalTables.redeemCodes or {}) do
-            pcall(function()
-                local remote = GetRemote("RedeemCode")
-                if remote then remote:FireServer(code) end
-                task.wait(0.5)
-            end)
-        end
-    end,
-})
-
-Main2:Section({ Title = "解锁通行证", Icon = "badge-dollar-sign" })
-
-SelectedGamepass = Config:Get("SelectedGamepass", {})
-GlobalTables.Gamepassts = SelectedGamepass
-
-GamepassDropdown = Main2:Dropdown({
-    Title = "选择通行证",
-    Desc = "选择要本地解锁的通行证。",
-    Multi = true,
-    Values = GamepassDisplayNames,
-    Value = SelectedGamepass,
-    Callback = function(value)
-        GlobalTables.Gamepassts = value or {}
-        SelectedGamepass = value or {}
-        Config:Set("SelectedGamepass", value)
-        Config:Save()
-    end,
-})
-
-Main2:Button({
-    Title = "解锁通行证",
-    Desc = "免费本地解锁选中的通行证。",
-    Callback = function()
-        local gachaData = LocalPlayer:FindFirstChild("GachaData")
-        if not gachaData then
-            gachaData = Instance.new("Folder")
-            gachaData.Name = "GachaData"
-            gachaData.Parent = LocalPlayer
-        end
-        local toUnlock = {}
-        for _, v in ipairs(GlobalTables.Gamepassts) do
-            if v == "全部" then
-                toUnlock = { "LuckyBoost", "RareLuckyBoost", "LegendaryLuckyBoost" }
-                break
-            else
-                local english = GamepassMap[v] or v
-                table.insert(toUnlock, english)
-            end
-        end
-        if #toUnlock == 0 then
-            WindUI:Notify({
-                Title = "解锁通行证",
-                Content = "请先选择通行证！",
-                Duration = 3,
-                Icon = "alert-triangle"
-            })
-            return
-        end
-        local successCount = 0
-        for _, gamepassName in ipairs(toUnlock) do
-            pcall(function()
-                local boolValue = gachaData:FindFirstChild(gamepassName)
-                if not boolValue then
-                    boolValue = Instance.new("BoolValue")
-                    boolValue.Name = gamepassName
-                    boolValue.Parent = gachaData
-                end
-                boolValue.Value = true
-                successCount = successCount + 1
-                task.wait(0.2)
-            end)
-        end
-        WindUI:Notify({
-            Title = "解锁通行证",
-            Content = "已解锁 " .. successCount .. "/" .. #toUnlock .. " 个通行证！完成！",
-            Duration = 3,
-            Icon = "badge-check"
-        })
-    end,
-})
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.7)
-    if FlyNowe then
-        FlyStopAll()
-        FlyNowe = false
-        FlyEnabled = false
-        pcall(function()
-            if FlyToggle and FlyToggle.Set then FlyToggle:Set(false) end
-        end)
-    end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then hum.PlatformStand = false end
-    local animate = char:FindFirstChild("Animate")
-    if animate then animate.Disabled = false end
-    updatePlayerStats(true)
-end)
-
--- ============================================================
--- ====================== UI: MAIN5 (商店 TAB) ================
--- ============================================================
-
-Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
-
-local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
-
-local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
-local autoGachaSkinEnabled      = Config:Get("AutoGachaSkinEnabled", false)
-local selectedGachaCharacterArg = Config:Get("SelectedGachaCharacterArg", "1次抽奖")
-local selectedGachaSkinArg      = Config:Get("SelectedGachaSkinArg", "1次抽奖")
-local characterGachaRunning     = false
-local skinGachaRunning          = false
-
-local autoUseItemEnabled        = Config:Get("AutoUseItemEnabled", false)
-local selectedUseItem           = Config:Get("SelectedUseItem", "Presents")
-local useItemRunning            = false
-
-local selectedRequestItem       = Config:Get("SelectedRequestItem", "泰坦请求")
-local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
-local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
-
-local function EnsureList(value, fallback)
-    if type(value) == "table" then return value end
-    if value ~= nil then return { value } end
-    return fallback or {}
-end
-
-local function WaitWhileEnabled(seconds, enabledFn)
-    local elapsed = 0
-    while elapsed < seconds do
-        if enabledFn and not enabledFn() then return false end
-        task.wait(0.5)
-        elapsed = elapsed + 0.25
+function CheckFarmAstroCollectMode()
+    if FarmAstroTokenEnabled and AutoCollectEnabled and CollectMode == "清洁" then
+        NotifyFarmAstroCleanMode()
+        return false
     end
     return true
 end
 
-local function FireShopRemote(remoteName, ...)
-    local remote = GetRemote(remoteName)
-    if not remote then return false end
-    local args = { ... }
-    local ok, err = pcall(function() remote:FireServer(unpack(args)) end)
-    if not ok then warn("[YYa] 商店远程失败:", tostring(remoteName), err) end
-    return ok
+function GetFarmAstroTimerLabel()
+    local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return nil end
+    local wavesGui = playerGui:FindFirstChild("WavesGui")
+    if not wavesGui then return nil end
+    local frame = wavesGui:FindFirstChild("Frame")
+    if not frame then return nil end
+    return frame:FindFirstChild("Timer")
 end
 
-local function ShouldShopSyncWithHeli()
-    return AutoSkipHeliEnabled and IsMiscFarmAllowed()
+function GetFarmAstroTimerValue()
+    local timerLabel = GetFarmAstroTimerLabel()
+    if not timerLabel then return nil end
+    local textValue = tostring(timerLabel.Text or "")
+    local numberText = textValue:match("(%d+)%s*$") or textValue:match("(%d+)")
+    if numberText then return tonumber(numberText) end
+    return nil
 end
 
-local function GetUseItemDisplay(english)
-    for k, v in pairs(UseItemMap) do
-        if v == english then return k end
+function UpdateFarmAstroWaveTimerArmed(timerValue)
+    FarmAstroLastWaveTimer = timerValue
+    if timerValue ~= nil and timerValue > 10 then
+        FarmAstroWaveTimerArmed = true
     end
-    return english
 end
 
-local function GetTitanSpeakerDisplay(english)
-    for k, v in pairs(TitanSpeakerUpgradeMap) do
-        if v == english then return k end
-    end
-    return english
+function IsFarmAstroTimerEnding()
+    if tick() < FarmAstroTokenTimerIgnoreUntil then return false end
+    local timerValue = GetFarmAstroTimerValue()
+    UpdateFarmAstroWaveTimerArmed(timerValue)
+    return timerValue ~= nil and timerValue <= 10 and FarmAstroWaveTimerArmed == true
 end
 
-local function GetUTCMDisplay(english)
-    for k, v in pairs(UTCMUpgradeMap) do
-        if v == english then return k end
-    end
-    return english
+function IsFarmAstroTimerResetForNextWave()
+    local timerValue = GetFarmAstroTimerValue()
+    return timerValue ~= nil and timerValue > 10
 end
 
-local function GetTVDisplay(english)
-    for k, v in pairs(TVUpgradeMap) do
-        if v == english then return k end
-    end
-    return english
+function ShouldKeepFarmAstroFinalLock()
+    if not FarmAstroTokenEnabled then return false end
+    if FarmAstroFinalLockActive or FarmAstroTokenTimerHold or FarmAstroTimerDropping then return true end
+    local timerValue = GetFarmAstroTimerValue()
+    return timerValue ~= nil and timerValue <= 3 and FarmAstroWaveTimerArmed == true
 end
 
-local function GetShopHourlyDisplay(english)
-    for k, v in pairs(ShopHourlyMap) do
-        if v == english then return k end
-    end
-    return english
-end
-
-local function StartAutoGachaCharacter()
-    if characterGachaRunning then return end
-
-    if skinGachaRunning then
-        autoGachaSkinEnabled = false
-        Config:Set("AutoGachaSkinEnabled", false)
-        Config:Save()
-        pcall(function()
-            if AutoGachaSkinToggle and AutoGachaSkinToggle.Set then
-                AutoGachaSkinToggle:Set(false)
-            end
-        end)
-        WindUI:Notify({
-            Title = "互斥提示",
-            Content = "⚠️ 已自动关闭皮肤扭蛋，角色扭蛋已启用",
-            Duration = 3,
-            Icon = "alert-triangle"
-        })
-    end
-
-    characterGachaRunning = true
-    StartGachaEnhancement()
-
-    task.spawn(function()
-        while autoGachaCharacterEnabled do
-            local english = GachaMap[selectedGachaCharacterArg] or selectedGachaCharacterArg
-            FireShopRemote("GachaCharacter", english)
-            task.wait(1)
+function HoldFarmAstroBottomLockOnce()
+    pcall(function()
+        local char, hrp, hum = GetFarmAstroCharacter()
+        if not char or not hrp then return end
+        if hum then
+            hum.Sit = false
+            hum.PlatformStand = false
+            hum.AutoRotate = true
         end
-        characterGachaRunning = false
-        if not skinGachaRunning then
-            StopGachaEnhancement()
+        char:PivotTo(FARM_ASTRO_TIMER_BOTTOM_CF)
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end)
+end
+
+function IsFarmAstroGodModeSelected()
+    return true
+end
+
+function PauseFarmAstroGodModeForTimer()
+    if not FarmAstroTokenEnabled then return false end
+    if FarmAstroGodModePaused then return true end
+    if tick() < FarmAstroTokenTimerIgnoreUntil then return false end
+
+    local timerValue = GetFarmAstroTimerValue()
+    UpdateFarmAstroWaveTimerArmed(timerValue)
+    if timerValue ~= nil and timerValue <= 10 and FarmAstroWaveTimerArmed == true then
+        FarmAstroGodModePaused = true
+        GodModeTriggered = false
+        CombatDebug("FarmAstroGodSync", "上帝模式百分比在波次计时器 " .. tostring(timerValue) .. " 时暂停", 2, false)
+        return true
+    end
+
+    return false
+end
+
+function ResumeFarmAstroGodModeAfterRespawn(reason)
+    local wasPaused = FarmAstroGodModePaused
+    FarmAstroGodModePaused = false
+    FarmAstroReviveGodTriggered = false
+    FarmAstroReviveTimerArmed = false
+    FarmAstroLastReviveTimer = nil
+    FarmAstroFinalLockActive = false
+    FarmAstroTimerDropping = false
+    FarmAstroBottomGodTriggered = false
+    FarmAstroReviveTimerArmed = false
+    FarmAstroLastReviveTimer = nil
+    FarmAstroWaveTimerArmed = false
+    FarmAstroLastWaveTimer = nil
+
+    if wasPaused then
+        CombatDebug("FarmAstroGodSync", "上帝模式在 " .. tostring(reason or "重生") .. " 后恢复", 2, false)
+    end
+end
+
+function IsFarmAstroReviveState()
+    local char, hrp, humanoid = GetFarmAstroCharacter()
+    if not char or not hrp or not humanoid then return false end
+    if humanoid.Health <= 0 then return false end
+    return humanoid.Health <= 1.05
+end
+
+function GetFarmAstroReviveTimerLabel()
+    if not IsFarmAstroReviveState() then return nil end
+    local char, hrp = GetFarmAstroCharacter()
+    if not char or not hrp then return nil end
+    local reviveUI = hrp:FindFirstChild("ReviveUI")
+    if not reviveUI then return nil end
+    if reviveUI.Enabled == false then return nil end
+    local frame = reviveUI:FindFirstChild("Frame")
+    if not frame then return nil end
+    if frame:IsA("GuiObject") and frame.Visible == false then return nil end
+    local label = frame:FindFirstChild("TextLabel")
+    if not label then return nil end
+    if label:IsA("GuiObject") and label.Visible == false then return nil end
+    return label
+end
+
+function GetFarmAstroReviveTimerValue()
+    local label = GetFarmAstroReviveTimerLabel()
+    if not label then return nil end
+    local textValue = tostring(label.Text or "")
+    local numberText = textValue:match("^%s*[Tt][Ii][Mm][Ee][Rr]%s*:%s*(%d+)%s*$")
+    if numberText then return tonumber(numberText) end
+    return nil
+end
+
+function UpdateFarmAstroReviveTimerArmed(timerValue)
+    FarmAstroLastReviveTimer = timerValue
+    if not IsFarmAstroReviveState() then
+        FarmAstroReviveTimerArmed = false
+        return
+    end
+    if timerValue ~= nil and timerValue > 5 then
+        FarmAstroReviveTimerArmed = true
+    end
+end
+
+function CheckFarmAstroReviveGodModeOnce()
+    if not FarmAstroTokenEnabled then
+        FarmAstroReviveGodTriggered = false
+        FarmAstroReviveTimerArmed = false
+        FarmAstroLastReviveTimer = nil
+        return
+    end
+
+    local reviveTimer = GetFarmAstroReviveTimerValue()
+    UpdateFarmAstroReviveTimerArmed(reviveTimer)
+
+    if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
+        if not FarmAstroReviveGodTriggered then
+            if ForceGodModeOnce("Farm Astro 复活计时器") then
+                FarmAstroReviveGodTriggered = true
+                FarmAstroReviveTimerArmed = false
+            end
+        end
+    elseif reviveTimer == nil then
+        FarmAstroReviveGodTriggered = false
+        FarmAstroReviveTimerArmed = false
+        FarmAstroLastReviveTimer = nil
+    elseif reviveTimer > 5 then
+        FarmAstroReviveGodTriggered = false
+    end
+end
+
+function CheckFarmAstroBottomGodMode()
+    if not FarmAstroTokenEnabled then return end
+    if not FarmAstroFinalLockActive then return end
+    if FarmAstroBottomGodTriggered then return end
+
+    local reviveTimer = GetFarmAstroReviveTimerValue()
+    UpdateFarmAstroReviveTimerArmed(reviveTimer)
+
+    if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
+        if ForceGodModeOnce("Farm Astro 底部锁定复活计时器") then
+            FarmAstroBottomGodTriggered = true
+            FarmAstroReviveGodTriggered = true
+            FarmAstroReviveTimerArmed = false
+        end
+    elseif reviveTimer == nil then
+        FarmAstroBottomGodTriggered = false
+        FarmAstroReviveTimerArmed = false
+        FarmAstroLastReviveTimer = nil
+    elseif reviveTimer > 5 then
+        FarmAstroBottomGodTriggered = false
+    end
+end
+
+function FarmAstroRuntimeChecks()
+    if not FarmAstroTokenEnabled then return end
+    PauseFarmAstroGodModeForTimer()
+    CheckFarmAstroReviveGodModeOnce()
+    CheckFarmAstroBottomGodMode()
+end
+
+function GetFarmAstroCharacter()
+    local char = LocalPlayer.Character or Character
+    if (not char or not char.Parent) and workspace:FindFirstChild("Living") then
+        char = workspace.Living:FindFirstChild(LocalPlayer.Name) or workspace.Living:FindFirstChild(LocalPlayer.DisplayName)
+    end
+    if char and char ~= Character then Character = char end
+    if char and (not HumanoidRootPart or HumanoidRootPart.Parent ~= char) then
+        HumanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+    end
+    return char, HumanoidRootPart, char and (char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid"))
+end
+
+function CreateFarmAstroTokenPart()
+    if FarmAstroTokenPart and FarmAstroTokenPart.Parent then return FarmAstroTokenPart end
+
+    local part = Instance.new("Part")
+    part.Name = "farm_astro_token"
+    part.Size = Vector3.new(10, 1, 10)
+    part.Anchored = true
+    part.CanCollide = true
+    part.CanTouch = false
+    part.CanQuery = false
+    part.Material = Enum.Material.Neon
+    part.Transparency = 1
+    part.CFrame = FARM_ASTRO_TOP_A
+    part.Parent = workspace
+
+    for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
+        local decal = Instance.new("Decal")
+        decal.Name = "farm_astro_token_image"
+        decal.Texture = FARM_ASTRO_TOKEN_IMAGE
+        decal.Face = face
+        decal.Transparency = 0
+        decal.Parent = part
+    end
+
+    FarmAstroTokenPart = part
+    return part
+end
+
+function FarmAstroSnapCharacterToPart()
+    if not FarmAstroTokenPart or FarmAstroTokenPauseCollect then return end
+    pcall(function()
+        local char, hrp, hum = GetFarmAstroCharacter()
+        if not char or not hrp then return end
+        if hum then
+            hum.Sit = false
+            hum.PlatformStand = false
+            hum.AutoRotate = true
+        end
+        char:PivotTo(FarmAstroTokenPart.CFrame * CFrame.new(0, 4, 0))
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end)
+end
+
+function CancelFarmAstroTween()
+    if FarmAstroTokenTween then
+        pcall(function() FarmAstroTokenTween:Cancel() end)
+        FarmAstroTokenTween = nil
+    end
+end
+
+function MoveFarmAstroToTimerSafe()
+    if FarmAstroFinalLockActive then return end
+
+    CancelFarmAstroTween()
+    CreateFarmAstroTokenPart()
+
+    FarmAstroTokenTimerHold = false
+    FarmAstroTimerDropping = true
+    FarmAstroFinalLockActive = false
+    FarmAstroBottomGodTriggered = false
+    FarmAstroReviveTimerArmed = false
+    FarmAstroLastReviveTimer = nil
+    FarmAstroWaveTimerArmed = false
+    FarmAstroLastWaveTimer = nil
+
+    pcall(function()
+        if FarmAstroTokenPart and FarmAstroTokenPart.Parent then
+            FarmAstroTokenPart.CFrame = FARM_ASTRO_TIMER_BOTTOM_CF * FARM_ASTRO_TIMER_PART_OFFSET
+        end
+    end)
+
+    pcall(function()
+        local char, hrp, hum = GetFarmAstroCharacter()
+        if not char or not hrp then return end
+        if hum then
+            hum.Sit = false
+            hum.PlatformStand = false
+            hum.AutoRotate = true
+        end
+
+        char:PivotTo(FARM_ASTRO_TIMER_TOP_CF)
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end)
+
+    pcall(function()
+        local char, hrp, hum = GetFarmAstroCharacter()
+        if not char or not hrp then return end
+        local tween = TweenService:Create(
+            hrp,
+            TweenInfo.new(FARM_ASTRO_TIMER_DROP_TIME, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+            { CFrame = FARM_ASTRO_TIMER_BOTTOM_CF }
+        )
+        tween:Play()
+        WaitTweenWithTimeout(tween, (FARM_ASTRO_TIMER_DROP_TIME or 0.35) + 0.45)
+        if hum then
+            hum.Sit = false
+            hum.PlatformStand = false
+            hum.AutoRotate = true
+        end
+        char:PivotTo(FARM_ASTRO_TIMER_BOTTOM_CF)
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end)
+
+    FarmAstroTimerDropping = false
+    FarmAstroTokenTimerHold = true
+    FarmAstroFinalLockActive = true
+    CheckFarmAstroBottomGodMode()
+end
+
+function WaitFarmAstroRespawnAfterTimer()
+    MoveFarmAstroToTimerSafe()
+    local lockStartedAt = tick()
+
+    while FarmAstroTokenEnabled do
+        FarmAstroRuntimeChecks()
+        if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
+            HoldFarmAstroBottomLockOnce()
+        end
+
+        if tick() - lockStartedAt >= 0.25 and IsFarmAstroTimerResetForNextWave() then
+            break
+        end
+
+        task.wait(0.1)
+    end
+
+    FarmAstroTokenTimerHold = false
+    FarmAstroFinalLockActive = false
+    FarmAstroTimerDropping = false
+    FarmAstroBottomGodTriggered = false
+    FarmAstroReviveGodTriggered = false
+    FarmAstroReviveTimerArmed = false
+    FarmAstroLastReviveTimer = nil
+    FarmAstroWaveTimerArmed = false
+    FarmAstroLastWaveTimer = nil
+    FarmAstroTokenTimerIgnoreUntil = tick() + 2
+    ResumeFarmAstroGodModeAfterRespawn("Farm Astro 计时器重置")
+end
+
+FarmAstroNoClipParts = FarmAstroNoClipParts or {}
+FarmAstroNoClipChar = nil
+FarmAstroNoClipPartsAt = 0
+
+function RebuildFarmAstroNoClipParts(char)
+    FarmAstroNoClipParts = {}
+    FarmAstroNoClipChar = char
+    FarmAstroNoClipPartsAt = tick()
+    if not char then return end
+
+    pcall(function()
+        for _, obj in ipairs(char:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                table.insert(FarmAstroNoClipParts, obj)
+            end
         end
     end)
 end
 
-local function StartAutoGachaSkin()
-    if skinGachaRunning then return end
-
-    if characterGachaRunning then
-        autoGachaCharacterEnabled = false
-        Config:Set("AutoGachaCharacterEnabled", false)
-        Config:Save()
-        pcall(function()
-            if AutoGachaCharacterToggle and AutoGachaCharacterToggle.Set then
-                AutoGachaCharacterToggle:Set(false)
-            end
-        end)
-        WindUI:Notify({
-            Title = "互斥提示",
-            Content = "⚠️ 已自动关闭角色扭蛋，皮肤扭蛋已启用",
-            Duration = 3,
-            Icon = "alert-triangle"
-        })
+function ApplyFarmAstroNoClipToCharacter(char)
+    if not char then return end
+    if FarmAstroNoClipChar ~= char or tick() - (FarmAstroNoClipPartsAt or 0) > 1.25 then
+        RebuildFarmAstroNoClipParts(char)
     end
 
-    skinGachaRunning = true
-    StartGachaEnhancement()
-
-    task.spawn(function()
-        while autoGachaSkinEnabled do
-            local english = GachaMap[selectedGachaSkinArg] or selectedGachaSkinArg
-            FireShopRemote("GachaSkins", english)
-            task.wait(1)
-        end
-        skinGachaRunning = false
-        if not characterGachaRunning then
-            StopGachaEnhancement()
-        end
-    end)
-end
-
-local function StartAutoUseItem()
-    if useItemRunning then return end
-    useItemRunning = true
-    task.spawn(function()
-        while autoUseItemEnabled do
-            local english = UseItemMap[selectedUseItem] or selectedUseItem
-            if english == "Presents" then
-                FireShopRemote("GachaCapsule")
-            end
-            task.wait(1.5)
-        end
-        useItemRunning = false
-    end)
-end
-
-Main5:Dropdown({
-    Title = "角色扭蛋",
-    Desc = "选择角色扭蛋使用的抽奖类型。",
-    Values = gachaValues,
-    Multi = false,
-    Value = selectedGachaCharacterArg,
-    Callback = function(value)
-        selectedGachaCharacterArg = value or "1次抽奖"
-        Config:Set("SelectedGachaCharacterArg", value)
-        Config:Save()
-    end
-})
-
-local AutoGachaCharacterToggle = Main5:Toggle({
-    Title = "自动角色扭蛋",
-    Value = autoGachaCharacterEnabled,
-    Desc = "使用所选选项自动进行角色扭蛋。",
-    Callback = function(enabled)
-        if enabled and autoGachaSkinEnabled then
-            WindUI:Notify({
-                Title = "互斥提示",
-                Content = "⚠️ 皮肤扭蛋正在运行，请先关闭皮肤扭蛋再启用角色扭蛋",
-                Duration = 3,
-                Icon = "alert-triangle"
-            })
-            if AutoGachaCharacterToggle and AutoGachaCharacterToggle.Set then
-                AutoGachaCharacterToggle:Set(false)
-            end
-            return
-        end
-        autoGachaCharacterEnabled = enabled
-        Config:Set("AutoGachaCharacterEnabled", enabled)
-        Config:Save()
-        if enabled then
-            if autoGachaSkinEnabled then
-                autoGachaSkinEnabled = false
-                Config:Set("AutoGachaSkinEnabled", false)
-                Config:Save()
-                pcall(function()
-                    if AutoGachaSkinToggle and AutoGachaSkinToggle.Set then
-                        AutoGachaSkinToggle:Set(false)
-                    end
-                end)
-            end
-            StartAutoGachaCharacter()
-        end
-    end
-})
-
-Main5:Dropdown({
-    Title = "皮肤扭蛋",
-    Desc = "选择皮肤扭蛋使用的抽奖类型。",
-    Values = gachaValues,
-    Multi = false,
-    Value = selectedGachaSkinArg,
-    Callback = function(value)
-        selectedGachaSkinArg = value or "1次抽奖"
-        Config:Set("SelectedGachaSkinArg", value)
-        Config:Save()
-    end
-})
-
-local AutoGachaSkinToggle = Main5:Toggle({
-    Title = "自动皮肤扭蛋",
-    Value = autoGachaSkinEnabled,
-    Desc = "使用所选选项自动进行皮肤扭蛋。",
-    Callback = function(enabled)
-        if enabled and autoGachaCharacterEnabled then
-            WindUI:Notify({
-                Title = "互斥提示",
-                Content = "⚠️ 角色扭蛋正在运行，请先关闭角色扭蛋再启用皮肤扭蛋",
-                Duration = 3,
-                Icon = "alert-triangle"
-            })
-            if AutoGachaSkinToggle and AutoGachaSkinToggle.Set then
-                AutoGachaSkinToggle:Set(false)
-            end
-            return
-        end
-        autoGachaSkinEnabled = enabled
-        Config:Set("AutoGachaSkinEnabled", enabled)
-        Config:Save()
-        if enabled then
-            if autoGachaCharacterEnabled then
-                autoGachaCharacterEnabled = false
-                Config:Set("AutoGachaCharacterEnabled", false)
-                Config:Save()
-                pcall(function()
-                    if AutoGachaCharacterToggle and AutoGachaCharacterToggle.Set then
-                        AutoGachaCharacterToggle:Set(false)
-                    end
-                end)
-            end
-            StartAutoGachaSkin()
-        end
-    end
-})
-
-Main5:Section({ Title = "自动使用物品", Icon = "package-open" })
-
-local useItemDisplayValue = GetUseItemDisplay(selectedUseItem)
-
-Main5:Dropdown({
-    Title = "使用物品",
-    Desc = "选择自动使用物品将激活的物品。",
-    Values = UseItemDisplayNames,
-    Multi = false,
-    Value = useItemDisplayValue,
-    Callback = function(value)
-        local english = UseItemMap[value] or value
-        selectedUseItem = english
-        Config:Set("SelectedUseItem", english)
-        Config:Save()
-    end
-})
-
-Main5:Toggle({
-    Title = "自动使用物品",
-    Value = autoUseItemEnabled,
-    Desc = "以安全延迟自动使用所选物品。",
-    Callback = function(enabled)
-        autoUseItemEnabled = enabled
-        Config:Set("AutoUseItemEnabled", enabled)
-        Config:Save()
-        if enabled then StartAutoUseItem() end
-    end
-})
-
-Main5:Section({ Title = "商店升级", Icon = "arrow-big-up-dash" })
-
-local selectedTitanSpeakerUpgrades = EnsureList(Config:Get("SelectedTitanSpeakerUpgrades", { "Jetpack" }), { "Jetpack" })
-local selectedUTCMUpgrades         = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
-local selectedTVUpgrades           = EnsureList(Config:Get("SelectedTVUpgrades", { "Absorb" }), { "Absorb" })
-
-local titanDisplay = {}
-for _, v in ipairs(selectedTitanSpeakerUpgrades) do
-    table.insert(titanDisplay, GetTitanSpeakerDisplay(v))
-end
-local utcmDisplay = {}
-for _, v in ipairs(selectedUTCMUpgrades) do
-    table.insert(utcmDisplay, GetUTCMDisplay(v))
-end
-local tvDisplay = {}
-for _, v in ipairs(selectedTVUpgrades) do
-    table.insert(tvDisplay, GetTVDisplay(v))
-end
-
-local upgradeTitanSpeakerEnabled = Config:Get("UpgradeTitanSpeakerEnabled", false)
-local upgradeUTCMEnabled         = Config:Get("UpgradeUTCMEnabled", false)
-local upgradeTVEnabled           = Config:Get("UpgradeTVEnabled", false)
-
-Main5:Dropdown({
-    Title = "选择泰坦扬声器升级",
-    Desc = "选择将请求的泰坦扬声器升级。",
-    Values = TitanSpeakerUpgradeDisplayNames,
-    Multi = true,
-    Value = titanDisplay,
-    Callback = function(values)
-        local englishValues = {}
-        for _, v in ipairs(values or {}) do
-            local eng = TitanSpeakerUpgradeMap[v] or v
-            table.insert(englishValues, eng)
-        end
-        selectedTitanSpeakerUpgrades = englishValues
-        Config:Set("SelectedTitanSpeakerUpgrades", englishValues)
-        Config:Save()
-    end
-})
-
-Main5:Toggle({
-    Title = "升级泰坦扬声器",
-    Desc = "自动请求选中的泰坦扬声器升级。",
-    Value = upgradeTitanSpeakerEnabled,
-    Callback = function(enabled)
-        upgradeTitanSpeakerEnabled = enabled
-        Config:Set("UpgradeTitanSpeakerEnabled", enabled)
-        Config:Save()
-        if enabled then StartAutoSyncedShopLoop() end
-    end
-})
-
-Main5:Dropdown({
-    Title = "选择 UTCM 升级",
-    Desc = "选择将请求的 UTCM 升级。",
-    Values = UTCMUpgradeDisplayNames,
-    Multi = true,
-    Value = utcmDisplay,
-    Callback = function(values)
-        local englishValues = {}
-        for _, v in ipairs(values or {}) do
-            local eng = UTCMUpgradeMap[v] or v
-            table.insert(englishValues, eng)
-        end
-        selectedUTCMUpgrades = englishValues
-        Config:Set("SelectedUTCMUpgrades", englishValues)
-        Config:Save()
-    end
-})
-
-Main5:Toggle({
-    Title = "升级 UTCM",
-    Desc = "自动请求选中的 UTCM 升级。",
-    Value = upgradeUTCMEnabled,
-    Callback = function(enabled)
-        upgradeUTCMEnabled = enabled
-        Config:Set("UpgradeUTCMEnabled", enabled)
-        Config:Save()
-        if enabled then StartAutoSyncedShopLoop() end
-    end
-})
-
-Main5:Dropdown({
-    Title = "选择 TV 升级",
-    Desc = "选择将请求的 TV 升级。",
-    Values = TVUpgradeDisplayNames,
-    Multi = true,
-    Value = tvDisplay,
-    Callback = function(values)
-        local englishValues = {}
-        for _, v in ipairs(values or {}) do
-            local eng = TVUpgradeMap[v] or v
-            table.insert(englishValues, eng)
-        end
-        selectedTVUpgrades = englishValues
-        Config:Set("SelectedTVUpgrades", englishValues)
-        Config:Save()
-    end
-})
-
-Main5:Toggle({
-    Title = "升级 TV",
-    Desc = "自动请求选中的 TV 升级。",
-    Value = upgradeTVEnabled,
-    Callback = function(enabled)
-        upgradeTVEnabled = enabled
-        Config:Set("UpgradeTVEnabled", enabled)
-        Config:Save()
-        if enabled then StartAutoSyncedShopLoop() end
-    end
-})
-
-Main5:Section({ Title = "商店武器", Icon = "helicopter" })
-
-local autoBuyWeaponValue   = Config:Get("AutoBuyWeaponValue", "电击枪")
-local autoBuyWeaponEnabled = Config:Get("AutoBuyWeaponEnabled", false)
-
-Main5:Dropdown({
-    Title = "选择武器",
-    Desc = "选择将自动购买的武器。",
-    Values = WeaponDisplayNames,
-    Multi = false,
-    Value = autoBuyWeaponValue,
-    Callback = function(value)
-        autoBuyWeaponValue = value
-        local english = WeaponMap[value] or value
-        Config:Set("AutoBuyWeaponValue", english)
-        Config:Save()
-    end
-})
-
-Main5:Toggle({
-    Title = "购买武器",
-    Desc = "在商店循环期间自动购买所选武器。",
-    Value = autoBuyWeaponEnabled,
-    Callback = function(enabled)
-        autoBuyWeaponEnabled = enabled
-        Config:Set("AutoBuyWeaponEnabled", enabled)
-        Config:Save()
-        if enabled then StartAutoSyncedShopLoop() end
-    end
-})
-
-Main5:Button({
-    Title = "购买武器（一次）",
-    Desc = "购买所选武器一次。",
-    Callback = function()
-        if autoBuyWeaponValue then
-            local english = WeaponMap[autoBuyWeaponValue] or autoBuyWeaponValue
-            FireShopRemote("ShopSystem", "Buy", english)
-        end
-    end
-})
-
-Main5:Section({ Title = "商店杂项", Icon = "package" })
-
-local autoBuyMiscValue   = Config:Get("AutoBuyMiscValue", "头戴式耳机")
-local autoBuyMiscEnabled = Config:Get("AutoBuyMiscEnabled", false)
-
-Main5:Dropdown({
-    Title = "选择杂项",
-    Desc = "选择将自动购买的杂项物品。",
-    Values = MiscDisplayNames,
-    Multi = false,
-    Value = autoBuyMiscValue,
-    Callback = function(value)
-        autoBuyMiscValue = value
-        local english = MiscMap[value] or value
-        Config:Set("AutoBuyMiscValue", english)
-        Config:Save()
-    end
-})
-
-Main5:Toggle({
-    Title = "购买杂项",
-    Value = autoBuyMiscEnabled,
-    Desc = "在商店循环期间自动购买所选杂项物品。",
-    Callback = function(enabled)
-        autoBuyMiscEnabled = enabled
-        Config:Set("AutoBuyMiscEnabled", enabled)
-        Config:Save()
-        if enabled then StartAutoSyncedShopLoop() end
-    end
-})
-
-Main5:Button({
-    Title = "购买杂项（一次）",
-    Desc = "购买所选杂项物品一次。",
-    Callback = function()
-        if autoBuyMiscValue then
-            local english = MiscMap[autoBuyMiscValue] or autoBuyMiscValue
-            FireShopRemote("ShopSystem", "Buy", english)
-        end
-    end
-})
-
-Main5:Section({ Title = "请求泰坦/扬声器", Icon = "send" })
-
-Main5:Dropdown({
-    Title = "选择请求",
-    Desc = "选择将自动购买的泰坦/扬声器请求。",
-    Values = RequestDisplayNames,
-    Multi = false,
-    Value = selectedRequestItem,
-    Callback = function(value)
-        selectedRequestItem = value
-        local english = RequestMap[value] or value
-        Config:Set("SelectedRequestItem", english)
-        Config:Save()
-    end
-})
-
-Main5:Toggle({
-    Title = "自动请求",
-    Desc = "波次 10+ 时自动请求选中的泰坦/扬声器。",
-    Value = autoRequestEnabled,
-    Callback = function(enabled)
-        autoRequestEnabled = enabled
-        Config:Set("AutoRequestEnabled", enabled)
-        Config:Save()
-        if enabled then
-            if not IsRequestWaveReady() then NotifyRequestWaveNotReady() end
-            StartAutoSyncedShopLoop()
-        end
-    end
-})
-
-Main5:Section({ Title = "技能树", Icon = "git-branch-plus" })
-
-Main5:Toggle({
-    Title = "自动技能树",
-    Desc = "自动为你当前角色解锁缺失的技能树。",
-    Value = autoSkillTreeEnabled,
-    Callback = function(enabled)
-        autoSkillTreeEnabled = enabled
-        Config:Set("AutoSkillTreeEnabled", enabled)
-        Config:Save()
-        if enabled then StartAutoSyncedShopLoop() end
-    end
-})
-
-Main5:Section({ Title = "商店小时购", Icon = "clock" })
-
-local selectedShopHourlyItems   = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
-local hourlyDisplay = {}
-for _, v in ipairs(selectedShopHourlyItems) do
-    table.insert(hourlyDisplay, GetShopHourlyDisplay(v))
-end
-
-local shopHourlyItemAmount      = Config:Get("ShopHourlyItemAmount", 1)
-local buyItemHourlyEnabled      = Config:Get("BuyItemHourlyEnabled", false)
-local buyItemHourlyRunning      = false
-
-Main5:Dropdown({
-    Title = "选择商店小时购",
-    Desc = "选择固定的小时购商店物品。",
-    Values = ShopHourlyDisplayNames,
-    Multi = true,
-    Value = hourlyDisplay,
-    Callback = function(values)
-        local englishValues = {}
-        for _, v in ipairs(values or {}) do
-            local eng = ShopHourlyMap[v] or v
-            table.insert(englishValues, eng)
-        end
-        selectedShopHourlyItems = englishValues
-        Config:Set("SelectedShopHourlyItems", englishValues)
-        Config:Save()
-    end
-})
-
-Main5:Slider({
-    Title = "物品数量",
-    Desc = "设置每种选中小时购物品的购买数量。",
-    Value = { Min = 1, Max = 100, Default = shopHourlyItemAmount },
-    Step = 1,
-    Callback = function(value)
-        shopHourlyItemAmount = value
-        Config:Set("ShopHourlyItemAmount", value)
-        Config:Save()
-    end
-})
-
-Main5:Toggle({
-    Title = "购买物品",
-    Desc = "在定时循环中自动购买选中的小时购商店物品。",
-    Value = buyItemHourlyEnabled,
-    Callback = function(enabled)
-        buyItemHourlyEnabled = enabled
-        Config:Set("BuyItemHourlyEnabled", enabled)
-        Config:Save()
-        if enabled then StartBuyItemHourlyLoop() end
-    end
-})
-
-local autoSyncedShopRunning = false
-
-local function IsHeavySyncedShopEnabled()
-    return autoBuyWeaponEnabled or autoBuyMiscEnabled or
-           upgradeTitanSpeakerEnabled or upgradeUTCMEnabled or upgradeTVEnabled
-end
-
-local function IsAnySyncedShopEnabled()
-    return IsHeavySyncedShopEnabled() or autoRequestEnabled or autoSkillTreeEnabled
-end
-
-local function GetSyncedShopPreDelay()
-    if not IsHeavySyncedShopEnabled() and (autoRequestEnabled or autoSkillTreeEnabled) then return 0 end
-    return 30
-end
-
-local function GetSyncedShopPostDelay()
-    if not IsHeavySyncedShopEnabled() then
-        if autoRequestEnabled then return 2 end
-        if autoSkillTreeEnabled then return 5 end
-    end
-    return 10
-end
-
-local function FireSyncedShopBatch()
-    if autoBuyWeaponEnabled and autoBuyWeaponValue then
-        local english = WeaponMap[autoBuyWeaponValue] or autoBuyWeaponValue
-        FireShopRemote("ShopSystem", "Buy", english)
-        task.wait(0.35)
-    end
-
-    if autoBuyMiscEnabled and autoBuyMiscValue then
-        local english = MiscMap[autoBuyMiscValue] or autoBuyMiscValue
-        FireShopRemote("ShopSystem", "Buy", english)
-        task.wait(0.35)
-    end
-
-    if autoRequestEnabled and selectedRequestItem then
-        if IsRequestWaveReady() then
-            local english = RequestMap[selectedRequestItem] or selectedRequestItem
-            FireShopRemote("ShopSystem", "Buy", english)
+    for i = #FarmAstroNoClipParts, 1, -1 do
+        local obj = FarmAstroNoClipParts[i]
+        if obj and obj.Parent then
+            obj.CanCollide = false
         else
-            NotifyRequestWaveNotReady()
-        end
-        task.wait(0.35)
-    end
-
-    if autoSkillTreeEnabled then
-        FireAutoSkillTrees()
-        task.wait(0.35)
-    end
-
-    if upgradeTitanSpeakerEnabled then
-        for _, upgradeName in ipairs(selectedTitanSpeakerUpgrades or {}) do
-            FireShopRemote("ChangeUpgradedTitanSpeaker", upgradeName)
-            task.wait(0.35)
-        end
-    end
-
-    if upgradeUTCMEnabled then
-        for _, upgradeName in ipairs(selectedUTCMUpgrades or {}) do
-            FireShopRemote("ForUpgradeUTCM", upgradeName)
-            task.wait(0.35)
-        end
-    end
-
-    if upgradeTVEnabled then
-        for _, upgradeName in ipairs(selectedTVUpgrades or {}) do
-            FireShopRemote("ForUpgradeTV", upgradeName)
-            task.wait(0.35)
+            table.remove(FarmAstroNoClipParts, i)
         end
     end
 end
 
-StartAutoSyncedShopLoop = function()
-    if autoSyncedShopRunning then return end
-    autoSyncedShopRunning = true
-
-    task.spawn(function()
-        local firstCycle = true
-
-        while IsAnySyncedShopEnabled() do
-            if not firstCycle then
-                if not WaitWhileEnabled(GetSyncedShopPreDelay(), IsAnySyncedShopEnabled) then break end
+function StartFarmAstroNoClip()
+    if FarmAstroTokenNoClipConnection then return end
+    FarmAstroTokenNoClipConnection = RunService.Heartbeat:Connect(function()
+        if not FarmAstroTokenEnabled then return end
+        pcall(function()
+            local char, hrp, hum = GetFarmAstroCharacter()
+            if not char then return end
+            ApplyFarmAstroNoClipToCharacter(char)
+            if hum then
+                hum.Sit = false
+                hum.PlatformStand = false
             end
-            firstCycle = false
-
-            local shouldSyncHeli = ShouldShopSyncWithHeli()
-            if shouldSyncHeli then
-                TriggerAutoSkipHeli(false)
-                task.wait(0.5)
+            if not FarmAstroTokenPauseCollect and hrp then
+                if FarmAstroTimerDropping then
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                elseif FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
+                    char:PivotTo(FARM_ASTRO_TIMER_BOTTOM_CF)
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                elseif FarmAstroTokenPart and FarmAstroTokenPart.Parent then
+                    char:PivotTo(FarmAstroTokenPart.CFrame * CFrame.new(0, 4, 0))
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                end
             end
-
-            FireSyncedShopBatch()
-
-            if shouldSyncHeli then
-                task.wait(0.5)
-                TriggerAutoSkipHeli(true)
-            end
-
-            if not WaitWhileEnabled(GetSyncedShopPostDelay(), IsAnySyncedShopEnabled) then break end
-        end
-
-        autoSyncedShopRunning = false
+        end)
     end)
 end
 
-local function IsBuyItemHourlyEnabled()
-    return buyItemHourlyEnabled
-end
-
-local function FireShopHourlyBatch()
-    local amount = tonumber(shopHourlyItemAmount) or 1
-    amount = math.max(1, math.floor(amount))
-
-    for _, itemName in ipairs(selectedShopHourlyItems or {}) do
-        if itemName and itemName ~= "" then
-            FireShopRemote("BuyItemFromShopHourly", itemName, amount)
-            task.wait(0.35)
-        end
+function StopFarmAstroNoClip()
+    if FarmAstroTokenNoClipConnection then
+        FarmAstroTokenNoClipConnection:Disconnect()
+        FarmAstroTokenNoClipConnection = nil
     end
 end
 
-local function StartBuyItemHourlyLoop()
-    if buyItemHourlyRunning then return end
-    buyItemHourlyRunning = true
+function SetFarmAstroCollectPause(state)
+    FarmAstroTokenPauseCollect = state == true
+    CancelFarmAstroTween()
+end
+
+function TweenFarmAstroTokenTo(cf, duration)
+    if not FarmAstroTokenPart or not FarmAstroTokenPart.Parent then return false end
+    FarmAstroRuntimeChecks()
+    if IsFarmAstroTimerEnding() then
+        MoveFarmAstroToTimerSafe()
+        return "timer_end"
+    end
+    CancelFarmAstroTween()
+
+    FarmAstroTokenTween = TweenService:Create(
+        FarmAstroTokenPart,
+        TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+        { CFrame = cf }
+    )
+    FarmAstroTokenTween:Play()
+
+    while FarmAstroTokenEnabled do
+        FarmAstroRuntimeChecks()
+        if IsFarmAstroTimerEnding() then
+            MoveFarmAstroToTimerSafe()
+            return "timer_end"
+        end
+        if FarmAstroTokenPauseCollect then
+            CancelFarmAstroTween()
+            return true
+        end
+        if not FarmAstroTokenTween or FarmAstroTokenTween.PlaybackState ~= Enum.PlaybackState.Playing then break end
+        task.wait(0.05)
+    end
+
+    if not FarmAstroTokenEnabled then
+        CancelFarmAstroTween()
+        return false
+    end
+
+    FarmAstroTokenTween = nil
+    pcall(function() FarmAstroTokenPart.CFrame = cf end)
+    return true
+end
+
+function StartFarmAstroToken()
+    if FarmAstroTokenRunning then return end
+    if AutoFarmEnabled then
+        FarmAstroTokenEnabled = false
+        Config:Set("FarmAstroTokenEnabled", false)
+        Config:Save()
+        NotifyFarmAstroAutoFarm()
+        return
+    end
+
+    FarmAstroTokenRunning = true
+    NeedNoClip = true
+    LockActive = false
+    AutoAttackEnabled = false
+    AutoSkillEnabled = false
+    FarmAstroTokenTimerHold = false
+    FarmAstroWaveTimerArmed = false
+    FarmAstroLastWaveTimer = nil
+    CreateFarmAstroTokenPart()
+    StartFarmAstroNoClip()
+    CheckFarmAstroCollectMode()
 
     task.spawn(function()
-        local firstCycle = true
-
-        while buyItemHourlyEnabled do
-            if not firstCycle then
-                if not WaitWhileEnabled(30, IsBuyItemHourlyEnabled) then break end
+        while FarmAstroTokenEnabled do
+            if FarmAstroTokenPauseCollect then
+                repeat task.wait(0.2) until not FarmAstroTokenPauseCollect or not FarmAstroTokenEnabled
             end
-            firstCycle = false
+            if not FarmAstroTokenEnabled then break end
 
-            FireShopHourlyBatch()
+            FarmAstroRuntimeChecks()
 
-            if not WaitWhileEnabled(10, IsBuyItemHourlyEnabled) then break end
+            if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
+                WaitFarmAstroRespawnAfterTimer()
+                continue
+            end
+
+            if IsFarmAstroTimerEnding() then
+                WaitFarmAstroRespawnAfterTimer()
+                continue
+            end
+
+            CreateFarmAstroTokenPart()
+            FarmAstroTokenPart.CFrame = FARM_ASTRO_TOP_A
+            FarmAstroSnapCharacterToPart()
+
+            local topResult = TweenFarmAstroTokenTo(FARM_ASTRO_TOP_B, FARM_ASTRO_TWEEN_TIME)
+            if topResult == "timer_end" then
+                WaitFarmAstroRespawnAfterTimer()
+                continue
+            end
+            if not topResult then break end
+
+            if FarmAstroTokenPauseCollect then continue end
+            if IsFarmAstroTimerEnding() then
+                WaitFarmAstroRespawnAfterTimer()
+                continue
+            end
+
+            FarmAstroTokenPart.CFrame = FARM_ASTRO_LOW_A
+            FarmAstroSnapCharacterToPart()
+
+            local lowResult = TweenFarmAstroTokenTo(FARM_ASTRO_LOW_B, FARM_ASTRO_TWEEN_TIME)
+            if lowResult == "timer_end" then
+                WaitFarmAstroRespawnAfterTimer()
+                continue
+            end
+            if not lowResult then break end
         end
 
-        buyItemHourlyRunning = false
+        CancelFarmAstroTween()
+        StopFarmAstroNoClip()
+        if FarmAstroTokenPart then
+            pcall(function() FarmAstroTokenPart:Destroy() end)
+        end
+        FarmAstroTokenPart = nil
+        FarmAstroTokenPauseCollect = false
+        FarmAstroTokenTimerHold = false
+        FarmAstroFinalLockActive = false
+        FarmAstroTimerDropping = false
+        FarmAstroBottomGodTriggered = false
+        FarmAstroReviveGodTriggered = false
+        FarmAstroWaveTimerArmed = false
+        FarmAstroLastWaveTimer = nil
+        FarmAstroTokenRunning = false
+        RestoreFarmCameraAndMovement()
+        ResumeFarmAstroGodModeAfterRespawn("Farm Astro 停止")
     end)
 end
 
-if autoGachaCharacterEnabled then StartAutoGachaCharacter() end
-if autoGachaSkinEnabled then StartAutoGachaSkin() end
-if autoUseItemEnabled then StartAutoUseItem() end
-if IsAnySyncedShopEnabled() then StartAutoSyncedShopLoop() end
-if buyItemHourlyEnabled then StartBuyItemHourlyLoop() end
+function StopFarmAstroToken(saveState)
+    FarmAstroTokenEnabled = false
+    FarmAstroTokenTimerHold = false
+    FarmAstroFinalLockActive = false
+    FarmAstroTimerDropping = false
+    FarmAstroBottomGodTriggered = false
+    FarmAstroReviveGodTriggered = false
+    FarmAstroReviveTimerArmed = false
+    FarmAstroLastReviveTimer = nil
+    FarmAstroWaveTimerArmed = false
+    FarmAstroLastWaveTimer = nil
+    ResumeFarmAstroGodModeAfterRespawn("Farm Astro 已禁用")
+    if saveState then
+        Config:Set("FarmAstroTokenEnabled", false)
+        Config:Save()
+    end
+    CancelFarmAstroTween()
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if FarmAstroTokenEnabled then
+            FarmAstroRuntimeChecks()
+        else
+            FarmAstroReviveGodTriggered = false
+            FarmAstroBottomGodTriggered = false
+            FarmAstroWaveTimerArmed = false
+            FarmAstroLastWaveTimer = nil
+        end
+    end
+end)
 -- ============================================================
--- ====================== UI: MAIN6 (收集 TAB) ======================
+-- ====================== UI: MAIN TAB ======================
 -- ============================================================
 
-Main6:Section({ Title = "自动收集", Icon = "package" })
+Main:Section({ Title = "自动刷怪", Icon = "package" })
 
-AutoCollectToggle = Main6:Toggle({
-    Title = "自动收集",
-    Value = AutoCollectEnabled,
-    Desc = "自动收集地图中出现的选中物品。",
+AutoFarmToggle = Main:Toggle({
+    Title = "自动刷怪",
+    Desc = "基于优先级系统自动刷怪。",
+    Value = AutoFarmEnabled,
     Callback = function(state)
-        AutoCollectEnabled = state
-        Config:Set("AutoCollectEnabled", state)
+        AutoFarmEnabled = state
+        UpdateYYAWaitingPartCollision()
+        if state then
+            if EnhancedNormalEnabled then
+                LoadEnhancedLoop("Normal")
+            elseif EnhancedDarkDimensionEnabled then
+                LoadEnhancedLoop("DarkDimension")
+            elseif EnhancedAstroEnabled then
+                LoadEnhancedLoop("Astro")
+            end
+            if type(StartFarmLoop) == "function" then
+                StartFarmLoop()
+                StartAutoAttack()
+                StartAutoFillUpLoop()
+            end
+            WindUI:Notify({ Title = "自动刷怪", Content = "已启用，自动刷怪已启动！", Duration = 2, Icon = "play" })
+        else
+            FarmLoopRunning = false
+            WaitingRespawn = false
+            LockActive = false
+            RestoreFarmCameraAndMovement()
+            UpdateYYAWaitingPartCollision()
+            WindUI:Notify({ Title = "自动刷怪", Content = "自动刷怪已关闭。", Duration = 2, Icon = "square" })
+        end
+        Config:Set("AutoFarmEnabled", state)
+        Config:Save()
+    end
+})
+
+Main:Divider()
+
+Main:Section({ Title = "增强循环", Icon = "cpu" })
+
+EnhancedNormalEnabled = Config:Get("EnhancedNormalEnabled", false)
+
+NormalToggle = Main:Toggle({
+    Title = "普通模式增强循环",
+    Desc = "使用独立版高效循环（优先级选怪、传送/补间、无怪循环移动）",
+    Value = EnhancedNormalEnabled,
+    Callback = function(state)
+        EnhancedNormalEnabled = state
+        Config:Set("EnhancedNormalEnabled", state)
         Config:Save()
         if state then
-            KnownCollectItems = {}
-            CollectCandidateCache = {}
-            CollectCacheDirty = true
-            CheckFarmAstroCollectMode()
-            StartAutoCollectLoop()
-        else
-            CollectRunning = false
-            FarmCollecting = false
-        end
-    end
-})
-
-Main6:Section({ Title = "收集设置", Icon = "settings" })
-
-CollectItemDropdown = Main6:Dropdown({
-    Title = "收集物品",
-    Desc = "选择自动收集将目标的收集物品。",
-    Values = CollectDisplayNames,
-    Multi = true,
-    Value = SelectedCollectItems,
-    Callback = function(values)
-        SelectedCollectItems = values or {}
-        local englishValues = {}
-        for _, v in ipairs(values or {}) do
-            local english = CollectMap[v] or v
-            table.insert(englishValues, english)
-        end
-        CollectCandidateCache = {}
-        CollectCacheDirty = true
-        KnownCollectItems = {}
-        Config:Set("SelectedCollectItems", englishValues)
-        Config:Save()
-    end
-})
-
-CollectModeDropdown = Main6:Dropdown({
-    Title = "收集模式",
-    Desc = "选择自动收集何时收集物品。",
-    Values = CollectModeDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(CollectModeMap, CollectMode) or CollectMode,
-    Callback = function(value)
-        local english = CollectModeMap[value] or value
-        CollectMode = english
-        Config:Set("CollectMode", english)
-        Config:Save()
-        CheckFarmAstroCollectMode()
-    end
-})
-
-CollectMovementDropdown = Main6:Dropdown({
-    Title = "收集移动方式",
-    Desc = "选择角色移动到可收集物品的方式。",
-    Values = MovementDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(MovementMap, CollectMovementMode) or CollectMovementMode,
-    Callback = function(value)
-        local english = MovementMap[value] or value
-        CollectMovementMode = english
-        Config:Set("CollectMovementMode", english)
-        Config:Save()
-        WindUI:Notify({
-            Title = "收集移动方式",
-            Content = "已选择: " .. tostring(value),
-            Duration = 2,
-            Icon = "move"
-        })
-    end
-})
-
--- ============================================================
--- ====================== UI: MAIN3 (设置 TAB) ======================
--- ============================================================
-
-Main3:Section({ Title = "保存配置", Icon = "save" })
-
-Main3:Button({
-    Title = "立即保存配置",
-    Desc = "立即将所有当前设置保存到配置文件。",
-    Callback = function()
-        Config:Save()
-        WindUI:Notify({
-            Title = "保存配置",
-            Content = "配置保存成功！",
-            Duration = 2,
-            Icon = "save"
-        })
-    end
-})
-
-AutoSaveEnabled = Config:Get("AutoSaveEnabled", true)
-AutoSaveDelay   = Config:Get("AutoSaveDelay", 15)
-AutoSaveThread  = nil
-
-function RestartAutoSave()
-    if AutoSaveThread then
-        task.cancel(AutoSaveThread)
-        AutoSaveThread = nil
-    end
-    if AutoSaveEnabled then
-        AutoSaveThread = task.spawn(function()
-            while AutoSaveEnabled do
-                task.wait(AutoSaveDelay)
-                Config:Save()
+            if EnhancedDarkDimensionEnabled then
+                EnhancedDarkDimensionEnabled = false
+                Config:Set("EnhancedDarkDimensionEnabled", false)
+                pcall(function()
+                    if DarkDimensionToggle and DarkDimensionToggle.Set then
+                        DarkDimensionToggle:Set(false)
+                    end
+                end)
             end
-        end)
+            if EnhancedAstroEnabled then
+                EnhancedAstroEnabled = false
+                Config:Set("EnhancedAstroEnabled", false)
+                pcall(function()
+                    if AstroToggle and AstroToggle.Set then
+                        AstroToggle:Set(false)
+                    end
+                end)
+            end
+            LoadEnhancedLoop("Normal")
+            if AutoFarmEnabled then
+                StartFarmLoop()
+                StartAutoAttack()
+                StartAutoFillUpLoop()
+            end
+            WindUI:Notify({ Title = "增强循环", Content = "普通模式增强已启用", Duration = 2, Icon = "check" })
+        else
+            WindUI:Notify({ Title = "增强循环", Content = "普通模式增强已禁用", Duration = 2, Icon = "square" })
+        end
     end
-end
+})
 
-Main3:Toggle({
-    Title = "自动保存配置",
-    Value = AutoSaveEnabled,
-    Desc = "以设定间隔自动保存配置。",
+Main:Slider({
+    Title = "普通模式重置波数",
+    Desc = "仅普通模式生效，到达设定波数时传送至重置点（默认10波）",
+    Value = { Min = 1, Max = 25, Default = ResetWaveValue },
+    Step = 1,
+    Callback = function(value)
+        ResetWaveValue = value
+        Config:Set("ResetWaveValue", value)
+        Config:Save()
+    end
+})
+
+Main:Divider()
+
+EnhancedDarkDimensionEnabled = Config:Get("EnhancedDarkDimensionEnabled", false)
+
+DarkDimensionToggle = Main:Toggle({
+    Title = "黑暗模式增强循环",
+    Desc = "包含理智值收集、强制Jeffrey躲避、第5波+计时器≤10秒通关停止",
+    Value = EnhancedDarkDimensionEnabled,
     Callback = function(state)
-        AutoSaveEnabled = state
-        Config:Set("AutoSaveEnabled", state)
+        EnhancedDarkDimensionEnabled = state
+        Config:Set("EnhancedDarkDimensionEnabled", state)
         Config:Save()
-        RestartAutoSave()
-    end
-})
-
-Main3:Input({
-    Title = "配置保存延迟",
-    Desc = "设置自动保存间隔（秒）。",
-    Default = tostring(AutoSaveDelay),
-    Placeholder = "默认: 15",
-    Callback = function(text)
-        local num = tonumber(text)
-        if num and num >= 1 then
-            AutoSaveDelay = num
-            Config:Set("AutoSaveDelay", num)
-            Config:Save()
-            RestartAutoSave()
-        else
-            warn("[YYa] 无效延迟值！")
-        end
-    end
-})
-
-RestartAutoSave()
-
-Main3:Section({ Title = "服务器状态", Icon = "server" })
-
-Main3:Button({
-    Title = "跳转服务器",
-    Desc = "将你传送到此游戏的不同随机服务器。",
-    Callback = function()
-        local TeleportService = game:GetService("TeleportService")
-        local servers = {}
-        local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
-        end)
-        if success and result and result.data then
-            for _, server in ipairs(result.data) do
-                if server.id ~= game.JobId and server.playing < server.maxPlayers then
-                    table.insert(servers, server.id)
-                end
+        if state then
+            if EnhancedNormalEnabled then
+                EnhancedNormalEnabled = false
+                Config:Set("EnhancedNormalEnabled", false)
+                pcall(function()
+                    if NormalToggle and NormalToggle.Set then
+                        NormalToggle:Set(false)
+                    end
+                end)
             end
-        end
-        if #servers > 0 then
-            WindUI:Notify({
-                Title = "跳转服务器",
-                Content = "正在传送至另一台服务器...",
-                Duration = 2,
-                Icon = "server"
-            })
-            task.wait(1)
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer)
-        else
-            WindUI:Notify({
-                Title = "跳转服务器",
-                Content = "未找到可用服务器。",
-                Duration = 3,
-                Icon = "alert-triangle"
-            })
-        end
-    end
-})
-
-Main3:Button({
-    Title = "重新加入",
-    Desc = "重新加入当前游戏服务器。",
-    Callback = function()
-        WindUI:Notify({
-            Title = "重新加入",
-            Content = "正在重新加入服务器...",
-            Duration = 2,
-            Icon = "refresh-cw"
-        })
-        task.wait(1)
-        game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
-    end
-})
-
-Main3:Section({ Title = "杂项", Icon = "settings" })
-
-CameraDropdown = Main3:Dropdown({
-    Title = "相机模式",
-    Desc = "选择相机应如何跟随角色。",
-    Values = CameraModeDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(CameraModeMap, CameraMode) or CameraMode,
-    Callback = function(value)
-        local english = CameraModeMap[value] or value
-        CameraMode = english
-        Config:Set("CameraMode", english)
-        Config:Save()
-        ApplyCameraMode(true)
-        WindUI:Notify({
-            Title = "相机模式",
-            Content = "已选择: " .. tostring(value),
-            Duration = 2,
-            Icon = "camera"
-        })
-    end
-})
-
-NoBarrierToggle = Main3:Toggle({
-    Title = "绕过屏障（已修补）",
-    Value = noBarrierActive,
-    Desc = "尝试绕过隐形屏障。",
-    Callback = function(value)
-        noBarrierActive = value
-        Config:Set("NoBarrier", value)
-        Config:Save()
-        if value then startNoBarrier() else stopNoBarrier() end
-    end
-})
-
-CombatDebugToggle = Main3:Toggle({
-    Title = "战斗调试",
-    Value = CombatDebugEnabled,
-    Desc = "打印基于冷却的自动攻击/技能和怪物缓存调试日志。",
-    Callback = function(value)
-        CombatDebugEnabled = value
-        Config:Set("CombatDebugEnabled", value)
-        Config:Save()
-        if value then
-            WindUI:Notify({
-                Title = "战斗调试",
-                Content = "战斗调试日志已启用。",
-                Duration = 2,
-                Icon = "bug"
-            })
-        else
-            WindUI:Notify({
-                Title = "战斗调试",
-                Content = "战斗调试日志已禁用。",
-                Duration = 2,
-                Icon = "square"
-            })
-        end
-    end
-})
-
-AntiAFKConnection = nil
-AntiAFKThread = nil
-AntiAFKDisabledConnections = false
-
-function StartAntiAFK()
-    AntiAFK = true
-
-    if getconnections and not AntiAFKDisabledConnections then
-        pcall(function()
-            for _, connection in pairs(getconnections(LocalPlayer.Idled)) do
-                if connection.Disable then
-                    connection:Disable()
-                elseif connection.Disconnect then
-                    connection:Disconnect()
-                end
+            if EnhancedAstroEnabled then
+                EnhancedAstroEnabled = false
+                Config:Set("EnhancedAstroEnabled", false)
+                pcall(function()
+                    if AstroToggle and AstroToggle.Set then
+                        AstroToggle:Set(false)
+                    end
+                end)
             end
-        end)
-        AntiAFKDisabledConnections = true
-    end
-
-    if AntiAFKConnection then
-        AntiAFKConnection:Disconnect()
-        AntiAFKConnection = nil
-    end
-
-    AntiAFKConnection = LocalPlayer.Idled:Connect(function()
-        if not AntiAFK then return end
-        pcall(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-    end)
-
-    if AntiAFKThread then
-        pcall(function() task.cancel(AntiAFKThread) end)
-        AntiAFKThread = nil
-    end
-
-    AntiAFKThread = task.spawn(function()
-        while AntiAFK do
-            pcall(function()
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton2(Vector2.new())
-            end)
-            task.wait(60)
-        end
-        AntiAFKThread = nil
-    end)
-end
-
-function StopAntiAFK()
-    AntiAFK = false
-
-    if AntiAFKConnection then
-        AntiAFKConnection:Disconnect()
-        AntiAFKConnection = nil
-    end
-
-    if AntiAFKThread then
-        pcall(function() task.cancel(AntiAFKThread) end)
-        AntiAFKThread = nil
-    end
-end
-
-antiafk = Main3:Toggle({
-    Title = "反 AFK",
-    Value = AntiAFK,
-    Desc = "防止 Roblox 因闲置而踢出你。",
-    Callback = function(enabled)
-        AntiAFK = enabled
-        Config:Set("AntiAfk", enabled)
-        Config:Save()
-        if enabled then
-            StartAntiAFK()
-            WindUI:Notify({
-                Title = "反 AFK",
-                Content = "反闲置已启用。",
-                Duration = 2,
-                Icon = "shield-check"
-            })
+            AutoVoteValue = "黑暗维度"
+            Config:Set("AutoVoteValue", "黑暗维度")
+            LoadEnhancedLoop("DarkDimension")
+            if AutoFarmEnabled then
+                StartFarmLoop()
+                StartAutoAttack()
+                StartAutoFillUpLoop()
+            end
+            WindUI:Notify({ Title = "增强循环", Content = "黑暗模式增强已启用，自动投票黑暗维度", Duration = 3, Icon = "check" })
         else
-            StopAntiAFK()
-            WindUI:Notify({
-                Title = "反 AFK",
-                Content = "反闲置已禁用。",
-                Duration = 2,
-                Icon = "square"
-            })
+            WindUI:Notify({ Title = "增强循环", Content = "黑暗模式增强已禁用", Duration = 2, Icon = "square" })
         end
     end
 })
 
-if AntiAFK then StartAntiAFK() end
+Main:Slider({
+    Title = "黑暗模式反Jeffrey距离",
+    Desc = "检测Jeffrey的距离，到达此距离时触发躲避（黑暗模式强制生效）",
+    Value = { Min = 10, Max = 200, Default = AntiJeffreyRange },
+    Step = 1,
+    Callback = function(value)
+        AntiJeffreyRange = value
+        Config:Set("AntiJeffreyRange", value)
+        Config:Save()
+    end
+})
 
--- ============================================================
--- ====================== MAIN TAB REMAINING UI ==============
--- ============================================================
+Main:Divider()
 
-Main:Section({ Title = "刷怪位置", Icon = "target" })
+EnhancedAstroEnabled = Config:Get("EnhancedAstroEnabled", false)
+
+AstroToggle = Main:Toggle({
+    Title = "天文模式增强循环",
+    Desc = "自动投票AstroV2 + 自动准备，沿用原脚本天文模式逻辑（自动环绕、计时器检测、最终门）",
+    Value = EnhancedAstroEnabled,
+    Callback = function(state)
+        EnhancedAstroEnabled = state
+        Config:Set("EnhancedAstroEnabled", state)
+        Config:Save()
+        if state then
+            if EnhancedNormalEnabled then
+                EnhancedNormalEnabled = false
+                Config:Set("EnhancedNormalEnabled", false)
+                pcall(function()
+                    if NormalToggle and NormalToggle.Set then
+                        NormalToggle:Set(false)
+                    end
+                end)
+            end
+            if EnhancedDarkDimensionEnabled then
+                EnhancedDarkDimensionEnabled = false
+                Config:Set("EnhancedDarkDimensionEnabled", false)
+                pcall(function()
+                    if DarkDimensionToggle and DarkDimensionToggle.Set then
+                        DarkDimensionToggle:Set(false)
+                    end
+                end)
+            end
+            AutoVoteValue = "Astro V2"
+            Config:Set("AutoVoteValue", "Astro V2")
+            LoadEnhancedLoop("Astro")
+            if AutoFarmEnabled then
+                StartFarmLoop()
+                StartAutoAttack()
+                StartAutoFillUpLoop()
+            end
+            WindUI:Notify({ Title = "增强循环", Content = "天文模式增强已启用，自动投票AstroV2", Duration = 3, Icon = "check" })
+        else
+            WindUI:Notify({ Title = "增强循环", Content = "天文模式增强已禁用", Duration = 2, Icon = "square" })
+        end
+    end
+})
+
+Main:Divider()
+
+Main:Section({ Title = "通用功能", Icon = "settings" })
+
+AutoSkipHeliEnabled = Config:Get("AutoSkipHeliEnabled", false)
+
+Main:Toggle({
+    Title = "自动跳过直升机",
+    Desc = "所有模式下自动跳过直升机波次",
+    Value = AutoSkipHeliEnabled,
+    Callback = function(state)
+        AutoSkipHeliEnabled = state
+        Config:Set("AutoSkipHeliEnabled", state)
+        Config:Save()
+        if state then
+            TriggerAutoSkipHeli(true)
+            WindUI:Notify({ Title = "自动跳过直升机", Content = "已启用，所有模式生效", Duration = 2, Icon = "check" })
+        else
+            TriggerAutoSkipHeli(false)
+            WindUI:Notify({ Title = "自动跳过直升机", Content = "已禁用", Duration = 2, Icon = "square" })
+        end
+    end
+})
+
+DeleteMapEnabled = Config:Get("DeleteMapEnabled", false)
+
+Main:Toggle({
+    Title = "删除地图",
+    Desc = "所有模式下隐藏地图部件提升性能",
+    Value = DeleteMapEnabled,
+    Callback = function(state)
+        DeleteMapEnabled = state
+        Config:Set("DeleteMapEnabled", state)
+        Config:Save()
+        if state then
+            SaveAndBoostFPS()
+            WindUI:Notify({ Title = "删除地图", Content = "已启用，地图部件已隐藏", Duration = 2, Icon = "check" })
+        else
+            RestoreBoostFPS()
+            WindUI:Notify({ Title = "删除地图", Content = "已禁用，地图部件已恢复", Duration = 2, Icon = "square" })
+        end
+    end
+})
+
+Main:Section({ Title = "全部技能", Icon = "keyboard" })
+
+SkillDropdown = Main:Dropdown({
+    Title = "全部技能（按键）",
+    Desc = "选择自动技能将按下的键盘技能键。",
+    Values = skillDropdownValues,
+    Multi = true,
+    Value = SelectedSkills,
+    Callback = function(values)
+        SelectedSkills = values
+        Config:Set("SelectedSkills", values)
+        Config:Save()
+    end
+})
+
+Main:Slider({
+    Title = "技能延迟（秒）",
+    Desc = "设置每个自动技能按键之间的延迟（秒）。",
+    Value = { Min = 1, Max = 60, Default = SkillDelay },
+    Step = 1,
+    Callback = function(value)
+        SkillDelay = value
+        Config:Set("SkillDelay", value)
+        Config:Save()
+    end
+})
+Main:Section({ Title = "刷怪设置", Icon = "settings" })
 
 PositionDropdown = Main:Dropdown({
     Title = "刷怪位置",
@@ -4869,25 +4487,7 @@ Main:Slider({
     end
 })
 
-Main:Section({ Title = "Jeffrey 绕过", Icon = "shield" })
-
-BypassJeffreyToggle = Main:Toggle({
-    Title = "绕过 Jeffrey",
-    Desc = "强制 Jeffrey 坐下，使其无法移动。所有模式可独立启用。",
-    Value = BypassJeffreyEnabled,
-    Callback = function(state)
-        BypassJeffreyEnabled = state
-        Config:Set("BypassJeffreyEnabled", state)
-        Config:Save()
-        if state then
-            StartBypassJeffreyLoop()
-            ScanBypassJeffreys(true)
-            WindUI:Notify({ Title = "绕过 Jeffrey", Content = "已启用", Duration = 2, Icon = "check" })
-        else
-            WindUI:Notify({ Title = "绕过 Jeffrey", Content = "已禁用", Duration = 2, Icon = "square" })
-        end
-    end
-})
+-- 已删除 BypassJeffreyToggle 及其 Section
 
 Main:Section({ Title = "覆盖设置", Icon = "ruler" })
 
@@ -5011,7 +4611,6 @@ Main:Toggle({
         end
     end
 })
-
 -- ============================================================
 -- ====================== ENHANCED LOOP DEFINITIONS ============
 -- ============================================================
@@ -5494,7 +5093,6 @@ function TeleportResetWave(currentWave, targetWave, force, reason)
     FinishResetWaveTeleport(token, ok and completed == true, currentWave, targetWave)
     return ok and completed == true
 end
-
 -- ============================================================
 -- ====================== MAIN7: GAME MODE TAB ================
 -- ============================================================
