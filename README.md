@@ -3379,7 +3379,7 @@ end
 -- 只依赖主脚本的UI框架（WindUI）来显示控件
 
 -- ====================== 精简版独立变量 ======================
--- [MOD] 修改1：默认开启（首次使用时自动开启）
+-- [FIX] 修改1：默认开启（首次使用时自动生效）
 SimpleFarmEnabled = Config:Get("SimpleFarmEnabled", true)
 SimpleFarmMode = Config:Get("SimpleFarmMode", "Teleport")  -- "Teleport" 或 "Tween"
 SimpleFarmPosition = Config:Get("SimpleFarmPosition", "Above")  -- "Above" 或 "Under"
@@ -3543,10 +3543,14 @@ local function SimpleMoveToCFrame(cf)
     end
 end
 
--- 攻击（独立）
+-- [FIX] 修改2：修复自动攻击（直接使用 ReplicatedStorage）
 local function SimpleAttackMob()
-    local lmb = SimpleGetRemote("LMB")
-    if lmb then pcall(function() lmb:FireServer() end) end
+    local lmb = ReplicatedStorage:FindFirstChild("LMB")
+    if lmb then
+        pcall(function() lmb:FireServer() end)
+        return true
+    end
+    return false
 end
 
 -- 发送技能按键（独立）
@@ -3635,7 +3639,7 @@ local function SimpleTriggerAutoSkipHeli(state)
     if remote then pcall(function() remote:FireServer(state) end) end
 end
 
--- [MOD] 修改2：添加大厅检测函数（判断是否在大厅）
+-- [FIX] 修改3：添加大厅检测函数（判断是否在大厅）
 local function IsInLobby()
     -- 检查 Lobby GUI
     local lobby = pg:FindFirstChild("Lobby")
@@ -3695,7 +3699,7 @@ function StartSimpleFarm()
                 continue
             end
 
-            -- [MOD] 修改3：大厅检测，如果在大厅则跳过所有操作
+            -- [FIX] 修改4：大厅检测，如果在大厅则跳过所有操作
             if IsInLobby() then
                 task.wait(0.5)
                 continue
@@ -3764,10 +3768,16 @@ function StartSimpleFarm()
                 lockConnection = RunService.Heartbeat:Connect(updateLock)
 
                 -- ====== 持续攻击循环 ======
-                while SimpleFarmEnabled and SimpleFarmRunning and not SimpleFarmStopRequested and mob and mob.Parent do
+                while SimpleFarmEnabled and SimpleFarmRunning and not SimpleFarmStopRequested do
+                    -- [FIX] 修改5：重新检查当前怪物是否还活着，死亡则跳出
+                    if not mob or not mob.Parent then
+                        mob = nil
+                        break
+                    end
                     local humanoid = mob:FindFirstChild("Humanoid")
                     if not humanoid or humanoid.Health <= 0 then
-                        break  -- [MOD] 修改4：怪物死亡立即退出攻击循环
+                        mob = nil
+                        break  -- 怪物死亡，跳出循环重新找
                     end
 
                     -- 检查是否有更近的怪物
@@ -3779,12 +3789,13 @@ function StartSimpleFarm()
                             local newDist = (HumanoidRootPart.Position - newRoot.Position).Magnitude
                             local oldDist = (HumanoidRootPart.Position - oldRoot.Position).Magnitude
                             if newDist < oldDist - 10 then
+                                mob = newMob  -- 切换到更近的怪物
                                 break
                             end
                         end
                     end
 
-                    -- ====== 内置功能3：自动攻击 ======
+                    -- ====== 内置功能3：自动攻击（无条件执行） ======
                     SimpleAttackMob()
 
                     -- ====== 独立开关：自动技能 ======
