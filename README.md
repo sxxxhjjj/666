@@ -3380,8 +3380,8 @@ end
 
 -- ====================== 精简版独立变量 ======================
 SimpleFarmEnabled = Config:Get("SimpleFarmEnabled", false)
-SimpleFarmMode = Config:Get("SimpleFarmMode", "补间")
-SimpleFarmPosition = Config:Get("SimpleFarmPosition", "上方")
+SimpleFarmMode = Config:Get("SimpleFarmMode", "Teleport")  -- "Teleport" 或 "Tween"
+SimpleFarmPosition = Config:Get("SimpleFarmPosition", "Above")  -- "Above" 或 "Under"
 SimpleFarmHeight = Config:Get("SimpleFarmHeight", 3)
 SimpleFarmRunning = false
 SimpleFarmThread = nil
@@ -3501,7 +3501,7 @@ local function SimpleGetTargetCFrame(mob)
     if not root then return nil end
     local center, minY, maxY = SimpleGetMobVisualBounds(mob)
     local padding = SimpleFarmHeight
-    if SimpleFarmPosition == "上方" then
+    if SimpleFarmPosition == "Above" then
         local targetY = math.max(maxY + padding, maxY + 0.5)
         return CFrame.new(center.X, targetY, center.Z)
     else
@@ -3511,11 +3511,12 @@ local function SimpleGetTargetCFrame(mob)
 end
 
 -- 移动到目标（独立）
+-- 修复：使用 "Teleport" 判断传送模式，而非 "传送"
 local function SimpleMoveToCFrame(cf)
     if not cf or not Character or not HumanoidRootPart then return end
     local humanoid = Character:FindFirstChildOfClass("Humanoid")
     if humanoid then humanoid.Sit = false end
-    if SimpleFarmMode == "传送" then
+    if SimpleFarmMode == "Teleport" then
         Character:PivotTo(cf)
         HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
         HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
@@ -3633,7 +3634,7 @@ local function SimpleTriggerAutoSkipHeli(state)
     if remote then pcall(function() remote:FireServer(state) end) end
 end
 
--- ====================== 精简版主循环（完全独立） ======================
+-- ====================== 精简版主循环（完全独立，含持续跟随修复） ======================
 
 function StartSimpleFarm()
     if SimpleFarmRunning then return end
@@ -3703,57 +3704,85 @@ function StartSimpleFarm()
             -- ====== 获取最近怪物 ======
             local mob = SimpleGetNearestMob()
             if mob then
-                local cf = SimpleGetTargetCFrame(mob)
-                if cf then
-                    SimpleMoveToCFrame(cf)
+                -- 先移动一次
+                local firstCf = SimpleGetTargetCFrame(mob)
+                if firstCf then SimpleMoveToCFrame(firstCf) end
 
-                    -- ====== 持续攻击循环（自动攻击内置） ======
-                    while SimpleFarmEnabled and SimpleFarmRunning and not SimpleFarmStopRequested and mob and mob.Parent do
-                        local humanoid = mob:FindFirstChild("Humanoid")
-                        if not humanoid or humanoid.Health <= 0 then
-                            break
-                        end
-
-                        -- 检查是否有更近的怪物
-                        local newMob = SimpleGetNearestMob()
-                        if newMob and newMob ~= mob then
-                            local newRoot = newMob:FindFirstChild("HumanoidRootPart")
-                            local oldRoot = mob:FindFirstChild("HumanoidRootPart")
-                            if newRoot and oldRoot then
-                                local newDist = (HumanoidRootPart.Position - newRoot.Position).Magnitude
-                                local oldDist = (HumanoidRootPart.Position - oldRoot.Position).Magnitude
-                                if newDist < oldDist - 10 then
-                                    break
-                                end
-                            end
-                        end
-
-                        -- ====== 内置功能3：自动攻击 ======
-                        SimpleAttackMob()
-
-                        -- ====== 独立开关：自动技能 ======
-                        if SimpleAutoSkillEnabled then
-                            local keysToPress = {}
-                            if table.find(SimpleSelectedSkills, "全部") then
-                                keysToPress = SimpleSkillList
-                            else
-                                keysToPress = SimpleSelectedSkills
-                            end
-                            for _, key in ipairs(keysToPress) do
-                                if not SimpleFarmEnabled or not SimpleFarmRunning or SimpleFarmStopRequested then
-                                    break
-                                end
-                                SimpleSendSkill(key)
-                                task.wait(SimpleSkillDelay)
-                            end
-                        end
-
-                        task.wait(SimpleAttackInterval)
+                -- 开启持续跟随（Heartbeat）
+                local lockConnection
+                local function updateLock()
+                    if not SimpleFarmEnabled or not SimpleFarmRunning or SimpleFarmStopRequested or not mob or not mob.Parent then
+                        if lockConnection then lockConnection:Disconnect() end
+                        lockConnection = nil
+                        return
+                    end
+                    local humanoid = mob:FindFirstChild("Humanoid")
+                    if not humanoid or humanoid.Health <= 0 then
+                        if lockConnection then lockConnection:Disconnect() end
+                        lockConnection = nil
+                        return
+                    end
+                    local newCf = SimpleGetTargetCFrame(mob)
+                    if newCf then
+                        SimpleMoveToCFrame(newCf)
                     end
                 end
+
+                lockConnection = RunService.Heartbeat:Connect(updateLock)
+
+                -- ====== 持续攻击循环 ======
+                while SimpleFarmEnabled and SimpleFarmRunning and not SimpleFarmStopRequested and mob and mob.Parent do
+                    local humanoid = mob:FindFirstChild("Humanoid")
+                    if not humanoid or humanoid.Health <= 0 then
+                        break
+                    end
+
+                    -- 检查是否有更近的怪物
+                    local newMob = SimpleGetNearestMob()
+                    if newMob and newMob ~= mob then
+                        local newRoot = newMob:FindFirstChild("HumanoidRootPart")
+                        local oldRoot = mob:FindFirstChild("HumanoidRootPart")
+                        if newRoot and oldRoot then
+                            local newDist = (HumanoidRootPart.Position - newRoot.Position).Magnitude
+                            local oldDist = (HumanoidRootPart.Position - oldRoot.Position).Magnitude
+                            if newDist < oldDist - 10 then
+                                break
+                            end
+                        end
+                    end
+
+                    -- ====== 内置功能3：自动攻击 ======
+                    SimpleAttackMob()
+
+                    -- ====== 独立开关：自动技能 ======
+                    if SimpleAutoSkillEnabled then
+                        local keysToPress = {}
+                        if table.find(SimpleSelectedSkills, "全部") then
+                            keysToPress = SimpleSkillList
+                        else
+                            keysToPress = SimpleSelectedSkills
+                        end
+                        for _, key in ipairs(keysToPress) do
+                            if not SimpleFarmEnabled or not SimpleFarmRunning or SimpleFarmStopRequested then
+                                break
+                            end
+                            SimpleSendSkill(key)
+                            task.wait(SimpleSkillDelay)
+                        end
+                    end
+
+                    task.wait(SimpleAttackInterval)
+                end
+
+                -- 断开跟随连接
+                if lockConnection then
+                    lockConnection:Disconnect()
+                    lockConnection = nil
+                end
             else
-                -- 没有怪物，传送到闲置点
+                -- 没有怪物，传送到闲置点（持续检测，直到找到怪物）
                 TeleportToIdle()
+                -- 等待0.3秒后继续循环，会重新检测怪物
                 task.wait(0.3)
             end
             task.wait(0.1)
@@ -3780,6 +3809,28 @@ function StopSimpleFarm()
     end
     RestoreFarmCameraAndMovement()
 end
+
+-- ====================== 玩家重生自动重启精简版 ======================
+-- 监听 CharacterAdded，重生后自动重新启动精简版
+LocalPlayer.CharacterAdded:Connect(function(char)
+    -- 更新角色引用
+    Character = char
+    HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+    Client = LocalPlayer
+
+    -- 等待角色稳定
+    task.wait(1)
+
+    -- 如果精简版开关是开启状态，自动重新启动
+    if SimpleFarmEnabled then
+        -- 确保旧的线程已停止
+        StopSimpleFarm()
+        -- 重新启动
+        StartSimpleFarm()
+        print("[YYa] 精简版已自动重启（玩家重生）")
+    end
+end)
+
 -- ============================================================
 -- ====================== UI: MAIN TAB ======================
 -- ============================================================
@@ -7088,7 +7139,66 @@ antiafk = Main3:Toggle({
 
 if AntiAFK then StartAntiAFK() end
 
+-- ============================================================
+-- ====================== 大厅等待 + 地图检测 ======================
+-- ============================================================
+
+-- 等待进入地图（检测大厅是否消失，或检测到 Live 或 Living 文件夹）
+task.spawn(function()
+    print("[YYa] 等待进入地图...")
+    -- 最多等待60秒
+    local maxWait = 60
+    local waited = 0
+    local inMap = false
+
+    while waited < maxWait do
+        -- 检查大厅GUI是否存在且启用
+        local lobby = pg:FindFirstChild("Lobby")
+        local loading = pg:FindFirstChild("LoadingScreen")
+        local openVote = pg:FindFirstChild("OpenVoteUI")
+        
+        -- 如果大厅GUI存在且启用，或者仍在加载中，则认为还在大厅/加载状态
+        if (lobby and lobby.Enabled) or (loading and loading.Enabled) then
+            inMap = false
+            task.wait(1)
+            waited = waited + 1
+        else
+            -- 大厅已消失或未启用，检查是否进入地图（存在 Living 文件夹或已有怪物）
+            local living = workspace:FindFirstChild("Living")
+            if living and #living:GetChildren() > 0 then
+                inMap = true
+                break
+            end
+            -- 或者检查 WavesGui 是否存在（游戏内特征）
+            local wavesGui = pg:FindFirstChild("WavesGui")
+            if wavesGui then
+                inMap = true
+                break
+            end
+            -- 或者检查玩家是否在某个位置（非初始大厅位置）
+            if Character and HumanoidRootPart then
+                local pos = HumanoidRootPart.Position
+                if pos.Magnitude > 50 then  -- 如果玩家坐标远离原点
+                    inMap = true
+                    break
+                end
+            end
+            task.wait(1)
+            waited = waited + 1
+        end
+    end
+
+    if inMap then
+        print("[YYa] 已进入地图")
+        WindUI:Notify({ Title = "启动", Content = "已进入地图，精简版准备就绪", Duration = 3, Icon = "check" })
+    else
+        print("[YYa] 未检测到地图，继续运行")
+    end
+end)
+
+-- ============================================================
 -- ====================== APPLY SAVED CONFIG ON LOAD ======================
+-- ============================================================
 function ApplySavedConfigOnStartup()
     task.wait(1)
     updatePlayerStats()
@@ -7162,4 +7272,4 @@ print("[YYa] 至尊版")
 
 -- ============================================================
 -- ====================== 脚本结束 =============================
--- ============================================================ 
+-- ============================================================
