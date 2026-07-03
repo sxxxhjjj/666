@@ -3379,7 +3379,8 @@ end
 -- 只依赖主脚本的UI框架（WindUI）来显示控件
 
 -- ====================== 精简版独立变量 ======================
-SimpleFarmEnabled = Config:Get("SimpleFarmEnabled", false)
+-- [MOD] 修改1：默认开启（首次使用时自动开启）
+SimpleFarmEnabled = Config:Get("SimpleFarmEnabled", true)
 SimpleFarmMode = Config:Get("SimpleFarmMode", "Teleport")  -- "Teleport" 或 "Tween"
 SimpleFarmPosition = Config:Get("SimpleFarmPosition", "Above")  -- "Above" 或 "Under"
 SimpleFarmHeight = Config:Get("SimpleFarmHeight", 3)
@@ -3634,6 +3635,32 @@ local function SimpleTriggerAutoSkipHeli(state)
     if remote then pcall(function() remote:FireServer(state) end) end
 end
 
+-- [MOD] 修改2：添加大厅检测函数（判断是否在大厅）
+local function IsInLobby()
+    -- 检查 Lobby GUI
+    local lobby = pg:FindFirstChild("Lobby")
+    if lobby and lobby.Enabled then
+        return true
+    end
+    -- 检查是否有游戏内特征
+    local wavesGui = pg:FindFirstChild("WavesGui")
+    if wavesGui then
+        return false
+    end
+    local living = workspace:FindFirstChild("Living")
+    if living and #living:GetChildren() > 0 then
+        return false
+    end
+    -- 检查玩家位置
+    if HumanoidRootPart then
+        local pos = HumanoidRootPart.Position
+        if pos.Magnitude > 30 then
+            return false
+        end
+    end
+    return true  -- 默认认为在大厅
+end
+
 -- ====================== 精简版主循环（完全独立，含持续跟随修复） ======================
 
 function StartSimpleFarm()
@@ -3664,6 +3691,12 @@ function StartSimpleFarm()
                 if Character then HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart") end
             end
             if not HumanoidRootPart then
+                task.wait(0.5)
+                continue
+            end
+
+            -- [MOD] 修改3：大厅检测，如果在大厅则跳过所有操作
+            if IsInLobby() then
                 task.wait(0.5)
                 continue
             end
@@ -3734,7 +3767,7 @@ function StartSimpleFarm()
                 while SimpleFarmEnabled and SimpleFarmRunning and not SimpleFarmStopRequested and mob and mob.Parent do
                     local humanoid = mob:FindFirstChild("Humanoid")
                     if not humanoid or humanoid.Health <= 0 then
-                        break
+                        break  -- [MOD] 修改4：怪物死亡立即退出攻击循环
                     end
 
                     -- 检查是否有更近的怪物
