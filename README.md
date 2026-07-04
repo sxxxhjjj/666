@@ -1,4 +1,4 @@
--- v190 | [Local Register Fix]
+-- v190 | [Local Register Fix] | 完整融合版
 -- =========================
 version = "Rework"
 ver = "v023.92"
@@ -238,7 +238,7 @@ GachaMap = {
     ["10次幸运抽奖"] = "10SpinLucky",
 }
 
-CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物" }
+CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" }
 CollectMap = {
     ["时钟蜘蛛"] = "Clock Spider",
     ["X-18 核心"] = "X-18 Core",
@@ -250,6 +250,7 @@ CollectMap = {
     ["僵尸核心"] = "Zombie Core",
     ["闪存驱动器"] = "Flash Drives",
     ["礼物"] = "Presents",
+    ["创世纪核心"] = "Genesis Core",
 }
 
 WeaponDisplayNames = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" }
@@ -287,12 +288,12 @@ GamepassMap = {
     ["传奇幸运加成"] = "LegendaryLuckyBoost",
 }
 
--- 修改：添加普通模式
-FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式" }
+FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式", "丧失V2" }
 FarmModeMap = {
     ["普通模式"] = "Normal Mode",
     ["Astro 坚守模式"] = "Astro Holdout Mode",
     ["黑暗维度模式"] = "Dark Dimension Mode",
+    ["丧失V2"] = "ZombieV2",
 }
 
 FarmPositionDisplayNames = { "上方", "下方" }
@@ -319,7 +320,7 @@ CameraModeMap = {
     ["手动"] = "Manual",
 }
 
-VoteDisplayNames = { "普通", "非常困难", "困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问" }
+VoteDisplayNames = { "普通", "非常困难", "困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问", "丧尸模式二" }
 VoteMap = {
     ["普通"] = "Normal",
     ["非常困难"] = "VeryHard",
@@ -335,9 +336,10 @@ VoteMap = {
     ["Astro V2"] = "AstroV2",
     ["Astro"] = "Astro",
     ["1亿访问"] = "100MVisit",
+    ["丧尸模式二"] = "ZombieV2",
 }
 
-GameModeDisplayNames = { "普通", "困难", "非常困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问" }
+GameModeDisplayNames = { "普通", "困难", "非常困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问", "丧尸模式二" }
 GameModeMap = {
     ["普通"] = "Normal",
     ["困难"] = "Hard",
@@ -353,6 +355,7 @@ GameModeMap = {
     ["Astro V2"] = "AstroV2",
     ["Astro"] = "Astro",
     ["1亿访问"] = "100MVisit",
+    ["丧尸模式二"] = "ZombieV2",
 }
 
 TitanSpeakerUpgradeDisplayNames = { "喷气背包", "过载", "音波增幅器", "核心", "升级" }
@@ -477,7 +480,7 @@ Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 
 Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存",
+    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 丧失V2模式（丧尸模式二专用）\n• [新增] 创世纪核心收集",
     Image = "rbxassetid://103720636367587",
     ImageSize = 26,
 })
@@ -524,6 +527,7 @@ function NormalizeFarmTargetMode(mode)
     if mode == "普通模式" then return "Normal Mode" end
     if mode == "Astro 坚守模式" then return "Astro Holdout Mode" end
     if mode == "黑暗维度模式" then return "Dark Dimension Mode" end
+    if mode == "丧失V2" then return "ZombieV2" end
     return "Normal Mode"
 end
 
@@ -657,6 +661,21 @@ FarmCollecting         = false
 CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
+-- ====================== ZOMBIE V2 SPECIFIC ======================
+ZombieV2Active = false
+ZombieV2Center = Vector3.new(-23.343582153320312, -0.1904449462890625, 0.341766357421875)
+ZombieV2Radius = 500
+ZombieV2Height = 140
+ZombieV2Angle = 0
+ZombieV2AngularSpeed = 1.5
+ZombieV2Button = nil
+ZombieV2DetectedItem = nil
+ZombieV2WaitingReset = false
+ZombieV2Connection = nil
+ZombieV2ResetConnection = nil
+ZombieV2WaveCheckRunning = false
+ZombieV2ItemCheckRunning = false
+
 function UpdateYYAWaitingPartCollision()
     if AutoFarmEnabled ~= true then
         if DestroyYYAWaitingPart then DestroyYYAWaitingPart() end
@@ -735,6 +754,7 @@ function ApplyMiscFarmGate(reason)
     return true
 end
 
+-- ====================== CAMERA MODE ======================
 CameraLastApplyAt = 0
 CameraApplyCooldown = 0.22
 CameraSyncToken = 0
@@ -1656,6 +1676,7 @@ function StartJeffreyGuardLoop()
         AntiJeffreyGuardLoopRunning = false
     end)
 end
+
 -- ============================================================
 -- ====================== BYPASS JEFFREY ======================
 -- ============================================================
@@ -2044,7 +2065,6 @@ function GetHighHPMob()
     return bestMob
 end
 
--- ====================== Astro 模式专用 ======================
 function GetAstroMob()
     for _, mob in ipairs(GetCachedLivingMobs(false)) do
         if IsAstroMob(mob) then
@@ -2058,7 +2078,6 @@ function GetPriorityMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
     if not HumanoidRootPart then return nil, nil, nil, 0 end
 
-    -- 天文模式：只返回 Astro 怪物
     if FarmTargetMode == "Astro Holdout Mode" then
         local astroMob = GetAstroMob()
         if astroMob then
@@ -2067,7 +2086,6 @@ function GetPriorityMob()
         return nil, nil, nil, 0
     end
 
-    -- 普通模式或黑暗维度模式都使用完整优先级
     local giant, prompt = nil, nil
     local heli, highMob, nearMob = nil, nil, nil
     local bestHP, nearDist = HighHPThreshold, math.huge
@@ -2309,13 +2327,13 @@ end
 -- ====================== TARGET CFRAME =======================
 -- ============================================================
 function GetTargetCFrame(mob, position)
-    local mobRoot = GetMobRootPart(mob)  -- 使用活物检测
+    local mobRoot = GetMobRootPart(mob)
     if not mobRoot then return nil end
 
     local padding = GetEffectivePadding(mob)
     local center, minY, maxY = GetMobVisualBounds(mob)
 
-    if position == "Above" then  -- 英文键名，兼容 FarmPosition
+    if position == "Above" then
         local safeTargetY = math.max(maxY + padding, maxY + 0.5)
         local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
         local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
@@ -3371,12 +3389,236 @@ function ActivateAllFlushPrompts()
 end
 
 -- ============================================================
+-- ====================== ZOMBIE V2 MODE ======================
+-- ============================================================
+
+function UpdateZombieV2Orbit(dt)
+    if not ZombieV2Active or ZombieV2WaitingReset then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    ZombieV2Angle = ZombieV2Angle + ZombieV2AngularSpeed * dt
+    local x = ZombieV2Center.X + ZombieV2Radius * math.cos(ZombieV2Angle)
+    local z = ZombieV2Center.Z + ZombieV2Radius * math.sin(ZombieV2Angle)
+    local y = ZombieV2Center.Y + ZombieV2Height
+    local targetCF = CFrame.new(Vector3.new(x, y, z), ZombieV2Center)
+    hrp.CFrame = targetCF
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+end
+
+function StartZombieV2Orbit()
+    if ZombieV2Connection then return end
+    ZombieV2Active = true
+    ZombieV2Angle = 0
+    ZombieV2Connection = RunService.Heartbeat:Connect(function(dt)
+        pcall(UpdateZombieV2Orbit, dt)
+    end)
+    print("[YYa] 丧失V2 环绕已启动")
+end
+
+function StopZombieV2Orbit()
+    if ZombieV2Connection then
+        ZombieV2Connection:Disconnect()
+        ZombieV2Connection = nil
+    end
+    ZombieV2Active = false
+    print("[YYa] 丧失V2 环绕已停止")
+end
+
+function CheckZombieV2Wave()
+    if ZombieV2WaitingReset then return end
+    if ZombieV2DetectedItem and ZombieV2DetectedItem.Parent then return end
+
+    local wave = GetCurrentWaveNumber()
+    if wave == 13 then
+        local target = nil
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj.Name == "Special-Request" and obj:IsA("BasePart") then
+                target = obj
+                break
+            end
+        end
+        if target then
+            ZombieV2DetectedItem = target
+            CreateZombieV2Button()
+            ZombieV2WaveCheckRunning = false
+            print("[YYa] 丧失V2 检测到 Special-Request 物品，已创建按钮")
+        end
+    end
+end
+
+function StartZombieV2WaveCheck()
+    if ZombieV2WaveCheckRunning then return end
+    ZombieV2WaveCheckRunning = true
+    task.spawn(function()
+        while ZombieV2WaveCheckRunning and not ZombieV2WaitingReset do
+            pcall(CheckZombieV2Wave)
+            task.wait(1)
+        end
+        print("[YYa] 丧失V2 波数检测已停止")
+    end)
+end
+
+function CreateZombieV2Button()
+    if ZombieV2Button then return end
+
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "ZombieV2ButtonGui"
+    gui.Parent = CoreGui or LocalPlayer.PlayerGui
+    gui.ResetOnSpawn = false
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 220, 0, 55)
+    btn.Position = UDim2.new(0, 10, 0, 10)
+    btn.Text = "⚡ 拾取 Special-Request"
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.BackgroundColor3 = Color3.new(0.15, 0.55, 0.15)
+    btn.BackgroundTransparency = 0.15
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 18
+    btn.BorderSizePixel = 0
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Color = Color3.new(0, 1, 0)
+    stroke.Transparency = 0.5
+    stroke.Parent = btn
+
+    btn.Parent = gui
+
+    btn.MouseButton1Click:Connect(function()
+        if ZombieV2DetectedItem and ZombieV2DetectedItem.Parent then
+            local char = LocalPlayer.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = ZombieV2DetectedItem.CFrame + Vector3.new(0, 2, 0)
+                    task.wait(0.1)
+                    if firetouchinterest then
+                        firetouchinterest(hrp, ZombieV2DetectedItem, 0)
+                        task.wait(0.05)
+                        firetouchinterest(hrp, ZombieV2DetectedItem, 1)
+                    end
+                    local prompt = ZombieV2DetectedItem:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt then
+                        pcall(function()
+                            prompt:InputHoldBegin()
+                            task.wait(0.1)
+                            prompt:InputHoldEnd()
+                        end)
+                    end
+                end
+            end
+            if ZombieV2Button then
+                ZombieV2Button.Parent:Destroy()
+                ZombieV2Button = nil
+            end
+            StopZombieV2Orbit()
+            ZombieV2WaveCheckRunning = false
+            ZombieV2WaitingReset = true
+            print("[YYa] 丧失V2 物品已拾取，等待波数重置...")
+            WaitForWaveReset()
+        end
+    end)
+
+    ZombieV2Button = btn
+end
+
+function WaitForWaveReset()
+    if ZombieV2ResetConnection then return end
+    local resetRemote = ReplicatedStorage:FindFirstChild("NotifyWaveReset")
+    if resetRemote then
+        ZombieV2ResetConnection = resetRemote.OnClientEvent:Connect(function()
+            print("[YYa] 丧失V2 收到波数重置事件")
+            CleanupZombieV2()
+        end)
+    else
+        task.spawn(function()
+            while ZombieV2WaitingReset do
+                local wave = GetCurrentWaveNumber()
+                if wave == nil or wave == 0 then
+                    print("[YYa] 丧失V2 检测到波数重置（回退检测）")
+                    CleanupZombieV2()
+                    break
+                end
+                task.wait(1)
+            end
+        end)
+    end
+end
+
+function CleanupZombieV2()
+    StopZombieV2Orbit()
+    ZombieV2WaveCheckRunning = false
+    if ZombieV2Button then
+        pcall(function()
+            if ZombieV2Button.Parent then
+                ZombieV2Button.Parent:Destroy()
+            end
+        end)
+        ZombieV2Button = nil
+    end
+    if ZombieV2ResetConnection then
+        ZombieV2ResetConnection:Disconnect()
+        ZombieV2ResetConnection = nil
+    end
+    ZombieV2WaitingReset = false
+    ZombieV2DetectedItem = nil
+    ZombieV2Active = false
+    FarmTargetMode = Config:Get("FarmTargetMode", "Normal Mode")
+    AutoFarmEnabled = false
+    UpdateYYAWaitingPartCollision()
+    print("[YYa] 丧失V2 已完全清理")
+end
+
+function StartZombieV2Mode()
+    if ZombieV2Active then return end
+
+    AutoAttackEnabled = false
+    if AutoAttackLoopRunning then
+        AutoAttackLoopRunning = false
+    end
+
+    if AutoFarmEnabled then
+        AutoFarmEnabled = false
+        UpdateYYAWaitingPartCollision()
+    end
+
+    StartZombieV2Orbit()
+    StartZombieV2WaveCheck()
+    WaitForWaveReset()
+    ZombieV2Active = true
+
+    WindUI:Notify({
+        Title = "丧失V2",
+        Content = "模式已启动！环绕中，检测波次 13...",
+        Duration = 3,
+        Icon = "zombie"
+    })
+
+    print("[YYa] 丧失V2 模式已完全启动")
+end
+
+-- ============================================================
 -- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
 -- ============================================================
 FarmLoopToken = FarmLoopToken or 0
 
 function StartFarmLoop()
     if FarmLoopRunning then return end
+
+    if FarmTargetMode == "ZombieV2" then
+        StartZombieV2Mode()
+        return
+    end
+
     FarmLoopRunning = true
     FarmLoopToken = (FarmLoopToken or 0) + 1
     local thisFarmLoopToken = FarmLoopToken
@@ -3629,6 +3871,10 @@ function GetResetWaveLabel()
     local frame = wavesGui:FindFirstChild("Frame")
     if not frame then return nil end
 
+    local timer = frame:FindFirstChild("Timer")
+    if timer and timer:IsA("TextLabel") then
+        return timer
+    end
     return frame:FindFirstChild("TextLabel")
 end
 
@@ -3984,7 +4230,639 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     ApplyCameraMode(true)
 end)
 
+-- ============================================================
+-- ====================== 收集系统函数 ======================
+-- ============================================================
+
+AutoCollectEnabled = Config:Get("AutoCollectEnabled", false)
+CollectMode = Config:Get("CollectMode", "Clean")
+CollectMovementMode = Config:Get("CollectMovementMode", "Tween")
+SelectedCollectItems = Config:Get("SelectedCollectItems", {})
+KnownCollectItems = {}
+CollectCandidateCache = {}
+CollectCacheDirty = true
+CollectRunning = false
+CollectCacheLastScan = 0
+
+function CheckFarmAstroCollectMode()
+    if FarmAstroTokenEnabled and CollectMode == "Clean" then
+        if FarmAstroTokenPauseCollect == false then
+            FarmAstroTokenPauseCollect = true
+            local now = tick()
+            if now - FarmAstroTokenLastCleanNotify > 10 then
+                FarmAstroTokenLastCleanNotify = now
+                WindUI:Notify({
+                    Title = "收集系统",
+                    Content = "⚠️ Astro令牌刷怪已启用，收集模式自动切换为 IDGF",
+                    Duration = 3,
+                    Icon = "triangle-alert"
+                })
+            end
+        end
+        CollectMode = "IDGF"
+        Config:Set("CollectMode", "IDGF")
+        Config:Save()
+        pcall(function()
+            if CollectModeDropdown and CollectModeDropdown.Set then
+                CollectModeDropdown:Set("IDGF")
+            end
+        end)
+    end
+end
+
+function StartAutoCollectLoop()
+    if CollectRunning then return end
+    CollectRunning = true
+
+    task.spawn(function()
+        while AutoCollectEnabled and IsMiscFarmAllowed() do
+            CheckFarmAstroCollectMode()
+
+            if FarmAstroTokenEnabled and SyncFarmOnly then
+                task.wait(0.5)
+                continue
+            end
+
+            local item = GetCollectItems()
+            if item then
+                CollectNearestItem(item)
+            else
+                if FarmAstroTokenEnabled and CollectMode == "IDGF" then
+                    local now = tick()
+                    if now - FarmAstroTokenLastCleanNotify > 5 then
+                        FarmAstroTokenLastCleanNotify = now
+                    end
+                end
+                task.wait(0.5)
+            end
+            task.wait(0.1)
+        end
+        CollectRunning = false
+    end)
+end
+
+function CollectNearestItem(item)
+    if not item or not item.Parent then return end
+
+    local root = nil
+    if item:IsA("BasePart") then
+        root = item
+    elseif item:IsA("Model") then
+        root = item.PrimaryPart or item:FindFirstChildOfClass("BasePart")
+    end
+
+    if not root then return end
+
+    if CollectMovementMode == "Tween" then
+        local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(HumanoidRootPart, tweenInfo, {
+            CFrame = root.CFrame + Vector3.new(0, 2, 0)
+        })
+        tween:Play()
+        WaitTweenWithTimeout(tween, 0.8)
+    else
+        pcall(function()
+            Character:PivotTo(root.CFrame + Vector3.new(0, 2, 0))
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
+
+    task.wait(0.15)
+
+    if firetouchinterest then
+        pcall(function()
+            firetouchinterest(HumanoidRootPart, root, 0)
+            task.wait(0.06)
+            firetouchinterest(HumanoidRootPart, root, 1)
+        end)
+    end
+
+    if item:IsA("Model") then
+        local touchPart = item:FindFirstChildOfClass("BasePart")
+        if touchPart and firetouchinterest then
+            pcall(function()
+                firetouchinterest(HumanoidRootPart, touchPart, 0)
+                task.wait(0.06)
+                firetouchinterest(HumanoidRootPart, touchPart, 1)
+            end)
+        end
+        for _, prompt in ipairs(item:GetDescendants()) do
+            if prompt:IsA("ProximityPrompt") then
+                ActivateProximityPrompt(prompt)
+            end
+        end
+    end
+
+    if item:IsA("BasePart") then
+        for _, prompt in ipairs(item:GetDescendants()) do
+            if prompt:IsA("ProximityPrompt") then
+                ActivateProximityPrompt(prompt)
+            end
+        end
+    end
+
+    task.wait(0.15)
+end
+
+function MoveToCollectItem(item)
+    if not item or not item.Parent then return false end
+
+    local root = nil
+    if item:IsA("BasePart") then
+        root = item
+    elseif item:IsA("Model") then
+        root = item.PrimaryPart or item:FindFirstChildOfClass("BasePart")
+    end
+
+    if not root then return false end
+
+    local targetCF = root.CFrame + Vector3.new(0, 2, 0)
+
+    if CollectMovementMode == "Tween" then
+        local tween = TweenService:Create(
+            HumanoidRootPart,
+            TweenInfo.new(0.35, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+            { CFrame = targetCF }
+        )
+        tween:Play()
+        WaitTweenWithTimeout(tween, 0.6)
+    else
+        pcall(function()
+            Character:PivotTo(targetCF)
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
+
+    return true
+end
+
+function GetCollectItems()
+    if SelectedCollectItems == nil or #SelectedCollectItems == 0 then return nil end
+
+    local now = tick()
+    if CollectCacheDirty or now - (CollectCacheLastScan or 0) > 1.5 then
+        CollectCandidateCache = {}
+        CollectCacheDirty = false
+        CollectCacheLastScan = now
+
+        local function scanContainer(container)
+            if not container then return end
+            for _, obj in ipairs(container:GetDescendants()) do
+                if obj:IsA("BasePart") or obj:IsA("Model") then
+                    local name = obj.Name
+                    for _, targetName in ipairs(SelectedCollectItems) do
+                        if name == targetName then
+                            local root = nil
+                            if obj:IsA("BasePart") then
+                                root = obj
+                            elseif obj:IsA("Model") then
+                                root = obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+                            end
+                            if root and root.Parent then
+                                local dist = (HumanoidRootPart.Position - root.Position).Magnitude
+                                if dist < 500 then
+                                    table.insert(CollectCandidateCache, obj)
+                                end
+                            end
+                            break
+                        end
+                    end
+                end
+            end
+        end
+
+        scanContainer(workspace)
+
+        local living = workspace:FindFirstChild("Living")
+        if living then scanContainer(living) end
+    end
+
+    local bestDist = math.huge
+    local bestItem = nil
+
+    for _, obj in ipairs(CollectCandidateCache) do
+        if not obj.Parent then
+            CollectCacheDirty = true
+            continue
+        end
+
+        local root = nil
+        if obj:IsA("BasePart") then
+            root = obj
+        elseif obj:IsA("Model") then
+            root = obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+        end
+
+        if not root or not root.Parent then continue end
+
+        local dist = (HumanoidRootPart.Position - root.Position).Magnitude
+        if dist < bestDist then
+            bestDist = dist
+            bestItem = obj
+        end
+    end
+
+    return bestItem
+end
+
+-- ============================================================
+-- ====================== Astro 令牌刷怪函数 ======================
+-- ============================================================
+
+function StartFarmAstroToken()
+    if FarmAstroTokenRunning then return end
+    FarmAstroTokenRunning = true
+
+    if AutoFarmEnabled then
+        AutoFarmEnabled = false
+        UpdateYYAWaitingPartCollision()
+        Config:Set("AutoFarmEnabled", false)
+        Config:Save()
+        pcall(function()
+            if AutoFarmToggle and AutoFarmToggle.Set then
+                AutoFarmToggle:Set(false)
+            end
+        end)
+    end
+
+    FarmAstroTokenPauseCollect = false
+    FarmAstroTokenTimerHold = false
+    FarmAstroFinalLockActive = false
+    FarmAstroTimerDropping = false
+    FarmAstroBottomGodTriggered = false
+    FarmAstroReviveGodTriggered = false
+    FarmAstroReviveTimerArmed = false
+    FarmAstroLastReviveTimer = nil
+    FarmAstroWaveTimerArmed = false
+    FarmAstroLastWaveTimer = nil
+    FarmAstroGodModePaused = false
+    FarmAstroTokenTimerIgnoreUntil = tick() + 2
+
+    CheckFarmAstroCollectMode()
+
+    if FarmAstroTokenNoClipConnection then
+        FarmAstroTokenNoClipConnection:Disconnect()
+        FarmAstroTokenNoClipConnection = nil
+    end
+
+    FarmAstroTokenNoClipConnection = RunService.Heartbeat:Connect(function()
+        if not FarmAstroTokenEnabled then
+            if FarmAstroTokenNoClipConnection then
+                FarmAstroTokenNoClipConnection:Disconnect()
+                FarmAstroTokenNoClipConnection = nil
+            end
+            return
+        end
+        pcall(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end)
+    end)
+
+    task.spawn(function()
+        while FarmAstroTokenEnabled and FarmAstroTokenRunning do
+            pcall(function()
+                RefreshCombatCharacter()
+                if not Character or not HumanoidRootPart then
+                    task.wait(0.5)
+                    return
+                end
+
+                local waveTimer = GetWaveTimerValue()
+                local reviveTimer = GetReviveTimerValue()
+
+                if waveTimer and waveTimer <= 3 and not FarmAstroWaveTimerArmed then
+                    FarmAstroWaveTimerArmed = true
+                    FarmAstroLastWaveTimer = tick()
+                    WindUI:Notify({
+                        Title = "Astro 令牌",
+                        Content = "⏱️ 时间即将耗尽！准备前往中心...",
+                        Duration = 2,
+                        Icon = "clock"
+                    })
+                end
+
+                if waveTimer and waveTimer <= 0.5 and not FarmAstroTimerDropping then
+                    FarmAstroTimerDropping = true
+                    FarmAstroFinalLockActive = true
+                    FarmAstroTokenTimerHold = true
+                    WindUI:Notify({
+                        Title = "Astro 令牌",
+                        Content = "⏱️ 时间耗尽！前往中心！",
+                        Duration = 2,
+                        Icon = "flame"
+                    })
+                    CancelFarmAstroTween()
+                end
+
+                if FarmAstroTimerDropping then
+                    local targetCF = CFrame.new(-23.3435822, 3, 0.341766357)
+                    if FarmMode == "Tween" then
+                        if not FarmAstroTokenTween then
+                            FarmAstroTokenTween = TweenService:Create(
+                                HumanoidRootPart,
+                                TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+                                { CFrame = targetCF }
+                            )
+                            FarmAstroTokenTween:Play()
+                            task.spawn(function()
+                                WaitTweenWithTimeout(FarmAstroTokenTween, 0.6)
+                                FarmAstroTokenTween = nil
+                            end)
+                        end
+                    else
+                        pcall(function()
+                            Character:PivotTo(targetCF)
+                            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                        end)
+                    end
+                    FarmAstroTokenTimerIgnoreUntil = tick() + 1.5
+                    task.wait(0.1)
+                    return
+                end
+
+                if FarmAstroFinalLockActive then
+                    HoldFarmAstroBottomLockOnce()
+                    task.wait(0.05)
+                    return
+                end
+
+                local nearestMob = GetNearestMob()
+                if nearestMob then
+                    local mobRoot = nearestMob:FindFirstChild("HumanoidRootPart")
+                    if mobRoot then
+                        local dist = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
+                        if dist < 60 then
+                            local awayDir = (HumanoidRootPart.Position - mobRoot.Position).Unit
+                            local targetPos = HumanoidRootPart.Position + awayDir * 15
+                            targetPos = Vector3.new(targetPos.X, HumanoidRootPart.Position.Y, targetPos.Z)
+                            local targetCF = CFrame.new(targetPos, targetPos + HumanoidRootPart.CFrame.LookVector)
+                            if FarmMode == "Tween" then
+                                if not FarmAstroTokenTween then
+                                    FarmAstroTokenTween = TweenService:Create(
+                                        HumanoidRootPart,
+                                        TweenInfo.new(0.25, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+                                        { CFrame = targetCF }
+                                    )
+                                    FarmAstroTokenTween:Play()
+                                    task.spawn(function()
+                                        WaitTweenWithTimeout(FarmAstroTokenTween, 0.5)
+                                        FarmAstroTokenTween = nil
+                                    end)
+                                end
+                            else
+                                pcall(function()
+                                    Character:PivotTo(targetCF)
+                                    HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                                    HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                                end)
+                            end
+                            task.wait(0.12)
+                            return
+                        end
+                    end
+                end
+
+                local idleCF = GetYYAWaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
+                if (HumanoidRootPart.Position - idleCF.Position).Magnitude > 10 then
+                    if FarmMode == "Tween" then
+                        if not FarmAstroTokenTween then
+                            FarmAstroTokenTween = TweenService:Create(
+                                HumanoidRootPart,
+                                TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+                                { CFrame = idleCF }
+                            )
+                            FarmAstroTokenTween:Play()
+                            task.spawn(function()
+                                WaitTweenWithTimeout(FarmAstroTokenTween, 0.8)
+                                FarmAstroTokenTween = nil
+                            end)
+                        end
+                    else
+                        pcall(function()
+                            Character:PivotTo(idleCF)
+                            HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                            HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+                        end)
+                    end
+                end
+
+                if not FarmAstroReviveGodTriggered and reviveTimer and reviveTimer <= 5 and reviveTimer > 0 then
+                    FarmAstroReviveGodTriggered = true
+                    FarmAstroReviveTimerArmed = true
+                    FarmAstroLastReviveTimer = tick()
+                    FarmAstroGodModePaused = true
+                    WindUI:Notify({
+                        Title = "Astro 令牌",
+                        Content = "🛡️ 检测到复活计时器！暂停上帝模式...",
+                        Duration = 2,
+                        Icon = "shield"
+                    })
+                end
+
+                if FarmAstroReviveTimerArmed and reviveTimer and reviveTimer > 5 then
+                    FarmAstroReviveTimerArmed = false
+                    FarmAstroReviveGodTriggered = false
+                    FarmAstroGodModePaused = false
+                    WindUI:Notify({
+                        Title = "Astro 令牌",
+                        Content = "✅ 复活计时器安全，恢复上帝模式",
+                        Duration = 2,
+                        Icon = "shield-check"
+                    })
+                end
+
+                task.wait(0.08)
+            end)
+            task.wait(0.05)
+        end
+        FarmAstroTokenRunning = false
+    end)
+end
+
+function StopFarmAstroToken(keepPart)
+    FarmAstroTokenEnabled = false
+    FarmAstroTokenRunning = false
+    FarmAstroTokenPauseCollect = false
+    FarmAstroTokenTimerHold = false
+    FarmAstroFinalLockActive = false
+    FarmAstroTimerDropping = false
+    FarmAstroGodModePaused = false
+    FarmAstroReviveGodTriggered = false
+    FarmAstroReviveTimerArmed = false
+    FarmAstroWaveTimerArmed = false
+
+    CancelFarmAstroTween()
+
+    if FarmAstroTokenNoClipConnection then
+        FarmAstroTokenNoClipConnection:Disconnect()
+        FarmAstroTokenNoClipConnection = nil
+    end
+
+    if not keepPart then
+        pcall(function()
+            local waitingPart = GetYYAWaitingPart()
+            if waitingPart and waitingPart.Name == YYA_WAITING_PART_NAME then
+                waitingPart:Destroy()
+            end
+        end)
+    end
+
+    Config:Set("FarmAstroTokenEnabled", false)
+    Config:Save()
+
+    CheckFarmAstroCollectMode()
+    ApplyMiscFarmGate("Astro令牌已停止")
+end
+
+function CancelFarmAstroTween()
+    if FarmAstroTokenTween then
+        pcall(function()
+            FarmAstroTokenTween:Cancel()
+            FarmAstroTokenTween = nil
+        end)
+    end
+end
+
+function HoldFarmAstroBottomLockOnce()
+    RefreshCombatCharacter()
+    if not Character or not HumanoidRootPart then return end
+
+    local targetCF = CFrame.new(-23.3435822, 3, 0.341766357)
+
+    pcall(function()
+        local humanoid = Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Sit = false
+            humanoid.AutoRotate = false
+            humanoid.PlatformStand = false
+        end
+
+        NeedNoClip = true
+        Character:PivotTo(targetCF)
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        StabilizeFarmCamera()
+    end)
+end
+
+function ShouldKeepFarmAstroFinalLock()
+    if not FarmAstroTokenEnabled then return false end
+    if not FarmAstroFinalLockActive then return false end
+
+    local waveTimer = GetWaveTimerValue()
+    if waveTimer and waveTimer > 1.5 then
+        FarmAstroFinalLockActive = false
+        FarmAstroTokenTimerHold = false
+        FarmAstroTimerDropping = false
+        return false
+    end
+
+    return FarmAstroFinalLockActive or FarmAstroTokenTimerHold
+end
+
+function ResumeFarmAstroGodModeAfterRespawn(reason)
+    if not FarmAstroTokenEnabled then return end
+
+    local reviveTimer = GetReviveTimerValue()
+    if reviveTimer and reviveTimer <= 5 and reviveTimer > 0 then
+        FarmAstroGodModePaused = true
+        FarmAstroReviveGodTriggered = true
+        FarmAstroReviveTimerArmed = true
+        FarmAstroLastReviveTimer = tick()
+        WindUI:Notify({
+            Title = "Astro 令牌",
+            Content = "🛡️ 重生后检测到复活计时器！暂停上帝模式",
+            Duration = 2,
+            Icon = "shield"
+        })
+    else
+        FarmAstroGodModePaused = false
+        FarmAstroReviveGodTriggered = false
+        FarmAstroReviveTimerArmed = false
+        WindUI:Notify({
+            Title = "Astro 令牌",
+            Content = "✅ 重生后恢复上帝模式",
+            Duration = 2,
+            Icon = "shield-check"
+        })
+    end
+end
+
+function NotifyFarmAstroAutoFarm()
+    local now = tick()
+    if now - FarmAstroTokenLastAutoFarmNotify < 5 then return end
+    FarmAstroTokenLastAutoFarmNotify = now
+
+    WindUI:Notify({
+        Title = "Astro 令牌",
+        Content = "⚠️ 自动刷怪不能与 Astro 令牌模式同时启用",
+        Duration = 3,
+        Icon = "triangle-alert"
+    })
+end
+
+function GetWaveTimerValue()
+    local ok, result = pcall(function()
+        local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
+        if not playerGui then return nil end
+
+        local wavesGui = playerGui:FindFirstChild("WavesGui")
+        if not wavesGui then return nil end
+
+        local frame = wavesGui:FindFirstChild("Frame")
+        if not frame then return nil end
+
+        local timer = frame:FindFirstChild("Timer")
+        if timer and timer:IsA("TextLabel") then
+            local text = tostring(timer.Text or "")
+            local num = text:match("(%d+%.?%d*)")
+            if num then return tonumber(num) end
+        end
+
+        return nil
+    end)
+
+    if ok then return result end
+    return nil
+end
+
+function GetReviveTimerValue()
+    local ok, result = pcall(function()
+        local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
+        if not playerGui then return nil end
+
+        local wavesGui = playerGui:FindFirstChild("WavesGui")
+        if not wavesGui then return nil end
+
+        local frame = wavesGui:FindFirstChild("Frame")
+        if not frame then return nil end
+
+        local revive = frame:FindFirstChild("Revive")
+        if revive and revive:IsA("TextLabel") then
+            local text = tostring(revive.Text or "")
+            local num = text:match("(%d+%.?%d*)")
+            if num then return tonumber(num) end
+        end
+
+        return nil
+    end)
+
+    if ok then return result end
+    return nil
+end
+
+-- ============================================================
 -- ====================== UI: MAIN TAB ======================
+-- ============================================================
 
 Main:Section({ Title = "自动刷怪", Icon = "package" })
 
@@ -4028,7 +4906,7 @@ AutoFarmToggle = Main:Toggle({
 
 FarmTargetModeDropdown = Main:Dropdown({
     Title = "刷怪模式",
-    Desc = "选择普通模式、Astro坚守模式或黑暗维度模式。",
+    Desc = "选择普通模式、Astro坚守模式、黑暗维度模式或丧失V2模式。",
     Values = FarmModeDisplayNames,
     Multi = false,
     Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
@@ -4434,360 +5312,9 @@ Main:Toggle({
 })
 
 -- ============================================================
--- ====================== ESP SYSTEM =========================
+-- ====================== UI: ESP TAB ======================
 -- ============================================================
 
-ESP = {
-    Enabled       = Config:Get("EspEnabled", false),
-    MobEnabled    = Config:Get("EspMobEnabled", true),
-    PlayerEnabled = Config:Get("EspPlayerEnabled", true),
-    ItemEnabled   = Config:Get("EspItemEnabled", true),
-    Settings      = Config:Get("EspSettings", { "高亮", "距离", "血量", "名称" }),
-    SelectedItems = Config:Get("EspSelectedItems", {}),
-    MaxDistance   = 1500,
-    _mobHighlights    = {},
-    _playerHighlights = {},
-    _itemHighlights   = {},
-    ItemList = {
-        "时钟蜘蛛","X-18 核心","绿色能量核心","奇怪发射器",
-        "礼物","奇怪棱镜","钥匙卡","僵尸核心","闪存驱动器","Astro 样本",
-    },
-}
-
-function IsESPItemTarget(objectName, selectedList)
-    for _, pattern in ipairs(selectedList) do
-        if objectName == pattern then return true end
-    end
-    for _, pattern in ipairs(selectedList) do
-        local english = CollectMap[pattern] or pattern
-        if objectName == english then return true end
-    end
-    return false
-end
-
-function CreateESPLabel(parent, labelText)
-    local existing = parent:FindFirstChild("YYA_ESP_LABEL")
-    if existing then existing:Destroy() end
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "YYA_ESP_LABEL"
-    billboard.Size = UDim2.new(0, 120, 0, 40)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.AlwaysOnTop = true
-    billboard.ResetOnSpawn = false
-    billboard.Adornee = parent
-    billboard.Parent = parent
-    local frame = Instance.new("Frame")
-    frame.BackgroundTransparency = 1
-    frame.Size = UDim2.fromScale(1, 1)
-    frame.Parent = billboard
-    local label = Instance.new("TextLabel")
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.fromScale(1, 1)
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 11
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextStrokeTransparency = 0.4
-    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    label.Text = labelText
-    label.Parent = frame
-    return billboard, label
-end
-
-function CreateHighlight(model, outlineColor, fillColor, fillTransparency)
-    local existing = model:FindFirstChild("YYA_ESP_HIGHLIGHT")
-    if existing then existing:Destroy() end
-    local hl = Instance.new("Highlight")
-    hl.Name = "YYA_ESP_HIGHLIGHT"
-    hl.OutlineColor = outlineColor
-    hl.FillColor = fillColor
-    hl.FillTransparency = fillTransparency or 0.9
-    hl.OutlineTransparency = 0
-    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Adornee = model
-    hl.Parent = model
-    return hl
-end
-
-function RemoveESP(model)
-    pcall(function()
-        local hl = model:FindFirstChild("YYA_ESP_HIGHLIGHT")
-        if hl then hl:Destroy() end
-        local hb = model:FindFirstChild("YYA_ESP_LABEL")
-        if hb then hb:Destroy() end
-        local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local lb = hrp:FindFirstChild("YYA_ESP_LABEL")
-            if lb then lb:Destroy() end
-        end
-    end)
-end
-
-function IsInRange(targetPart)
-    if not targetPart or not HumanoidRootPart then return false end
-    return (HumanoidRootPart.Position - targetPart.Position).Magnitude <= ESP.MaxDistance
-end
-
-function BuildLabelText(model, showName, showHealth, showDistance)
-    local parts = {}
-    if showName then table.insert(parts, model.Name) end
-    if showHealth then
-        local humanoid = model:FindFirstChild("Humanoid")
-        if humanoid then
-            table.insert(parts, "❤ " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth))
-        end
-    end
-    if showDistance then
-        local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp and HumanoidRootPart then
-            table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - hrp.Position).Magnitude) .. "m")
-        end
-    end
-    return table.concat(parts, "\n")
-end
-
-function BuildItemLabelText(obj, showName, showDistance)
-    local parts = {}
-    if showName then table.insert(parts, obj.Name) end
-    if showDistance then
-        local root = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")) or (obj:IsA("BasePart") and obj or nil)
-        if root and HumanoidRootPart then
-            table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - root.Position).Magnitude) .. "m")
-        end
-    end
-    return table.concat(parts, "\n")
-end
-
-function GetESPSettings()
-    local s = ESP.Settings
-    return {
-        highlight = table.find(s, "高亮") ~= nil,
-        distance  = table.find(s, "距离") ~= nil,
-        health    = table.find(s, "血量") ~= nil,
-        name      = table.find(s, "名称") ~= nil,
-    }
-end
-
-function ApplyMobESP(mob)
-    if not mob or not mob.Parent then return end
-    local hrp = mob:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local settings = GetESPSettings()
-    if settings.highlight then
-        CreateHighlight(mob, Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 255, 255), 0.9)
-    end
-    if settings.name or settings.health or settings.distance then
-        local _, label = CreateESPLabel(hrp, "")
-        task.spawn(function()
-            while mob and mob.Parent and ESP.Enabled and ESP.MobEnabled do
-                local humanoid = mob:FindFirstChild("Humanoid")
-                if not humanoid or humanoid.Health <= 0 then break end
-                if not IsInRange(hrp) then
-                    label.Visible = false
-                    task.wait(0.5)
-                else
-                    label.Visible = true
-                    label.Text = BuildLabelText(mob, settings.name, settings.health, settings.distance)
-                    task.wait(0.35)
-                end
-            end
-            RemoveESP(mob)
-            ESP._mobHighlights[mob] = nil
-        end)
-    end
-    ESP._mobHighlights[mob] = true
-end
-
-function ScanMobs()
-    local livingFolder = workspace:FindFirstChild("Living")
-    if not livingFolder then return end
-    for _, mob in ipairs(livingFolder:GetChildren()) do
-        if IsValidMob(mob) and not ESP._mobHighlights[mob] then
-            local hrp = mob:FindFirstChild("HumanoidRootPart")
-            if hrp and IsInRange(hrp) then ApplyMobESP(mob) end
-        end
-    end
-end
-
-function ApplyPlayerESP(playerChar)
-    if not playerChar or not playerChar.Parent then return end
-    local hrp = playerChar:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    if playerChar == LocalPlayer.Character then return end
-    local settings = GetESPSettings()
-    if settings.highlight then
-        CreateHighlight(playerChar, Color3.fromRGB(50, 255, 50), Color3.fromRGB(255, 255, 255), 0.9)
-    end
-    if settings.name or settings.health or settings.distance then
-        local _, label = CreateESPLabel(hrp, "")
-        task.spawn(function()
-            while playerChar and playerChar.Parent and ESP.Enabled and ESP.PlayerEnabled do
-                local humanoid = playerChar:FindFirstChild("Humanoid")
-                if not humanoid or humanoid.Health <= 0 then break end
-                if not IsInRange(hrp) then
-                    label.Visible = false
-                    task.wait(0.5)
-                else
-                    label.Visible = true
-                    label.Text = BuildLabelText(playerChar, settings.name, settings.health, settings.distance)
-                    task.wait(0.35)
-                end
-            end
-            RemoveESP(playerChar)
-            ESP._playerHighlights[playerChar] = nil
-        end)
-    end
-    ESP._playerHighlights[playerChar] = true
-end
-
-function ScanPlayers()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local char = player.Character
-            if not ESP._playerHighlights[char] then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
-            end
-        end
-    end
-end
-
-function GetItemRoot(obj)
-    if obj:IsA("Model") then
-        return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
-    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then
-        return obj
-    end
-    return nil
-end
-
-function ApplyItemESP(obj)
-    if not obj or not obj.Parent then return end
-    local root = GetItemRoot(obj)
-    if not root then return end
-    local settings = GetESPSettings()
-    if settings.highlight then
-        CreateHighlight(obj, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 255, 255), 0.9)
-    end
-    if settings.name or settings.distance then
-        local _, label = CreateESPLabel(root, "")
-        task.spawn(function()
-            while obj and obj.Parent and ESP.Enabled and ESP.ItemEnabled do
-                local currentRoot = GetItemRoot(obj)
-                if not currentRoot then break end
-                if not IsInRange(currentRoot) then
-                    label.Visible = false
-                    task.wait(0.5)
-                else
-                    label.Visible = true
-                    label.Text = BuildItemLabelText(obj, settings.name, settings.distance)
-                    task.wait(0.5)
-                end
-            end
-            RemoveESP(obj)
-            ESP._itemHighlights[obj] = nil
-        end)
-    end
-    ESP._itemHighlights[obj] = true
-end
-
-function ScanItems()
-    if #ESP.SelectedItems == 0 then return end
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if not ESP._itemHighlights[obj] and IsESPItemTarget(obj.Name, ESP.SelectedItems) then
-            local root = GetItemRoot(obj)
-            if root and IsInRange(root) then ApplyItemESP(obj) end
-        end
-    end
-end
-
-function ClearAllESP()
-    for mob, _ in pairs(ESP._mobHighlights) do RemoveESP(mob) end
-    ESP._mobHighlights = {}
-    for char, _ in pairs(ESP._playerHighlights) do RemoveESP(char) end
-    ESP._playerHighlights = {}
-    for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
-    ESP._itemHighlights = {}
-end
-
-ESPConnection = nil
-
-function StartESPLoop()
-    if ESPConnection then
-        ESPConnection:Disconnect()
-        ESPConnection = nil
-    end
-    local lastMobScan, lastPlayerScan, lastItemScan = 0, 0, 0
-    ESPConnection = RunService.Heartbeat:Connect(function()
-        if not ESP.Enabled then return end
-        local now = tick()
-        if ESP.MobEnabled and now - lastMobScan >= 0.8 then
-            lastMobScan = now
-            pcall(ScanMobs)
-        end
-        if ESP.PlayerEnabled and now - lastPlayerScan >= 1.0 then
-            lastPlayerScan = now
-            pcall(ScanPlayers)
-        end
-        if ESP.ItemEnabled and now - lastItemScan >= 4.0 then
-            lastItemScan = now
-            pcall(ScanItems)
-        end
-    end)
-end
-
-function StopESPLoop()
-    if ESPConnection then
-        ESPConnection:Disconnect()
-        ESPConnection = nil
-    end
-    ClearAllESP()
-end
-
-workspace.DescendantAdded:Connect(function(obj)
-    if not ESP.Enabled or not ESP.ItemEnabled or #ESP.SelectedItems == 0 then return end
-    task.wait(0.1)
-    if IsESPItemTarget(obj.Name, ESP.SelectedItems) and not ESP._itemHighlights[obj] then
-        local root = GetItemRoot(obj)
-        if root and IsInRange(root) then ApplyItemESP(obj) end
-    end
-end)
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(char)
-        if not ESP.Enabled or not ESP.PlayerEnabled then return end
-        task.wait(1)
-        if not ESP._playerHighlights[char] then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
-        end
-    end)
-end)
-
-function WatchLivingFolder()
-    local living = workspace:FindFirstChild("Living")
-    if living then
-        living.ChildAdded:Connect(function(obj)
-            if not ESP.Enabled or not ESP.MobEnabled then return end
-            task.wait(0.2)
-            if IsValidMob(obj) and not ESP._mobHighlights[obj] then
-                local hrp = obj:FindFirstChild("HumanoidRootPart")
-                if hrp and IsInRange(hrp) then ApplyMobESP(obj) end
-            end
-        end)
-    end
-end
-
-task.spawn(function()
-    if not workspace:FindFirstChild("Living") then
-        workspace.ChildAdded:Connect(function(child)
-            if child.Name == "Living" then WatchLivingFolder() end
-        end)
-    else
-        WatchLivingFolder()
-    end
-end)
-
--- ====================== UI: ESP TAB ======================
 Main4:Section({ Title = "启用透视", Icon = "eye" })
 
 EspEnableToggle = Main4:Toggle({
@@ -4867,7 +5394,7 @@ EspItemDropdown = Main4:Dropdown({
     Title = "透视物品",
     Desc = "选择哪些可收集物品名称应接收物品透视。",
     Multi = true,
-    Values = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物" },
+    Values = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" },
     Value = ESP.SelectedItems,
     Callback = function(value)
         ESP.SelectedItems = value or {}
@@ -4879,7 +5406,10 @@ EspItemDropdown = Main4:Dropdown({
     end,
 })
 
+-- ============================================================
 -- ====================== UI: PLAYER TAB ======================
+-- ============================================================
+
 Main2:Section({ Title = "玩家", Icon = "user" })
 
 WSValue = Config:Get("WSValue", 16)
@@ -4996,6 +5526,18 @@ function FlyStart()
     end)
 end
 
+function updatePlayerStats(force)
+    if not LockMovementStats then return end
+    pcall(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        if hum.WalkSpeed ~= WSValue then hum.WalkSpeed = WSValue end
+        if hum.JumpPower ~= JPValue then hum.JumpPower = JPValue end
+    end)
+end
+
 Main2:Slider({
     Title = "设置移动速度",
     Desc = "设置你保存的移动速度值。",
@@ -5089,6 +5631,57 @@ Main2:Slider({
         Config:Save()
     end
 })
+
+-- ====================== 全亮/无雾 ======================
+function ApplyFullBright()
+    pcall(function()
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = false
+        Lighting.ClockTime = 12
+        Lighting.Ambient = Color3.new(1,1,1)
+        Lighting.ColorShift_Top = Color3.new(1,1,1)
+        Lighting.ColorShift_Bottom = Color3.new(1,1,1)
+        Lighting.EnvironmentDiffuseScale = 1
+        Lighting.EnvironmentSpecularScale = 1
+        for _, child in ipairs(Lighting:GetChildren()) do
+            if child:IsA("BloomEffect") then child.Enabled = false end
+            if child:IsA("SunRaysEffect") then child.Enabled = false end
+            if child:IsA("ColorCorrectionEffect") then child.Enabled = false end
+        end
+    end)
+end
+
+function RestoreFullBright()
+    pcall(function()
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = true
+        Lighting.ClockTime = 0
+        Lighting.Ambient = Color3.new(0,0,0)
+        Lighting.ColorShift_Top = Color3.new(0,0,0)
+        Lighting.ColorShift_Bottom = Color3.new(0,0,0)
+        Lighting.EnvironmentDiffuseScale = 0.5
+        Lighting.EnvironmentSpecularScale = 0.5
+        for _, child in ipairs(Lighting:GetChildren()) do
+            if child:IsA("BloomEffect") then child.Enabled = true end
+            if child:IsA("SunRaysEffect") then child.Enabled = true end
+            if child:IsA("ColorCorrectionEffect") then child.Enabled = true end
+        end
+    end)
+end
+
+function ApplyNoFog()
+    pcall(function()
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 100000
+    end)
+end
+
+function RestoreNoFog()
+    pcall(function()
+        Lighting.FogEnd = 5000
+        Lighting.FogStart = 0
+    end)
+end
 
 Main2:Section({ Title = "无限跳跃", Icon = "sun" })
 
@@ -5270,263 +5863,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ============================================================
--- ============== 抽奖增强功能（融合到抽奖开关中） ============
--- ============================================================
-local MoneyUIExists = false
-local GachaHeartbeatConnection = nil
-local GachaEnhancementActive = false
-
-local function GetMoney()
-    local money = 0
-    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, child in ipairs(leaderstats:GetChildren()) do
-            if child:IsA("IntValue") or child:IsA("NumberValue") then
-                local name = child.Name:lower()
-                if name:find("cash") or name:find("coin") or name:find("money") or name:find("gold") or name:find("point") then
-                    money = child.Value
-                    break
-                end
-            end
-        end
-    end
-    if money == 0 then
-        local data = LocalPlayer:FindFirstChild("PlayerData") or LocalPlayer:FindFirstChild("Data")
-        if data then
-            for _, child in ipairs(data:GetChildren()) do
-                if child:IsA("IntValue") or child:IsA("NumberValue") then
-                    local name = child.Name:lower()
-                    if name:find("cash") or name:find("coin") or name:find("money") or name:find("gold") or name:find("point") then
-                        money = child.Value
-                        break
-                    end
-                end
-            end
-        end
-    end
-    return money
-end
-
-local function CreateMoneyUI()
-    if MoneyUIExists then return end
-    local parent = CoreGui or pg
-    if not parent then return end
-
-    local old = parent:FindFirstChild("MoneyUI")
-    if old then old:Destroy() end
-
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "MoneyUI"
-    screenGui.Parent = parent
-    screenGui.ResetOnSpawn = false
-    screenGui.DisplayOrder = 9999
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 200, 0, 50)
-    frame.Position = UDim2.new(0, 10, 0, 10)
-    frame.BackgroundTransparency = 1
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
-    frame.ZIndex = 999
-
-    local icon = Instance.new("TextLabel")
-    icon.Size = UDim2.new(0, 30, 0, 30)
-    icon.Position = UDim2.new(0, 0, 0, 10)
-    icon.BackgroundTransparency = 1
-    icon.Text = "💰"
-    icon.TextSize = 22
-    icon.TextColor3 = Color3.fromRGB(255, 215, 0)
-    icon.Font = Enum.Font.GothamBold
-    icon.Parent = frame
-
-    local moneyLabel = Instance.new("TextLabel")
-    moneyLabel.Size = UDim2.new(0, 120, 0, 30)
-    moneyLabel.Position = UDim2.new(0, 35, 0, 10)
-    moneyLabel.BackgroundTransparency = 1
-    moneyLabel.Text = "0"
-    moneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    moneyLabel.TextSize = 22
-    moneyLabel.Font = Enum.Font.GothamBold
-    moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
-    moneyLabel.Parent = frame
-
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0, 60, 0, 16)
-    nameLabel.Position = UDim2.new(0, 35, 1, -20)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = "Coins"
-    nameLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
-    nameLabel.TextSize = 11
-    nameLabel.Font = Enum.Font.Gotham
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Parent = frame
-
-    local function UpdateMoney()
-        moneyLabel.Text = tostring(GetMoney())
-    end
-
-    UpdateMoney()
-    task.spawn(function()
-        while true do
-            UpdateMoney()
-            task.wait(1)
-        end
-    end)
-
-    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, child in ipairs(leaderstats:GetChildren()) do
-            if child:IsA("IntValue") or child:IsA("NumberValue") then
-                child.Changed:Connect(UpdateMoney)
-            end
-        end
-    end
-
-    MoneyUIExists = true
-end
-
-local function ForceShowGacha()
-    if not pg then return end
-    local gacha = pg:FindFirstChild("Gacha")
-    if gacha and gacha:IsA("ScreenGui") then
-        if not gacha.Enabled then
-            gacha.Enabled = true
-        end
-        for _, sub in ipairs(gacha:GetDescendants()) do
-            if sub:IsA("Frame") or sub:IsA("ImageLabel") or sub:IsA("TextLabel") or sub:IsA("TextButton") then
-                if not sub.Visible then
-                    sub.Visible = true
-                end
-            end
-        end
-    end
-end
-
-local function RemoveBlackScreens()
-    for _, guiParent in ipairs({pg, CoreGui}) do
-        if guiParent then
-            for _, child in ipairs(guiParent:GetChildren()) do
-                if child:IsA("ScreenGui") then
-                    local name = child.Name:lower()
-                    if name:find("black") or name:find("loading") or name:find("fade") or name:find("white") then
-                        pcall(function() child:Destroy() end)
-                    end
-                end
-            end
-        end
-    end
-end
-
-local function RemoveGachaVisuals()
-    if pg then
-        local gachaUI = pg:FindFirstChild("GachaUI")
-        if gachaUI then
-            local frame = gachaUI:FindFirstChild("Frame")
-            if frame then
-                local viewport = frame:FindFirstChild("ViewportFrame")
-                if viewport then
-                    local wm = viewport:FindFirstChild("WorldModel")
-                    if wm then
-                        pcall(function() wm:Destroy() end)
-                    end
-                end
-            end
-        end
-    end
-
-    local room = workspace:FindFirstChild("GachaRoom")
-    if room then
-        for _, obj in ipairs(room:GetDescendants()) do
-            if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
-                pcall(function()
-                    obj.Transparency = 1
-                    obj.CanCollide = false
-                end)
-            end
-            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-                pcall(function() obj.Enabled = false end)
-            end
-        end
-    end
-
-    local effects = workspace:FindFirstChild("Effects")
-    if effects then
-        for _, child in ipairs(effects:GetChildren()) do
-            if child:IsA("Part") or child:IsA("MeshPart") or child:IsA("Model") then
-                pcall(function() child:Destroy() end)
-            end
-        end
-    end
-end
-
-local function ResetCamera()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local cam = workspace.CurrentCamera
-    if not cam then return end
-    cam.CameraSubject = hrp
-    cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
-end
-
-local function StartGachaEnhancement()
-    if GachaEnhancementActive then return end
-    GachaEnhancementActive = true
-    CreateMoneyUI()
-
-    if GachaHeartbeatConnection then return end
-    GachaHeartbeatConnection = RunService.Heartbeat:Connect(function()
-        if not GachaEnhancementActive then return end
-        pcall(function()
-            ForceShowGacha()
-            RemoveBlackScreens()
-            RemoveGachaVisuals()
-            ResetCamera()
-        end)
-    end)
-end
-
-local function StopGachaEnhancement()
-    GachaEnhancementActive = false
-    if GachaHeartbeatConnection then
-        GachaHeartbeatConnection:Disconnect()
-        GachaHeartbeatConnection = nil
-    end
-
-    pcall(function()
-        local parent = CoreGui or pg
-        if parent then
-            local moneyUI = parent:FindFirstChild("MoneyUI")
-            if moneyUI then moneyUI:Destroy() end
-        end
-    end)
-    MoneyUIExists = false
-
-    pcall(function()
-        ApplyCameraMode(true)
-        local cam = workspace.CurrentCamera
-        local char = LocalPlayer.Character
-        if cam and char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                cam.CameraSubject = hrp
-            end
-        end
-    end)
-
-    pcall(function()
-        local readyRemote = GetRemote("GetReadyRemote")
-        if readyRemote then
-            readyRemote:FireServer("1", true)
-            task.wait(0.1)
-            readyRemote:FireServer("1", false)
-        end
-    end)
-end
-
--- ============================================================
--- ============== Shop Tab ====================================
+-- ============== 商店系统（完整封装 - 原版） ==================
 -- ============================================================
 
 Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
@@ -6208,7 +6545,7 @@ _G.__YYA_ShopSystems = function()
         end
     end
 
-    StartAutoSyncedShopLoop = function()
+    function StartAutoSyncedShopLoop()
         if autoSyncedShopRunning then return end
         autoSyncedShopRunning = true
 
@@ -6258,7 +6595,7 @@ _G.__YYA_ShopSystems = function()
         end
     end
 
-    local function StartBuyItemHourlyLoop()
+    function StartBuyItemHourlyLoop()
         if buyItemHourlyRunning then return end
         buyItemHourlyRunning = true
 
@@ -6280,6 +6617,260 @@ _G.__YYA_ShopSystems = function()
         end)
     end
 
+    -- ====================== 扭蛋 UI 增强 ======================
+    local MoneyUIExists = false
+    local GachaHeartbeatConnection = nil
+    local GachaEnhancementActive = false
+
+    local function GetMoney()
+        local money = 0
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        if leaderstats then
+            for _, child in ipairs(leaderstats:GetChildren()) do
+                if child:IsA("IntValue") or child:IsA("NumberValue") then
+                    local name = child.Name:lower()
+                    if name:find("cash") or name:find("coin") or name:find("money") or name:find("gold") or name:find("point") then
+                        money = child.Value
+                        break
+                    end
+                end
+            end
+        end
+        if money == 0 then
+            local data = LocalPlayer:FindFirstChild("PlayerData") or LocalPlayer:FindFirstChild("Data")
+            if data then
+                for _, child in ipairs(data:GetChildren()) do
+                    if child:IsA("IntValue") or child:IsA("NumberValue") then
+                        local name = child.Name:lower()
+                        if name:find("cash") or name:find("coin") or name:find("money") or name:find("gold") or name:find("point") then
+                            money = child.Value
+                            break
+                        end
+                    end
+                end
+            end
+        end
+        return money
+    end
+
+    local function CreateMoneyUI()
+        if MoneyUIExists then return end
+        local parent = CoreGui or pg
+        if not parent then return end
+
+        local old = parent:FindFirstChild("MoneyUI")
+        if old then old:Destroy() end
+
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "MoneyUI"
+        screenGui.Parent = parent
+        screenGui.ResetOnSpawn = false
+        screenGui.DisplayOrder = 9999
+
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0, 200, 0, 50)
+        frame.Position = UDim2.new(0, 10, 0, 10)
+        frame.BackgroundTransparency = 1
+        frame.BorderSizePixel = 0
+        frame.Parent = screenGui
+        frame.ZIndex = 999
+
+        local icon = Instance.new("TextLabel")
+        icon.Size = UDim2.new(0, 30, 0, 30)
+        icon.Position = UDim2.new(0, 0, 0, 10)
+        icon.BackgroundTransparency = 1
+        icon.Text = "💰"
+        icon.TextSize = 22
+        icon.TextColor3 = Color3.fromRGB(255, 215, 0)
+        icon.Font = Enum.Font.GothamBold
+        icon.Parent = frame
+
+        local moneyLabel = Instance.new("TextLabel")
+        moneyLabel.Size = UDim2.new(0, 120, 0, 30)
+        moneyLabel.Position = UDim2.new(0, 35, 0, 10)
+        moneyLabel.BackgroundTransparency = 1
+        moneyLabel.Text = "0"
+        moneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        moneyLabel.TextSize = 22
+        moneyLabel.Font = Enum.Font.GothamBold
+        moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+        moneyLabel.Parent = frame
+
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(0, 60, 0, 16)
+        nameLabel.Position = UDim2.new(0, 35, 1, -20)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = "Coins"
+        nameLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
+        nameLabel.TextSize = 11
+        nameLabel.Font = Enum.Font.Gotham
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Parent = frame
+
+        local function UpdateMoney()
+            moneyLabel.Text = tostring(GetMoney())
+        end
+
+        UpdateMoney()
+        task.spawn(function()
+            while true do
+                UpdateMoney()
+                task.wait(1)
+            end
+        end)
+
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        if leaderstats then
+            for _, child in ipairs(leaderstats:GetChildren()) do
+                if child:IsA("IntValue") or child:IsA("NumberValue") then
+                    child.Changed:Connect(UpdateMoney)
+                end
+            end
+        end
+
+        MoneyUIExists = true
+    end
+
+    local function ForceShowGacha()
+        if not pg then return end
+        local gacha = pg:FindFirstChild("Gacha")
+        if gacha and gacha:IsA("ScreenGui") then
+            if not gacha.Enabled then
+                gacha.Enabled = true
+            end
+            for _, sub in ipairs(gacha:GetDescendants()) do
+                if sub:IsA("Frame") or sub:IsA("ImageLabel") or sub:IsA("TextLabel") or sub:IsA("TextButton") then
+                    if not sub.Visible then
+                        sub.Visible = true
+                    end
+                end
+            end
+        end
+    end
+
+    local function RemoveBlackScreens()
+        for _, guiParent in ipairs({pg, CoreGui}) do
+            if guiParent then
+                for _, child in ipairs(guiParent:GetChildren()) do
+                    if child:IsA("ScreenGui") then
+                        local name = child.Name:lower()
+                        if name:find("black") or name:find("loading") or name:find("fade") or name:find("white") then
+                            pcall(function() child:Destroy() end)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local function RemoveGachaVisuals()
+        if pg then
+            local gachaUI = pg:FindFirstChild("GachaUI")
+            if gachaUI then
+                local frame = gachaUI:FindFirstChild("Frame")
+                if frame then
+                    local viewport = frame:FindFirstChild("ViewportFrame")
+                    if viewport then
+                        local wm = viewport:FindFirstChild("WorldModel")
+                        if wm then
+                            pcall(function() wm:Destroy() end)
+                        end
+                    end
+                end
+            end
+        end
+
+        local room = workspace:FindFirstChild("GachaRoom")
+        if room then
+            for _, obj in ipairs(room:GetDescendants()) do
+                if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+                    pcall(function()
+                        obj.Transparency = 1
+                        obj.CanCollide = false
+                    end)
+                end
+                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                    pcall(function() obj.Enabled = false end)
+                end
+            end
+        end
+
+        local effects = workspace:FindFirstChild("Effects")
+        if effects then
+            for _, child in ipairs(effects:GetChildren()) do
+                if child:IsA("Part") or child:IsA("MeshPart") or child:IsA("Model") then
+                    pcall(function() child:Destroy() end)
+                end
+            end
+        end
+    end
+
+    local function ResetCamera()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local cam = workspace.CurrentCamera
+        if not cam then return end
+        cam.CameraSubject = hrp
+        cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
+    end
+
+    function StartGachaEnhancement()
+        if GachaEnhancementActive then return end
+        GachaEnhancementActive = true
+        CreateMoneyUI()
+
+        if GachaHeartbeatConnection then return end
+        GachaHeartbeatConnection = RunService.Heartbeat:Connect(function()
+            if not GachaEnhancementActive then return end
+            pcall(function()
+                ForceShowGacha()
+                RemoveBlackScreens()
+                RemoveGachaVisuals()
+                ResetCamera()
+            end)
+        end)
+    end
+
+    function StopGachaEnhancement()
+        GachaEnhancementActive = false
+        if GachaHeartbeatConnection then
+            GachaHeartbeatConnection:Disconnect()
+            GachaHeartbeatConnection = nil
+        end
+
+        pcall(function()
+            local parent = CoreGui or pg
+            if parent then
+                local moneyUI = parent:FindFirstChild("MoneyUI")
+                if moneyUI then moneyUI:Destroy() end
+            end
+        end)
+        MoneyUIExists = false
+
+        pcall(function()
+            ApplyCameraMode(true)
+            local cam = workspace.CurrentCamera
+            local char = LocalPlayer.Character
+            if cam and char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    cam.CameraSubject = hrp
+                end
+            end
+        end)
+
+        pcall(function()
+            local readyRemote = GetRemote("GetReadyRemote")
+            if readyRemote then
+                readyRemote:FireServer("1", true)
+                task.wait(0.1)
+                readyRemote:FireServer("1", false)
+            end
+        end)
+    end
+
     if autoGachaCharacterEnabled then StartAutoGachaCharacter() end
     if autoGachaSkinEnabled then StartAutoGachaSkin() end
     if autoUseItemEnabled then StartAutoUseItem() end
@@ -6289,7 +6880,10 @@ end
 _G.__YYA_ShopSystems()
 _G.__YYA_ShopSystems = nil
 
+-- ============================================================
 -- ====================== UI: COLLECT TAB ======================
+-- ============================================================
+
 Main6:Section({ Title = "自动收集", Icon = "package" })
 
 AutoCollectToggle = Main6:Toggle({
@@ -6371,7 +6965,10 @@ CollectMovementDropdown = Main6:Dropdown({
     end
 })
 
+-- ============================================================
 -- ====================== UI: GAMEMODE TAB ======================
+-- ============================================================
+
 Main7:Section({ Title = "投票信息", TextXAlignment = "Center", TextSize = 17 })
 Main7:Divider()
 Main7:Paragraph({
@@ -6427,7 +7024,6 @@ Main7:Button({
     end
 })
 
--- ====================== 投票模式下拉 ======================
 GameModeDropdown2 = Main7:Dropdown({
     Title = "设置投票模式",
     Desc = "选择自动投票将投选的游戏模式。",
@@ -6443,7 +7039,6 @@ GameModeDropdown2 = Main7:Dropdown({
     end
 })
 
--- ====================== 自动投票 ======================
 AutoVoteIGToggle = Main7:Toggle({
     Title = "Auto Vote Mode (In-Game)",
     Desc = "Automatically votes for the selected mode each round.",
@@ -6633,7 +7228,9 @@ AutoVoteToggle = Main7:Toggle({
     end
 })
 
+-- ============================================================
 -- ====================== REQUEST / SKILL TREE HELPERS ======================
+-- ============================================================
 RequestWaveNotifyAt = 0
 AutoSkillTreeNotifyAt = 0
 
@@ -6661,6 +7258,10 @@ function GetCurrentWaveText()
         local frame = wavesGui:FindFirstChild("Frame")
         if not frame then return nil end
 
+        local timer = frame:FindFirstChild("Timer")
+        if timer and timer:IsA("TextLabel") then
+            return tostring(timer.Text or "")
+        end
         local label = frame:FindFirstChild("TextLabel")
         if not label then return nil end
 
@@ -6841,7 +7442,10 @@ function FireAutoSkillTrees()
     return true
 end
 
+-- ============================================================
 -- ====================== UI: SETTING TAB ======================
+-- ============================================================
+
 Main3:Section({ Title = "保存配置", Icon = "save" })
 
 Main3:Button({
@@ -7186,8 +7790,12 @@ function ApplySavedConfigOnStartup()
     end
 
     if AutoFarmEnabled then
-        StartFarmLoop()
-        StartJeffreyGuardLoop()
+        if FarmTargetMode == "ZombieV2" then
+            StartZombieV2Mode()
+        else
+            StartFarmLoop()
+            StartJeffreyGuardLoop()
+        end
     end
 
     if FarmAstroTokenEnabled then StartFarmAstroToken() end
@@ -7221,3 +7829,6 @@ ApplySavedConfigOnStartup()
 print("[YYa] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成功！")
 print("[YYa] 配置系统已激活 | 自动保存间隔 " .. tostring(AutoSaveDelay) .. " 秒")
 print("[YYa] 至尊版 - 完整普通模式已集成")
+print("[YYa] 至尊版 - 丧失V2模式已集成（丧尸模式二专用）")
+print("[YYa] 至尊版 - 创世纪核心已添加到收集列表")
+print("[YYa] 至尊版 - ESP、商店系统、自动收集全部完整保留")
