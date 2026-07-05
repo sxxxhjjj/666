@@ -238,6 +238,7 @@ GachaMap = {
     ["10次幸运抽奖"] = "10SpinLucky",
 }
 
+-- 原版 CollectDisplayNames 新增 "创世纪核心"
 CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" }
 CollectMap = {
     ["时钟蜘蛛"] = "Clock Spider",
@@ -288,6 +289,7 @@ GamepassMap = {
     ["传奇幸运加成"] = "LegendaryLuckyBoost",
 }
 
+-- 原版 FarmModeDisplayNames 新增 "丧失V2"
 FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式", "丧失V2" }
 FarmModeMap = {
     ["普通模式"] = "Normal Mode",
@@ -320,6 +322,7 @@ CameraModeMap = {
     ["手动"] = "Manual",
 }
 
+-- 原版 VoteDisplayNames 新增 "丧尸模式二"
 VoteDisplayNames = { "普通", "非常困难", "困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问", "丧尸模式二" }
 VoteMap = {
     ["普通"] = "Normal",
@@ -339,6 +342,7 @@ VoteMap = {
     ["丧尸模式二"] = "ZombieV2",
 }
 
+-- 原版 GameModeDisplayNames 新增 "丧尸模式二"
 GameModeDisplayNames = { "普通", "困难", "非常困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问", "丧尸模式二" }
 GameModeMap = {
     ["普通"] = "Normal",
@@ -662,6 +666,7 @@ CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
 -- ====================== ZOMBIE V2 SPECIFIC ======================
+-- 基础状态变量（改版原有）
 ZombieV2Active = false
 ZombieV2Center = Vector3.new(-23.343582153320312, -0.1904449462890625, 0.341766357421875)
 ZombieV2Radius = 500
@@ -675,6 +680,7 @@ ZombieV2Connection = nil
 ZombieV2ResetConnection = nil
 ZombieV2WaveCheckRunning = false
 ZombieV2ItemCheckRunning = false
+-- 修复方案新增：大厅检测相关
 ZombieV2LobbyCheckRunning = false
 ZombieV2LobbyCheckConnection = nil
 ZombieV2HasEnteredMap = false
@@ -720,8 +726,10 @@ function CombatDebug(tag, message, cooldown, showNotify)
     end
 end
 
+-- 修改 IsMiscFarmAllowed 增加丧尸V2例外
 function IsMiscFarmAllowed()
     if FarmAstroTokenEnabled and SyncFarmOnly then return false end
+    -- 丧尸V2模式下，允许所有杂项功能运行（自动技能、上帝模式、安全模式等）
     if FarmTargetMode == "ZombieV2" then return true end
     return AutoFarmEnabled or not SyncFarmOnly
 end
@@ -5089,9 +5097,11 @@ Window.OnClose = function()
 end
 
 -- ============================================================
--- ====================== ESP 核心表（原版保留） ======================
+-- ====================== ESP 核心表（原版保留，变量已存在） ======================
 -- ============================================================
-ESP = {
+-- ESP 表在原版中已存在，此处保留原版定义
+-- 确保 ESP 表包含所有必要字段
+ESP = ESP or {
     Enabled       = Config:Get("EspEnabled", false),
     MobEnabled    = Config:Get("EspMobEnabled", true),
     PlayerEnabled = Config:Get("EspPlayerEnabled", true),
@@ -5102,10 +5112,6 @@ ESP = {
     _mobHighlights    = {},
     _playerHighlights = {},
     _itemHighlights   = {},
-    ItemList = {
-        "时钟蜘蛛","X-18 核心","绿色能量核心","奇怪发射器",
-        "礼物","奇怪棱镜","钥匙卡","僵尸核心","闪存驱动器","Astro 样本","创世纪核心",
-    },
 }
 
 ESPConnection = nil
