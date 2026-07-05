@@ -1,4 +1,5 @@
--- v190 | [Local Register Fix] | 完整融合版（含Astro完整 + 移除ZombieV2）
+-- v190 | [Local Register Fix] | 完整融合版（基于原版UI渲染顺序）
+-- 版本: 完整版 | 包含: Astro令牌 + 完整收集 + 汉化投票
 -- =========================
 version = "Rework"
 ver = "v023.92"
@@ -425,6 +426,22 @@ function GetDisplayName(map, englishValue)
     return englishValue
 end
 
+-- ====================== ESP 核心表（放在 UI 之前，与原版一致） ======================
+ESP = {
+    Enabled       = Config:Get("EspEnabled", false),
+    MobEnabled    = Config:Get("EspMobEnabled", true),
+    PlayerEnabled = Config:Get("EspPlayerEnabled", true),
+    ItemEnabled   = Config:Get("EspItemEnabled", true),
+    Settings      = Config:Get("EspSettings", { "高亮", "距离", "血量", "名称" }),
+    SelectedItems = Config:Get("EspSelectedItems", {}),
+    MaxDistance   = 1500,
+    _mobHighlights    = {},
+    _playerHighlights = {},
+    _itemHighlights   = {},
+}
+
+ESPConnection = nil
+
 -- ====================== WINDOW ======================
 Players = game:GetService("Players")
 LocalPlayer = Players.LocalPlayer
@@ -459,7 +476,7 @@ Window:EditOpenButton({
     Draggable = true
 })
 
--- ====================== TABS ======================
+-- ====================== TABS（按原脚本顺序） ======================
 Info = Window:Tab({ Title = "信息", Icon = "info" })
 MainDivider = Window:Divider()
 Main = Window:Tab({ Title = "主要", Icon = "rocket" })
@@ -478,7 +495,7 @@ Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 
 Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] Astro令牌刷怪完整系统",
+    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统",
     Image = "rbxassetid://103720636367587",
     ImageSize = 26,
 })
@@ -615,7 +632,7 @@ AutoSkipHeliEnabled    = false
 BoostFPS_Active_dummy  = false
 AutoStartEnabled       = Config:Get("AutoStartEnabled", table.find(MiscOptions, "自动开始") ~= nil)
 AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
-AutoVoteValue         = Config:Get("AutoVoteValue", "Normal")
+AutoVoteValue         = Config:Get("AutoVoteValue", "普通")
 AutoVoteLoopRunning   = false
 AutoVoteLastFireAt    = 0
 AutoStartLastReadyAt  = 0
@@ -5146,8 +5163,8 @@ GameModeDropdown2 = Main7:Dropdown({
 })
 
 AutoVoteIGToggle = Main7:Toggle({
-    Title = "Auto Vote Mode (In-Game)",
-    Desc = "Automatically votes for the selected mode each round.",
+    Title = "自动投票模式（局内）",
+    Desc = "每局自动为选中的模式投票。",
     Value = AutoVoteinGameEnabled,
     Callback = function(enabled)
         AutoVoteinGameEnabled = enabled
@@ -5161,7 +5178,7 @@ AutoVoteIGToggle = Main7:Toggle({
             end
             StartAutoVoteLoop()
         else
-            print("[YYa] Auto Vote Mode disabled")
+            print("[YYa] 自动投票模式已禁用")
         end
     end
 })
@@ -5827,22 +5844,8 @@ antiafk = Main3:Toggle({
 
 if AntiAFK then StartAntiAFK() end
 -- ============================================================
--- ====================== ESP 核心表 ======================
+-- ====================== ESP 核心函数 ======================
 -- ============================================================
-ESP = ESP or {
-    Enabled       = Config:Get("EspEnabled", false),
-    MobEnabled    = Config:Get("EspMobEnabled", true),
-    PlayerEnabled = Config:Get("EspPlayerEnabled", true),
-    ItemEnabled   = Config:Get("EspItemEnabled", true),
-    Settings      = Config:Get("EspSettings", { "高亮", "距离", "血量", "名称" }),
-    SelectedItems = Config:Get("EspSelectedItems", {}),
-    MaxDistance   = 1500,
-    _mobHighlights    = {},
-    _playerHighlights = {},
-    _itemHighlights   = {},
-}
-
-ESPConnection = nil
 
 function IsESPItemTarget(objectName, selectedList)
     for _, pattern in ipairs(selectedList) do
@@ -7797,6 +7800,8 @@ print("[YYa] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成�
 print("[YYa] 配置系统已激活 | 自动保存间隔 " .. tostring(AutoSaveDelay) .. " 秒")
 print("[YYa] 至尊版 - 完整普通模式已集成")
 print("[YYa] 至尊版 - 创世纪核心已添加到收集列表")
+print("[YYa] 至尊版 - 特殊请求已添加到收集列表")
 print("[YYa] 至尊版 - Astro令牌刷怪系统已完整集成")
-print("[YYa] 至尊版 - 丧失V2模式已移除，Special-Request已加入收集系统")
+print("[YYa] 至尊版 - 丧失V2模式已移除")
 print("[YYa] 至尊版 - ESP、商店系统、自动收集全部完整保留")
+print("[YYa] 至尊版 - 投票UI已汉化")
