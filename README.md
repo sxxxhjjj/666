@@ -238,6 +238,7 @@ GachaMap = {
     ["10次幸运抽奖"] = "10SpinLucky",
 }
 
+-- 原版 CollectDisplayNames 新增 "创世纪核心"
 CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" }
 CollectMap = {
     ["时钟蜘蛛"] = "Clock Spider",
@@ -288,6 +289,7 @@ GamepassMap = {
     ["传奇幸运加成"] = "LegendaryLuckyBoost",
 }
 
+-- 原版 FarmModeDisplayNames 新增 "丧失V2"
 FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式", "丧失V2" }
 FarmModeMap = {
     ["普通模式"] = "Normal Mode",
@@ -320,6 +322,7 @@ CameraModeMap = {
     ["手动"] = "Manual",
 }
 
+-- 原版 VoteDisplayNames 新增 "丧尸模式二"
 VoteDisplayNames = { "普通", "非常困难", "困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问", "丧尸模式二" }
 VoteMap = {
     ["普通"] = "Normal",
@@ -339,6 +342,7 @@ VoteMap = {
     ["丧尸模式二"] = "ZombieV2",
 }
 
+-- 原版 GameModeDisplayNames 新增 "丧尸模式二"
 GameModeDisplayNames = { "普通", "困难", "非常困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问", "丧尸模式二" }
 GameModeMap = {
     ["普通"] = "Normal",
@@ -722,7 +726,7 @@ function CombatDebug(tag, message, cooldown, showNotify)
     end
 end
 
--- 修复方案：修改 IsMiscFarmAllowed 增加丧尸V2例外
+-- 修改 IsMiscFarmAllowed 增加丧尸V2例外
 function IsMiscFarmAllowed()
     if FarmAstroTokenEnabled and SyncFarmOnly then return false end
     -- 丧尸V2模式下，允许所有杂项功能运行（自动技能、上帝模式、安全模式等）
@@ -4404,7 +4408,7 @@ KnownCollectItems = {}
 CollectCandidateCache = {}
 CollectCacheDirty = true
 CollectRunning = false
-CollectCacheLastScan = 0  -- 缺失变量已补全
+CollectCacheLastScan = 0
 
 function CheckFarmAstroCollectMode()
     if FarmAstroTokenEnabled and CollectMode == "Clean" then
@@ -5093,9 +5097,11 @@ Window.OnClose = function()
 end
 
 -- ============================================================
--- ====================== ESP 核心表（缺失变量已补全） ======================
+-- ====================== ESP 核心表（原版保留，变量已存在） ======================
 -- ============================================================
-ESP = {
+-- ESP 表在原版中已存在，此处保留原版定义
+-- 确保 ESP 表包含所有必要字段
+ESP = ESP or {
     Enabled       = Config:Get("EspEnabled", false),
     MobEnabled    = Config:Get("EspMobEnabled", true),
     PlayerEnabled = Config:Get("EspPlayerEnabled", true),
@@ -5106,13 +5112,9 @@ ESP = {
     _mobHighlights    = {},
     _playerHighlights = {},
     _itemHighlights   = {},
-    ItemList = {
-        "时钟蜘蛛","X-18 核心","绿色能量核心","奇怪发射器",
-        "礼物","奇怪棱镜","钥匙卡","僵尸核心","闪存驱动器","Astro 样本","创世纪核心",
-    },
 }
 
-ESPConnection = nil  -- 缺失变量已补全
+ESPConnection = nil
 
 function IsESPItemTarget(objectName, selectedList)
     for _, pattern in ipairs(selectedList) do
@@ -5444,6 +5446,457 @@ task.spawn(function()
         WatchLivingFolder()
     end
 end)
+
+-- ============================================================
+-- ====================== UI: MAIN TAB ======================
+-- ============================================================
+
+Main:Section({ Title = "自动刷怪", Icon = "package" })
+
+AutoFarmToggle = Main:Toggle({
+    Title = "自动刷怪",
+    Desc = "启用所有模式的自动刷怪。",
+    Value = AutoFarmEnabled,
+    Callback = function(state)
+        if state and FarmAstroTokenEnabled then
+            AutoFarmEnabled = false
+            UpdateYYAWaitingPartCollision()
+            Config:Set("AutoFarmEnabled", false)
+            Config:Save()
+            NotifyFarmAstroAutoFarm()
+            return
+        end
+        AutoFarmEnabled = state
+        UpdateYYAWaitingPartCollision()
+        if state then
+            StartFarmLoop()
+            StartJeffreyGuardLoop()
+            HandleMiscOptions(MiscOptions)
+            WindUI:Notify({ Title = "自动刷怪", Content = "已启用，自动刷怪已启动！", Duration = 2, Icon = "play" })
+        else
+            FarmLoopToken = (FarmLoopToken or 0) + 1
+            WaitingRespawn = false
+            LockActive = false
+            RestoreFarmCameraAndMovement()
+            UpdateYYAWaitingPartCollision()
+            if SyncFarmOnly then
+                StopMiscFarmRuntime("自动刷怪已关闭，同步刷怪锁定已开启")
+                WindUI:Notify({ Title = "自动刷怪", Content = "关闭自动刷怪：杂项功能停止工作（同步刷怪锁定已开启）", Duration = 3, Icon = "square" })
+            else
+                HandleMiscOptions(MiscOptions)
+                WindUI:Notify({ Title = "自动刷怪", Content = "自动刷怪已关闭。杂项功能继续运行，因为同步刷怪锁定已关闭。", Duration = 3, Icon = "unlink" })
+            end
+        end
+        Config:Set("AutoFarmEnabled", state); Config:Save()
+    end
+})
+
+FarmTargetModeDropdown = Main:Dropdown({
+    Title = "刷怪模式",
+    Desc = "选择普通模式、Astro坚守模式、黑暗维度模式或丧失V2模式。",
+    Values = FarmModeDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
+    Callback = function(value)
+        local english = FarmModeMap[value] or value
+        FarmTargetMode = english
+        Config:Set("FarmTargetMode", english)
+        Config:Save()
+        InvalidateMobCache("刷怪模式已更改")
+        FarmForceRetarget = true
+        if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
+        task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
+        WindUI:Notify({ Title = "刷怪模式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "target" })
+    end
+})
+
+Main:Divider()
+
+Main:Section({ Title = "刷怪设置", Icon = "settings" })
+
+PositionDropdown = Main:Dropdown({
+    Title = "刷怪位置",
+    Desc = "选择角色在目标周围的站位。",
+    Values = FarmPositionDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(FarmPositionMap, FarmPosition) or FarmPosition,
+    Callback = function(value)
+        local english = FarmPositionMap[value] or value
+        FarmPosition = english
+        Config:Set("FarmPosition", english)
+        Config:Save()
+    end
+})
+
+ModeDropdown = Main:Dropdown({
+    Title = "移动方式",
+    Desc = "选择角色移动到每个目标的方式。",
+    Values = MovementDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(MovementMap, FarmMode) or FarmMode,
+    Callback = function(value)
+        local english = MovementMap[value] or value
+        FarmMode = english
+        Config:Set("FarmMode", english)
+        Config:Save()
+        WindUI:Notify({ Title = "移动方式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "mouse-pointer-click" })
+    end
+})
+
+MiscDropdown = Main:Dropdown({
+    Title = "杂项功能",
+    Desc = "选择与自动刷怪一起运行的额外系统。",
+    Values = { "自动攻击", "自动技能", "自动开始", "自动跳过直升机", "自动填充", "安全模式", "上帝模式", "重置波次", "删除地图" },
+    Multi = true,
+    Value = MiscOptions,
+    Callback = function(values)
+        MiscOptions = values
+        if not AutoFarmEnabled and SyncFarmOnly and #values > 0 then
+            WindUI:Notify({
+                Title = "杂项功能",
+                Content = "你必须先开启自动刷怪（同步刷怪锁定已开启）",
+                Duration = 3, Icon = "triangle-alert"
+            })
+        end
+        HandleMiscOptions(values)
+    end
+})
+
+Main:Toggle({
+    Title = "同步刷怪锁定",
+    Desc = "启用时，所有杂项功能需要自动刷怪处于激活状态。",
+    Value = SyncFarmOnly,
+    Callback = function(state)
+        SyncFarmOnly = state
+        Config:Set("SyncFarmOnly", state)
+        Config:Save()
+        if state then
+            WindUI:Notify({ Title = "同步刷怪锁定", Content = "开启：杂项功能必须先启用自动刷怪", Duration = 3, Icon = "link" })
+        else
+            WindUI:Notify({ Title = "同步刷怪锁定", Content = "关闭：杂项功能无需自动刷怪即可工作。", Duration = 3, Icon = "unlink" })
+        end
+        ApplyMiscFarmGate("同步刷怪锁定已更改")
+    end
+})
+
+Main:Section({ Title = "Astro 令牌刷怪（坚守模式）", Icon = "flame" })
+
+FarmAstroTokenToggle = Main:Toggle({
+    Title = "Astro 令牌刷怪（坚守模式）",
+    Desc = "避开所有怪物防止死亡，时间耗尽时前往中心",
+    Value = FarmAstroTokenEnabled,
+    Callback = function(state)
+        if state and AutoFarmEnabled then
+            FarmAstroTokenEnabled = false
+            Config:Set("FarmAstroTokenEnabled", false)
+            Config:Save()
+            NotifyFarmAstroAutoFarm()
+            pcall(function()
+                if FarmAstroTokenToggle and FarmAstroTokenToggle.Set then
+                    FarmAstroTokenToggle:Set(false)
+                end
+            end)
+            return
+        end
+
+        FarmAstroTokenEnabled = state
+        Config:Set("FarmAstroTokenEnabled", state)
+        Config:Save()
+
+        if state then
+            StartFarmAstroToken()
+            WindUI:Notify({
+                Title = "Astro 令牌刷怪",
+                Content = "已启用。Astro 路线已启动。",
+                Duration = 3,
+                Icon = "sparkles"
+            })
+        else
+            StopFarmAstroToken(false)
+            WindUI:Notify({
+                Title = "Astro 令牌刷怪",
+                Content = "已禁用。Astro 路线已停止。",
+                Duration = 3,
+                Icon = "square"
+            })
+        end
+    end
+})
+
+Main:Section({ Title = "通用设置", Icon = "zap" })
+
+SkillDropdown = Main:Dropdown({
+    Title = "自动技能（按键）",
+    Desc = "选择自动技能将按下的键盘技能键。",
+    Values = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" },
+    Multi = true,
+    Value = SelectedSkills,
+    Callback = function(values)
+        SelectedSkills = values
+        Config:Set("SelectedSkills", values)
+        Config:Save()
+    end
+})
+
+SkillDelaySlider = Main:Slider({
+    Title = "技能延迟（秒）",
+    Desc = "设置每个自动技能按键之间的延迟（秒）。",
+    Value = { Min = 1, Max = 60, Default = SkillDelay },
+    Step = 1,
+    Callback = function(value)
+        SkillDelay = value
+        Config:Set("SkillDelay", value)
+        Config:Save()
+    end
+})
+
+FarmHeightSlider = Main:Slider({
+    Title = "刷怪高度（±Y）",
+    Desc = "调整在怪物上方或下方刷怪时的垂直偏移。",
+    Value = { Min = -150, Max = 150, Default = HeightValue },
+    Step = 1,
+    Callback = function(value)
+        HeightValue = value
+        Config:Set("HeightValue", value)
+        Config:Save()
+        for mob, _ in pairs(MobHeightOverride) do
+            if MobConfirmedPadding[mob] == nil then MobHeightOverride[mob] = nil end
+        end
+    end
+})
+
+Main:Slider({
+    Title = "安全模式血量（%）",
+    Desc = "设置安全模式触发撤退的血量百分比。",
+    Value = { Min = 1, Max = 99, Default = SafeValue },
+    Step = 1,
+    Callback = function(value)
+        SafeValue = value
+        Config:Set("SafeValue", value)
+        Config:Save()
+    end
+})
+
+Main:Slider({
+    Title = "上帝模式血量（%）",
+    Desc = "设置普通上帝模式的血量百分比阈值。在 Farm Astro Token 期间被阻止。",
+    Value = { Min = 1, Max = 99, Default = GodModeValue },
+    Step = 1,
+    Callback = function(value)
+        GodModeValue = value
+        Config:Set("GodModeValue", value)
+        Config:Save()
+    end
+})
+
+Main:Slider({
+    Title = "重置波次（数值）",
+    Desc = "达到指定波次时立即重置。",
+    Value = { Min = 1, Max = 100, Default = ResetWaveValue },
+    Step = 1,
+    Callback = function(value)
+        ResetWaveValue = tonumber(value) or 10
+        ClearResetWaveTrigger("滑块已更改")
+        Config:Set("ResetWaveValue", ResetWaveValue)
+        Config:Save()
+
+        if ResetWaveEnabled and IsMiscFarmAllowed() then
+            StartResetWaveLoop()
+            task.defer(function() EvaluateResetWaveNow("滑块已更改", true) end)
+        end
+    end
+})
+
+Main:Divider()
+
+BypassJeffreyToggle = Main:Toggle({
+    Title = "绕过 Jeffrey",
+    Desc = "此功能会让 Jeffrey 无法移动。",
+    Value = BypassJeffreyEnabled,
+    Callback = function(state)
+        BypassJeffreyEnabled = state
+        Config:Set("BypassJeffreyEnabled", state)
+        Config:Save()
+        if state then
+            StartBypassJeffreyLoop()
+            ScanBypassJeffreys(true)
+        end
+    end
+})
+
+AntiJeffreyToggle = Main:Toggle({
+    Title = "反 Jeffrey",
+    Desc = "免费功能：创建软性隐形屏障。如果任何 Jeffrey 在范围内，你会被缓慢推开。",
+    Value = AntiJeffreyEnabled,
+    Callback = function(state)
+        AntiJeffreyEnabled = state
+        Config:Set("AntiJeffreyEnabled", state)
+        Config:Save()
+        if state then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
+    end
+})
+
+Main:Slider({
+    Title = "反 Jeffrey 范围（单位）",
+    Desc = "设置反 Jeffrey 的距离。默认 50 单位。",
+    Value = { Min = 10, Max = 200, Default = AntiJeffreyRange },
+    Step = 1,
+    Callback = function(value)
+        AntiJeffreyRange = value
+        Config:Set("AntiJeffreyRange", value)
+        Config:Save()
+    end
+})
+
+if AntiJeffreyEnabled then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
+if BypassJeffreyEnabled then StartBypassJeffreyLoop(); ScanBypassJeffreys(true) end
+
+-- ====================== UI: PRIORITY SETTINGS ======================
+Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
+
+Main:Paragraph({
+    Title = "优先级设置",
+    Desc = "中断：如果正在攻击低血量怪物且更高血量怪物出现，立即切换目标",
+    Image = "rbxassetid://103720636367587",
+    ImageSize = 26,
+})
+
+Main:Slider({
+    Title = "高血量阈值（最大生命值）",
+    Desc = "设置怪物成为高血量优先级所需的最大生命值。",
+    Value = { Min = 1, Max = 100000, Default = HighHPThreshold },
+    Step = 100,
+    Callback = function(value)
+        HighHPThreshold = value
+        Config:Set("HighHPThreshold", value)
+        Config:Save()
+        print("[YYa] 高血量阈值设置为 " .. value)
+    end
+})
+
+-- ====================== UI: OVERRIDE SETTINGS ======================
+Main:Section({ Title = "覆盖设置", Icon = "ruler" })
+
+PaddingReduceInput = Main:Input({
+    Title = "设置减少偏移",
+    Default = tostring(PADDING_REDUCE_STEP),
+    Placeholder = "默认: 2",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then
+            PADDING_REDUCE_STEP = num
+            Config:Set("PaddingReduceStep", num)
+            Config:Save()
+        else
+            warn("输入了不正确的数字！")
+        end
+    end
+})
+
+PaddingSafeInput = Main:Input({
+    Title = "设置安全最小偏移（全局底线）",
+    Default = tostring(PADDING_SAFE_MIN),
+    Placeholder = "默认: -30",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then
+            PADDING_SAFE_MIN = num
+            Config:Set("PaddingSafeMin", num)
+            Config:Save()
+        else
+            warn("输入了不正确的数字！")
+        end
+    end
+})
+
+Main:Slider({
+    Title = "防穿模边距（单位）",
+    Desc = "增加额外间距以减少在怪物附近刷怪时的穿模。",
+    Value = { Min = -10, Max = 10, Default = ANTI_CLIP_MARGIN },
+    Step = 1,
+    Callback = function(value)
+        ANTI_CLIP_MARGIN = value
+        Config:Set("AntiClipMargin", value)
+        Config:Save()
+    end
+})
+
+Main:Slider({
+    Title = "伤害阈值（确认锁定）",
+    Desc = "设置确认当前刷怪位置有效的伤害量。",
+    Value = { Min = 1, Max = 500, Default = DMG_THRESHOLD },
+    Step = 1,
+    Callback = function(value)
+        DMG_THRESHOLD = value
+        Config:Set("DmgThreshold", value)
+        Config:Save()
+    end
+})
+
+Main:Button({
+    Title = "重置所有已确认位置",
+    Desc = "清除所有已保存的怪物高度位置并恢复默认。",
+    Callback = function()
+        MobConfirmedPadding = {}
+        MobHeightOverride   = {}
+        WindUI:Notify({ Title = "覆盖设置", Content = "所有已确认的怪物位置已清除。", Duration = 2, Icon = "refresh-cw" })
+    end
+})
+
+Main:Section({ Title = "冲水设置", Icon = "toilet" })
+
+Flushaura      = Config:Get("flushaura", false)
+FlushAuraValue = Config:Get("FlushAuraValue", 5)
+
+Main:Slider({
+    Title = "冲水光环（单位）",
+    Desc = "设置冲水光环激活附近提示的距离。",
+    Value = { Min = 1, Max = 15, Default = FlushAuraValue },
+    Step = 1,
+    Callback = function(value)
+        FlushAuraValue = value
+        Config:Set("FlushAuraValue", value)
+        Config:Save()
+    end
+})
+
+Main:Toggle({
+    Title = "冲水光环",
+    Desc = "在设定半径内自动冲水附近的冲水提示。",
+    Value = Flushaura,
+    Callback = function(enabled)
+        Flushaura = enabled
+        Config:Set("flushaura", enabled)
+        Config:Save()
+        if enabled then
+            task.spawn(function()
+                while Flushaura do
+                    pcall(function()
+                        local char = game.Players.LocalPlayer.Character
+                        if not char then return end
+                        local root = char:FindFirstChild("HumanoidRootPart")
+                        if not root then return end
+                        if FlushPromptCacheDirty or tick() - (FlushPromptCacheLastScan or 0) > (FlushPromptCacheTTL or 8) then
+                            RebuildFlushPromptCache()
+                        end
+                        for prompt in pairs(FlushPromptCache) do
+                            if prompt and prompt.Parent and IsFlushPrompt(prompt) then
+                                local parent = prompt.Parent
+                                local part = parent:IsA("BasePart") and parent or parent:FindFirstAncestorWhichIsA("BasePart")
+                                if part and (root.Position - part.Position).Magnitude <= FlushAuraValue then
+                                    ActivateProximityPrompt(prompt)
+                                end
+                            else
+                                FlushPromptCache[prompt] = nil
+                            end
+                        end
+                    end)
+                    task.wait(0.25)
+                end
+            end)
+        end
+    end
+})
 
 -- ============================================================
 -- ====================== UI: ESP TAB ======================
@@ -5986,7 +6439,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         FlyNowe = false
         FlyEnabled = false
         pcall(function()
-            if FlyToggle and FlyToggle.Set then FlyToggle:Set(false) end
+            if FlyToggle and FlyToggle.Set then
+                FlyToggle:Set(false)
+            end
         end)
     end
     local hum = char:FindFirstChildOfClass("Humanoid")
