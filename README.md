@@ -776,7 +776,7 @@ function GetCameraTargetForMode(char)
 
     local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
 
-    if CameraMode == "经典" then
+    if CameraMode == "Classic" then
         return char:FindFirstChild("Head") or humanoid or char:FindFirstChild("HumanoidRootPart"), humanoid
     end
 
