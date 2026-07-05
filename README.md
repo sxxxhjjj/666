@@ -1,4 +1,4 @@
--- v190 | [Local Register Fix] | 完整融合版
+-- v190 | [Local Register Fix] | 完整融合版（含ZombieV2修复）
 -- =========================
 version = "Rework"
 ver = "v023.92"
@@ -662,6 +662,7 @@ CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
 -- ====================== ZOMBIE V2 SPECIFIC ======================
+-- 基础状态变量（改版原有）
 ZombieV2Active = false
 ZombieV2Center = Vector3.new(-23.343582153320312, -0.1904449462890625, 0.341766357421875)
 ZombieV2Radius = 500
@@ -675,6 +676,10 @@ ZombieV2Connection = nil
 ZombieV2ResetConnection = nil
 ZombieV2WaveCheckRunning = false
 ZombieV2ItemCheckRunning = false
+-- 修复方案新增：大厅检测相关
+ZombieV2LobbyCheckRunning = false
+ZombieV2LobbyCheckConnection = nil
+ZombieV2HasEnteredMap = false
 
 function UpdateYYAWaitingPartCollision()
     if AutoFarmEnabled ~= true then
@@ -717,8 +722,11 @@ function CombatDebug(tag, message, cooldown, showNotify)
     end
 end
 
+-- 修复方案：修改 IsMiscFarmAllowed 增加丧尸V2例外
 function IsMiscFarmAllowed()
     if FarmAstroTokenEnabled and SyncFarmOnly then return false end
+    -- 丧尸V2模式下，允许所有杂项功能运行（自动技能、上帝模式、安全模式等）
+    if FarmTargetMode == "ZombieV2" then return true end
     return AutoFarmEnabled or not SyncFarmOnly
 end
 
@@ -1818,7 +1826,6 @@ function GetMobMaxHP(mob)
     if not humanoid then return 0 end
     return humanoid.MaxHealth or 0
 end
-
 -- ====================== MOB CACHE SYSTEM ======================
 MobCacheList = {}
 MobCacheDirty = true
@@ -3389,8 +3396,76 @@ function ActivateAllFlushPrompts()
 end
 
 -- ============================================================
--- ====================== ZOMBIE V2 MODE ======================
+-- ====================== ZOMBIE V2 MODE（完整修复方案） ======================
 -- ============================================================
+
+-- ====================== 大厅检测 ======================
+
+function IsInMap()
+    -- 检查玩家是否在地图内（不在大厅）
+    local lobby = pg:FindFirstChild("Lobby")
+    if lobby and lobby.Enabled then
+        return false
+    end
+
+    local loading = pg:FindFirstChild("LoadingScreen")
+    if loading and loading.Enabled then
+        return false
+    end
+
+    local living = workspace:FindFirstChild("Living")
+    if living and #living:GetChildren() > 0 then
+        return true
+    end
+
+    local wavesGui = pg:FindFirstChild("WavesGui")
+    if wavesGui then
+        return true
+    end
+
+    if Character and HumanoidRootPart then
+        local pos = HumanoidRootPart.Position
+        if pos.Magnitude > 50 then
+            return true
+        end
+    end
+
+    return false
+end
+
+function StartZombieV2LobbyCheck()
+    if ZombieV2LobbyCheckRunning then return end
+    ZombieV2LobbyCheckRunning = true
+    ZombieV2HasEnteredMap = false
+
+    print("[YYa] 丧尸V2 大厅检测已启动，等待进入地图...")
+
+    ZombieV2LobbyCheckConnection = RunService.Heartbeat:Connect(function()
+        if ZombieV2HasEnteredMap then
+            StopZombieV2LobbyCheck()
+            return
+        end
+
+        if IsInMap() and FarmTargetMode == "ZombieV2" then
+            ZombieV2HasEnteredMap = true
+            print("[YYa] 丧尸V2 检测到进入地图，启动模式...")
+            -- 直接启动丧尸V2模式（此时已经在地图内）
+            StartZombieV2ModeInternal()
+            StopZombieV2LobbyCheck()
+        end
+    end)
+end
+
+function StopZombieV2LobbyCheck()
+    if ZombieV2LobbyCheckConnection then
+        ZombieV2LobbyCheckConnection:Disconnect()
+        ZombieV2LobbyCheckConnection = nil
+    end
+    ZombieV2LobbyCheckRunning = false
+    print("[YYa] 丧尸V2 大厅检测已停止")
+end
+
+-- ====================== 环绕系统 ======================
 
 function UpdateZombieV2Orbit(dt)
     if not ZombieV2Active or ZombieV2WaitingReset then return end
@@ -3410,7 +3485,10 @@ function UpdateZombieV2Orbit(dt)
 end
 
 function StartZombieV2Orbit()
-    if ZombieV2Connection then return end
+    if ZombieV2Connection then
+        ZombieV2Connection:Disconnect()
+        ZombieV2Connection = nil
+    end
     ZombieV2Active = true
     ZombieV2Angle = 0
     ZombieV2Connection = RunService.Heartbeat:Connect(function(dt)
@@ -3427,6 +3505,8 @@ function StopZombieV2Orbit()
     ZombieV2Active = false
     print("[YYa] 丧失V2 环绕已停止")
 end
+
+-- ====================== 波数检测与物品扫描 ======================
 
 function CheckZombieV2Wave()
     if ZombieV2WaitingReset then return end
@@ -3461,6 +3541,8 @@ function StartZombieV2WaveCheck()
         print("[YYa] 丧失V2 波数检测已停止")
     end)
 end
+
+-- ====================== 左上角按钮 ======================
 
 function CreateZombieV2Button()
     if ZombieV2Button then return end
@@ -3516,10 +3598,12 @@ function CreateZombieV2Button()
                     end
                 end
             end
+            -- 按钮消失（第一种停止方式）
             if ZombieV2Button then
                 ZombieV2Button.Parent:Destroy()
                 ZombieV2Button = nil
             end
+            -- 停止环绕和检测
             StopZombieV2Orbit()
             ZombieV2WaveCheckRunning = false
             ZombieV2WaitingReset = true
@@ -3530,6 +3614,8 @@ function CreateZombieV2Button()
 
     ZombieV2Button = btn
 end
+
+-- ====================== 波数重置监听 ======================
 
 function WaitForWaveReset()
     if ZombieV2ResetConnection then return end
@@ -3554,8 +3640,18 @@ function WaitForWaveReset()
     end
 end
 
+-- ====================== 清理函数 ======================
+
 function CleanupZombieV2()
+    -- 停止环绕
     StopZombieV2Orbit()
+
+    -- 断开所有连接
+    if ZombieV2Connection then
+        ZombieV2Connection:Disconnect()
+        ZombieV2Connection = nil
+    end
+
     ZombieV2WaveCheckRunning = false
     if ZombieV2Button then
         pcall(function()
@@ -3572,29 +3668,54 @@ function CleanupZombieV2()
     ZombieV2WaitingReset = false
     ZombieV2DetectedItem = nil
     ZombieV2Active = false
+
+    -- 恢复默认模式（但保留 AutoFarmEnabled）
     FarmTargetMode = Config:Get("FarmTargetMode", "Normal Mode")
-    AutoFarmEnabled = false
+
+    -- 如果用户原本开启了自动刷怪，恢复普通刷怪循环
+    if AutoFarmEnabled then
+        task.delay(0.5, function()
+            if AutoFarmEnabled and FarmTargetMode ~= "ZombieV2" then
+                StartFarmLoop()
+            end
+        end)
+    end
+
+    -- 重要：波数重置后重新打开大厅检测，等待下一局
+    if not ZombieV2LobbyCheckRunning then
+        task.delay(1, function()
+            if FarmTargetMode == "ZombieV2" then
+                StartZombieV2LobbyCheck()
+                print("[YYa] 丧失V2 波数重置，重新启动大厅检测")
+            end
+        end)
+    end
+
     UpdateYYAWaitingPartCollision()
     print("[YYa] 丧失V2 已完全清理")
 end
 
-function StartZombieV2Mode()
+-- ====================== 启动函数 ======================
+
+function StartZombieV2ModeInternal()
     if ZombieV2Active then return end
 
+    -- 只关闭自动攻击
     AutoAttackEnabled = false
     if AutoAttackLoopRunning then
         AutoAttackLoopRunning = false
     end
 
-    if AutoFarmEnabled then
-        AutoFarmEnabled = false
-        UpdateYYAWaitingPartCollision()
-    end
-
+    -- 启动环绕
     StartZombieV2Orbit()
+    -- 启动波数检测
     StartZombieV2WaveCheck()
+    -- 确保重置监听
     WaitForWaveReset()
     ZombieV2Active = true
+
+    -- 标记已进入地图
+    ZombieV2HasEnteredMap = true
 
     WindUI:Notify({
         Title = "丧失V2",
@@ -3602,18 +3723,37 @@ function StartZombieV2Mode()
         Duration = 3,
         Icon = "zombie"
     })
-
     print("[YYa] 丧失V2 模式已完全启动")
 end
 
+function StartZombieV2Mode()
+    if ZombieV2Active then return end
+
+    -- 如果已经进入地图，直接启动
+    if IsInMap() then
+        StartZombieV2ModeInternal()
+    else
+        -- 在大厅，启动大厅检测等待进入地图
+        StartZombieV2LobbyCheck()
+        WindUI:Notify({
+            Title = "丧失V2",
+            Content = "等待进入地图...",
+            Duration = 2,
+            Icon = "loader-circle"
+        })
+        print("[YYa] 丧失V2 等待进入地图")
+    end
+end
+
 -- ============================================================
--- ====================== MAIN FARM LOOP (NEW SYSTEM) =========
+-- ====================== MAIN FARM LOOP（修改：支持ZombieV2） ======================
 -- ============================================================
 FarmLoopToken = FarmLoopToken or 0
 
 function StartFarmLoop()
     if FarmLoopRunning then return end
 
+    -- 如果模式是 ZombieV2，启动特殊模式并退出
     if FarmTargetMode == "ZombieV2" then
         StartZombieV2Mode()
         return
@@ -4155,7 +4295,6 @@ function HandleMiscOptions(selectedOptions)
     Config:Set("AutoStartEnabled", hasAutoStart ~= nil)
     Config:Save()
 end
-
 -- ====================== CHARACTER RESPAWN HANDLER ======================
 LocalPlayer.CharacterAdded:Connect(function(char)
     local keepFarmAstroBottomLock = ShouldKeepFarmAstroFinalLock and ShouldKeepFarmAstroFinalLock()
@@ -4212,6 +4351,29 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     ClearMobBoundsCache()
     FarmForceRetarget = true
     FarmCollecting = false
+
+    -- ====== 新增：丧尸V2模式死亡后恢复环绕 ======
+    if FarmTargetMode == "ZombieV2" and ZombieV2Active then
+        task.delay(0.5, function()
+            if FarmTargetMode == "ZombieV2" and ZombieV2Active then
+                -- 重新启动环绕（从当前位置继续）
+                StartZombieV2Orbit()
+                -- 确保波数检测继续运行
+                if not ZombieV2WaveCheckRunning then
+                    StartZombieV2WaveCheck()
+                end
+                -- 确保重置监听继续
+                WaitForWaveReset()
+                WindUI:Notify({
+                    Title = "丧失V2",
+                    Content = "已重生，继续环绕中...",
+                    Duration = 2,
+                    Icon = "zombie"
+                })
+            end
+        end)
+    end
+
     task.delay(0.25, function()
         RestartCombatLoopsIfNeeded("角色重生")
         if AutoFarmEnabled and not ResetWaveTeleporting then StartFarmLoop(); StartJeffreyGuardLoop() end
@@ -4231,7 +4393,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ============================================================
--- ====================== 收集系统函数 ======================
+-- ====================== 收集系统函数（完整实现） ======================
 -- ============================================================
 
 AutoCollectEnabled = Config:Get("AutoCollectEnabled", false)
@@ -4242,7 +4404,7 @@ KnownCollectItems = {}
 CollectCandidateCache = {}
 CollectCacheDirty = true
 CollectRunning = false
-CollectCacheLastScan = 0
+CollectCacheLastScan = 0  -- 缺失变量已补全
 
 function CheckFarmAstroCollectMode()
     if FarmAstroTokenEnabled and CollectMode == "Clean" then
@@ -4468,7 +4630,7 @@ function GetCollectItems()
 end
 
 -- ============================================================
--- ====================== Astro 令牌刷怪函数 ======================
+-- ====================== Astro 令牌刷怪函数（完整实现） ======================
 -- ============================================================
 
 function StartFarmAstroToken()
@@ -4861,455 +5023,427 @@ function GetReviveTimerValue()
 end
 
 -- ============================================================
--- ====================== UI: MAIN TAB ======================
+-- ====================== APPLY SAVED CONFIG ON LOAD ======================
 -- ============================================================
+function ApplySavedConfigOnStartup()
+    task.wait(1)
+    updatePlayerStats()
+    ApplyCameraMode(true)
+    UpdateYYAWaitingPartCollision()
+    if FullBrightEnabled then ApplyFullBright() end
+    if NoFogEnabled then ApplyNoFog() end
 
-Main:Section({ Title = "自动刷怪", Icon = "package" })
+    if FarmAstroTokenEnabled and AutoFarmEnabled then
+        FarmAstroTokenEnabled = false
+        Config:Set("FarmAstroTokenEnabled", false)
+        Config:Save()
+        NotifyFarmAstroAutoFarm()
+    end
 
-AutoFarmToggle = Main:Toggle({
-    Title = "自动刷怪",
-    Desc = "启用所有模式的自动刷怪。",
-    Value = AutoFarmEnabled,
-    Callback = function(state)
-        if state and FarmAstroTokenEnabled then
-            AutoFarmEnabled = false
-            UpdateYYAWaitingPartCollision()
-            Config:Set("AutoFarmEnabled", false)
-            Config:Save()
-            NotifyFarmAstroAutoFarm()
-            return
+    if AutoFarmEnabled then
+        StartFarmLoop()
+        StartJeffreyGuardLoop()
+    end
+
+    if FarmAstroTokenEnabled then StartFarmAstroToken() end
+
+    HandleMiscOptions(MiscOptions)
+
+    if noBarrierActive then startNoBarrier() end
+
+    if ESP.Enabled then StartESPLoop() end
+
+    if AutoCollectEnabled then
+        KnownCollectItems = {}
+        CollectCandidateCache = {}
+        CollectCacheDirty = true
+        StartAutoCollectLoop()
+    end
+
+    if AutoStartEnabled and IsMiscFarmAllowed() then
+        SetupAutoStartOnly(true)
+    elseif AutoStartEnabled then
+        StopAutoStart()
+    end
+
+    if AutoVoteinGameEnabled then
+        StartAutoVoteLoop()
+    end
+
+    -- 如果保存的模式是 ZombieV2 且自动刷怪开启，启动丧失V2模式
+    if FarmTargetMode == "ZombieV2" and AutoFarmEnabled then
+        task.delay(1.5, function()
+            StartZombieV2Mode()
+        end)
+    end
+end
+
+ApplySavedConfigOnStartup()
+
+-- ============================================================
+-- ====================== WINDOW ON CLOSE ======================
+-- ============================================================
+Window.OnClose = function()
+    if ZombieV2Active then
+        CleanupZombieV2()
+    end
+    if ZombieV2LobbyCheckRunning then
+        StopZombieV2LobbyCheck()
+    end
+end
+
+-- ============================================================
+-- ====================== ESP 核心表（缺失变量已补全） ======================
+-- ============================================================
+ESP = {
+    Enabled       = Config:Get("EspEnabled", false),
+    MobEnabled    = Config:Get("EspMobEnabled", true),
+    PlayerEnabled = Config:Get("EspPlayerEnabled", true),
+    ItemEnabled   = Config:Get("EspItemEnabled", true),
+    Settings      = Config:Get("EspSettings", { "高亮", "距离", "血量", "名称" }),
+    SelectedItems = Config:Get("EspSelectedItems", {}),
+    MaxDistance   = 1500,
+    _mobHighlights    = {},
+    _playerHighlights = {},
+    _itemHighlights   = {},
+    ItemList = {
+        "时钟蜘蛛","X-18 核心","绿色能量核心","奇怪发射器",
+        "礼物","奇怪棱镜","钥匙卡","僵尸核心","闪存驱动器","Astro 样本","创世纪核心",
+    },
+}
+
+ESPConnection = nil  -- 缺失变量已补全
+
+function IsESPItemTarget(objectName, selectedList)
+    for _, pattern in ipairs(selectedList) do
+        if objectName == pattern then return true end
+    end
+    for _, pattern in ipairs(selectedList) do
+        local english = CollectMap[pattern] or pattern
+        if objectName == english then return true end
+    end
+    return false
+end
+
+function CreateESPLabel(parent, labelText)
+    local existing = parent:FindFirstChild("YYA_ESP_LABEL")
+    if existing then existing:Destroy() end
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "YYA_ESP_LABEL"
+    billboard.Size = UDim2.new(0, 120, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.ResetOnSpawn = false
+    billboard.Adornee = parent
+    billboard.Parent = parent
+    local frame = Instance.new("Frame")
+    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.fromScale(1, 1)
+    frame.Parent = billboard
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.fromScale(1, 1)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 11
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0.4
+    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    label.Text = labelText
+    label.Parent = frame
+    return billboard, label
+end
+
+function CreateHighlight(model, outlineColor, fillColor, fillTransparency)
+    local existing = model:FindFirstChild("YYA_ESP_HIGHLIGHT")
+    if existing then existing:Destroy() end
+    local hl = Instance.new("Highlight")
+    hl.Name = "YYA_ESP_HIGHLIGHT"
+    hl.OutlineColor = outlineColor
+    hl.FillColor = fillColor
+    hl.FillTransparency = fillTransparency or 0.9
+    hl.OutlineTransparency = 0
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee = model
+    hl.Parent = model
+    return hl
+end
+
+function RemoveESP(model)
+    pcall(function()
+        local hl = model:FindFirstChild("YYA_ESP_HIGHLIGHT")
+        if hl then hl:Destroy() end
+        local hb = model:FindFirstChild("YYA_ESP_LABEL")
+        if hb then hb:Destroy() end
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local lb = hrp:FindFirstChild("YYA_ESP_LABEL")
+            if lb then lb:Destroy() end
         end
-        AutoFarmEnabled = state
-        UpdateYYAWaitingPartCollision()
-        if state then
-            StartFarmLoop()
-            StartJeffreyGuardLoop()
-            HandleMiscOptions(MiscOptions)
-            WindUI:Notify({ Title = "自动刷怪", Content = "已启用，自动刷怪已启动！", Duration = 2, Icon = "play" })
-        else
-            FarmLoopToken = (FarmLoopToken or 0) + 1
-            WaitingRespawn = false
-            LockActive = false
-            RestoreFarmCameraAndMovement()
-            UpdateYYAWaitingPartCollision()
-            if SyncFarmOnly then
-                StopMiscFarmRuntime("自动刷怪已关闭，同步刷怪锁定已开启")
-                WindUI:Notify({ Title = "自动刷怪", Content = "关闭自动刷怪：杂项功能停止工作（同步刷怪锁定已开启）", Duration = 3, Icon = "square" })
-            else
-                HandleMiscOptions(MiscOptions)
-                WindUI:Notify({ Title = "自动刷怪", Content = "自动刷怪已关闭。杂项功能继续运行，因为同步刷怪锁定已关闭。", Duration = 3, Icon = "unlink" })
+    end)
+end
+
+function IsInRange(targetPart)
+    if not targetPart or not HumanoidRootPart then return false end
+    return (HumanoidRootPart.Position - targetPart.Position).Magnitude <= ESP.MaxDistance
+end
+
+function BuildLabelText(model, showName, showHealth, showDistance)
+    local parts = {}
+    if showName then table.insert(parts, model.Name) end
+    if showHealth then
+        local humanoid = model:FindFirstChild("Humanoid")
+        if humanoid then
+            table.insert(parts, "❤ " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth))
+        end
+    end
+    if showDistance then
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        if hrp and HumanoidRootPart then
+            table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - hrp.Position).Magnitude) .. "m")
+        end
+    end
+    return table.concat(parts, "\n")
+end
+
+function BuildItemLabelText(obj, showName, showDistance)
+    local parts = {}
+    if showName then table.insert(parts, obj.Name) end
+    if showDistance then
+        local root = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")) or (obj:IsA("BasePart") and obj or nil)
+        if root and HumanoidRootPart then
+            table.insert(parts, "📏 " .. math.floor((HumanoidRootPart.Position - root.Position).Magnitude) .. "m")
+        end
+    end
+    return table.concat(parts, "\n")
+end
+
+function GetESPSettings()
+    local s = ESP.Settings
+    return {
+        highlight = table.find(s, "高亮") ~= nil,
+        distance  = table.find(s, "距离") ~= nil,
+        health    = table.find(s, "血量") ~= nil,
+        name      = table.find(s, "名称") ~= nil,
+    }
+end
+
+function ApplyMobESP(mob)
+    if not mob or not mob.Parent then return end
+    local hrp = mob:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local settings = GetESPSettings()
+    if settings.highlight then
+        CreateHighlight(mob, Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 255, 255), 0.9)
+    end
+    if settings.name or settings.health or settings.distance then
+        local _, label = CreateESPLabel(hrp, "")
+        task.spawn(function()
+            while mob and mob.Parent and ESP.Enabled and ESP.MobEnabled do
+                local humanoid = mob:FindFirstChild("Humanoid")
+                if not humanoid or humanoid.Health <= 0 then break end
+                if not IsInRange(hrp) then
+                    label.Visible = false
+                    task.wait(0.5)
+                else
+                    label.Visible = true
+                    label.Text = BuildLabelText(mob, settings.name, settings.health, settings.distance)
+                    task.wait(0.35)
+                end
+            end
+            RemoveESP(mob)
+            ESP._mobHighlights[mob] = nil
+        end)
+    end
+    ESP._mobHighlights[mob] = true
+end
+
+function ScanMobs()
+    local livingFolder = workspace:FindFirstChild("Living")
+    if not livingFolder then return end
+    for _, mob in ipairs(livingFolder:GetChildren()) do
+        if IsValidMob(mob) and not ESP._mobHighlights[mob] then
+            local hrp = mob:FindFirstChild("HumanoidRootPart")
+            if hrp and IsInRange(hrp) then ApplyMobESP(mob) end
+        end
+    end
+end
+
+function ApplyPlayerESP(playerChar)
+    if not playerChar or not playerChar.Parent then return end
+    local hrp = playerChar:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if playerChar == LocalPlayer.Character then return end
+    local settings = GetESPSettings()
+    if settings.highlight then
+        CreateHighlight(playerChar, Color3.fromRGB(50, 255, 50), Color3.fromRGB(255, 255, 255), 0.9)
+    end
+    if settings.name or settings.health or settings.distance then
+        local _, label = CreateESPLabel(hrp, "")
+        task.spawn(function()
+            while playerChar and playerChar.Parent and ESP.Enabled and ESP.PlayerEnabled do
+                local humanoid = playerChar:FindFirstChild("Humanoid")
+                if not humanoid or humanoid.Health <= 0 then break end
+                if not IsInRange(hrp) then
+                    label.Visible = false
+                    task.wait(0.5)
+                else
+                    label.Visible = true
+                    label.Text = BuildLabelText(playerChar, settings.name, settings.health, settings.distance)
+                    task.wait(0.35)
+                end
+            end
+            RemoveESP(playerChar)
+            ESP._playerHighlights[playerChar] = nil
+        end)
+    end
+    ESP._playerHighlights[playerChar] = true
+end
+
+function ScanPlayers()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local char = player.Character
+            if not ESP._playerHighlights[char] then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
             end
         end
-        Config:Set("AutoFarmEnabled", state); Config:Save()
     end
-})
+end
 
-FarmTargetModeDropdown = Main:Dropdown({
-    Title = "刷怪模式",
-    Desc = "选择普通模式、Astro坚守模式、黑暗维度模式或丧失V2模式。",
-    Values = FarmModeDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
-    Callback = function(value)
-        local english = FarmModeMap[value] or value
-        FarmTargetMode = english
-        Config:Set("FarmTargetMode", english)
-        Config:Save()
-        InvalidateMobCache("刷怪模式已更改")
-        FarmForceRetarget = true
-        if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
-        task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
-        WindUI:Notify({ Title = "刷怪模式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "target" })
+function GetItemRoot(obj)
+    if obj:IsA("Model") then
+        return obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")
+    elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then
+        return obj
     end
-})
+    return nil
+end
 
-Main:Divider()
-
-Main:Section({ Title = "刷怪设置", Icon = "settings" })
-
-PositionDropdown = Main:Dropdown({
-    Title = "刷怪位置",
-    Desc = "选择角色在目标周围的站位。",
-    Values = FarmPositionDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(FarmPositionMap, FarmPosition) or FarmPosition,
-    Callback = function(value)
-        local english = FarmPositionMap[value] or value
-        FarmPosition = english
-        Config:Set("FarmPosition", english)
-        Config:Save()
+function ApplyItemESP(obj)
+    if not obj or not obj.Parent then return end
+    local root = GetItemRoot(obj)
+    if not root then return end
+    local settings = GetESPSettings()
+    if settings.highlight then
+        CreateHighlight(obj, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 255, 255), 0.9)
     end
-})
-
-ModeDropdown = Main:Dropdown({
-    Title = "移动方式",
-    Desc = "选择角色移动到每个目标的方式。",
-    Values = MovementDisplayNames,
-    Multi = false,
-    Value = GetDisplayName(MovementMap, FarmMode) or FarmMode,
-    Callback = function(value)
-        local english = MovementMap[value] or value
-        FarmMode = english
-        Config:Set("FarmMode", english)
-        Config:Save()
-        WindUI:Notify({ Title = "移动方式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "mouse-pointer-click" })
-    end
-})
-
-MiscDropdown = Main:Dropdown({
-    Title = "杂项功能",
-    Desc = "选择与自动刷怪一起运行的额外系统。",
-    Values = { "自动攻击", "自动技能", "自动开始", "自动跳过直升机", "自动填充", "安全模式", "上帝模式", "重置波次", "删除地图" },
-    Multi = true,
-    Value = MiscOptions,
-    Callback = function(values)
-        MiscOptions = values
-        if not AutoFarmEnabled and SyncFarmOnly and #values > 0 then
-            WindUI:Notify({
-                Title = "杂项功能",
-                Content = "你必须先开启自动刷怪（同步刷怪锁定已开启）",
-                Duration = 3, Icon = "triangle-alert"
-            })
-        end
-        HandleMiscOptions(values)
-    end
-})
-
-Main:Toggle({
-    Title = "同步刷怪锁定",
-    Desc = "启用时，所有杂项功能需要自动刷怪处于激活状态。",
-    Value = SyncFarmOnly,
-    Callback = function(state)
-        SyncFarmOnly = state
-        Config:Set("SyncFarmOnly", state)
-        Config:Save()
-        if state then
-            WindUI:Notify({ Title = "同步刷怪锁定", Content = "开启：杂项功能必须先启用自动刷怪", Duration = 3, Icon = "link" })
-        else
-            WindUI:Notify({ Title = "同步刷怪锁定", Content = "关闭：杂项功能无需自动刷怪即可工作。", Duration = 3, Icon = "unlink" })
-        end
-        ApplyMiscFarmGate("同步刷怪锁定已更改")
-    end
-})
-
-Main:Section({ Title = "Astro 令牌刷怪（坚守模式）", Icon = "flame" })
-
-FarmAstroTokenToggle = Main:Toggle({
-    Title = "Astro 令牌刷怪（坚守模式）",
-    Desc = "避开所有怪物防止死亡，时间耗尽时前往中心",
-    Value = FarmAstroTokenEnabled,
-    Callback = function(state)
-        if state and AutoFarmEnabled then
-            FarmAstroTokenEnabled = false
-            Config:Set("FarmAstroTokenEnabled", false)
-            Config:Save()
-            NotifyFarmAstroAutoFarm()
-            pcall(function()
-                if FarmAstroTokenToggle and FarmAstroTokenToggle.Set then
-                    FarmAstroTokenToggle:Set(false)
+    if settings.name or settings.distance then
+        local _, label = CreateESPLabel(root, "")
+        task.spawn(function()
+            while obj and obj.Parent and ESP.Enabled and ESP.ItemEnabled do
+                local currentRoot = GetItemRoot(obj)
+                if not currentRoot then break end
+                if not IsInRange(currentRoot) then
+                    label.Visible = false
+                    task.wait(0.5)
+                else
+                    label.Visible = true
+                    label.Text = BuildItemLabelText(obj, settings.name, settings.distance)
+                    task.wait(0.5)
                 end
-            end)
-            return
-        end
+            end
+            RemoveESP(obj)
+            ESP._itemHighlights[obj] = nil
+        end)
+    end
+    ESP._itemHighlights[obj] = true
+end
 
-        FarmAstroTokenEnabled = state
-        Config:Set("FarmAstroTokenEnabled", state)
-        Config:Save()
-
-        if state then
-            StartFarmAstroToken()
-            WindUI:Notify({
-                Title = "Astro 令牌刷怪",
-                Content = "已启用。Astro 路线已启动。",
-                Duration = 3,
-                Icon = "sparkles"
-            })
-        else
-            StopFarmAstroToken(false)
-            WindUI:Notify({
-                Title = "Astro 令牌刷怪",
-                Content = "已禁用。Astro 路线已停止。",
-                Duration = 3,
-                Icon = "square"
-            })
+function ScanItems()
+    if #ESP.SelectedItems == 0 then return end
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if not ESP._itemHighlights[obj] and IsESPItemTarget(obj.Name, ESP.SelectedItems) then
+            local root = GetItemRoot(obj)
+            if root and IsInRange(root) then ApplyItemESP(obj) end
         end
     end
-})
+end
 
-Main:Section({ Title = "通用设置", Icon = "zap" })
+function ClearAllESP()
+    for mob, _ in pairs(ESP._mobHighlights) do RemoveESP(mob) end
+    ESP._mobHighlights = {}
+    for char, _ in pairs(ESP._playerHighlights) do RemoveESP(char) end
+    ESP._playerHighlights = {}
+    for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
+    ESP._itemHighlights = {}
+end
 
-SkillDropdown = Main:Dropdown({
-    Title = "自动技能（按键）",
-    Desc = "选择自动技能将按下的键盘技能键。",
-    Values = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U" },
-    Multi = true,
-    Value = SelectedSkills,
-    Callback = function(values)
-        SelectedSkills = values
-        Config:Set("SelectedSkills", values)
-        Config:Save()
+function StartESPLoop()
+    if ESPConnection then
+        ESPConnection:Disconnect()
+        ESPConnection = nil
     end
-})
-
-SkillDelaySlider = Main:Slider({
-    Title = "技能延迟（秒）",
-    Desc = "设置每个自动技能按键之间的延迟（秒）。",
-    Value = { Min = 1, Max = 60, Default = SkillDelay },
-    Step = 1,
-    Callback = function(value)
-        SkillDelay = value
-        Config:Set("SkillDelay", value)
-        Config:Save()
-    end
-})
-
-FarmHeightSlider = Main:Slider({
-    Title = "刷怪高度（±Y）",
-    Desc = "调整在怪物上方或下方刷怪时的垂直偏移。",
-    Value = { Min = -150, Max = 150, Default = HeightValue },
-    Step = 1,
-    Callback = function(value)
-        HeightValue = value
-        Config:Set("HeightValue", value)
-        Config:Save()
-        for mob, _ in pairs(MobHeightOverride) do
-            if MobConfirmedPadding[mob] == nil then MobHeightOverride[mob] = nil end
+    local lastMobScan, lastPlayerScan, lastItemScan = 0, 0, 0
+    ESPConnection = RunService.Heartbeat:Connect(function()
+        if not ESP.Enabled then return end
+        local now = tick()
+        if ESP.MobEnabled and now - lastMobScan >= 0.8 then
+            lastMobScan = now
+            pcall(ScanMobs)
         end
-    end
-})
-
-Main:Slider({
-    Title = "安全模式血量（%）",
-    Desc = "设置安全模式触发撤退的血量百分比。",
-    Value = { Min = 1, Max = 99, Default = SafeValue },
-    Step = 1,
-    Callback = function(value)
-        SafeValue = value
-        Config:Set("SafeValue", value)
-        Config:Save()
-    end
-})
-
-Main:Slider({
-    Title = "上帝模式血量（%）",
-    Desc = "设置普通上帝模式的血量百分比阈值。在 Farm Astro Token 期间被阻止。",
-    Value = { Min = 1, Max = 99, Default = GodModeValue },
-    Step = 1,
-    Callback = function(value)
-        GodModeValue = value
-        Config:Set("GodModeValue", value)
-        Config:Save()
-    end
-})
-
-Main:Slider({
-    Title = "重置波次（数值）",
-    Desc = "达到指定波次时立即重置。",
-    Value = { Min = 1, Max = 100, Default = ResetWaveValue },
-    Step = 1,
-    Callback = function(value)
-        ResetWaveValue = tonumber(value) or 10
-        ClearResetWaveTrigger("滑块已更改")
-        Config:Set("ResetWaveValue", ResetWaveValue)
-        Config:Save()
-
-        if ResetWaveEnabled and IsMiscFarmAllowed() then
-            StartResetWaveLoop()
-            task.defer(function() EvaluateResetWaveNow("滑块已更改", true) end)
+        if ESP.PlayerEnabled and now - lastPlayerScan >= 1.0 then
+            lastPlayerScan = now
+            pcall(ScanPlayers)
         end
-    end
-})
-
-Main:Divider()
-
-BypassJeffreyToggle = Main:Toggle({
-    Title = "绕过 Jeffrey",
-    Desc = "此功能会让 Jeffrey 无法移动。",
-    Value = BypassJeffreyEnabled,
-    Callback = function(state)
-        BypassJeffreyEnabled = state
-        Config:Set("BypassJeffreyEnabled", state)
-        Config:Save()
-        if state then
-            StartBypassJeffreyLoop()
-            ScanBypassJeffreys(true)
+        if ESP.ItemEnabled and now - lastItemScan >= 4.0 then
+            lastItemScan = now
+            pcall(ScanItems)
         end
+    end)
+end
+
+function StopESPLoop()
+    if ESPConnection then
+        ESPConnection:Disconnect()
+        ESPConnection = nil
     end
-})
+    ClearAllESP()
+end
 
-AntiJeffreyToggle = Main:Toggle({
-    Title = "反 Jeffrey",
-    Desc = "免费功能：创建软性隐形屏障。如果任何 Jeffrey 在范围内，你会被缓慢推开。",
-    Value = AntiJeffreyEnabled,
-    Callback = function(state)
-        AntiJeffreyEnabled = state
-        Config:Set("AntiJeffreyEnabled", state)
-        Config:Save()
-        if state then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
+workspace.DescendantAdded:Connect(function(obj)
+    if not ESP.Enabled or not ESP.ItemEnabled or #ESP.SelectedItems == 0 then return end
+    task.wait(0.1)
+    if IsESPItemTarget(obj.Name, ESP.SelectedItems) and not ESP._itemHighlights[obj] then
+        local root = GetItemRoot(obj)
+        if root and IsInRange(root) then ApplyItemESP(obj) end
     end
-})
+end)
 
-Main:Slider({
-    Title = "反 Jeffrey 范围（单位）",
-    Desc = "设置反 Jeffrey 的距离。默认 50 单位。",
-    Value = { Min = 10, Max = 200, Default = AntiJeffreyRange },
-    Step = 1,
-    Callback = function(value)
-        AntiJeffreyRange = value
-        Config:Set("AntiJeffreyRange", value)
-        Config:Save()
-    end
-})
-
-if AntiJeffreyEnabled then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
-if BypassJeffreyEnabled then StartBypassJeffreyLoop(); ScanBypassJeffreys(true) end
-
--- ====================== UI: PRIORITY SETTINGS ======================
-Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
-
-Main:Paragraph({
-    Title = "优先级设置",
-    Desc = "中断：如果正在攻击低血量怪物且更高血量怪物出现，立即切换目标",
-    Image = "rbxassetid://103720636367587",
-    ImageSize = 26,
-})
-
-Main:Slider({
-    Title = "高血量阈值（最大生命值）",
-    Desc = "设置怪物成为高血量优先级所需的最大生命值。",
-    Value = { Min = 1, Max = 100000, Default = HighHPThreshold },
-    Step = 100,
-    Callback = function(value)
-        HighHPThreshold = value
-        Config:Set("HighHPThreshold", value)
-        Config:Save()
-        print("[YYa] 高血量阈值设置为 " .. value)
-    end
-})
-
--- ====================== UI: OVERRIDE SETTINGS ======================
-Main:Section({ Title = "覆盖设置", Icon = "ruler" })
-
-PaddingReduceInput = Main:Input({
-    Title = "设置减少偏移",
-    Default = tostring(PADDING_REDUCE_STEP),
-    Placeholder = "默认: 2",
-    Callback = function(text)
-        local num = tonumber(text)
-        if num then
-            PADDING_REDUCE_STEP = num
-            Config:Set("PaddingReduceStep", num)
-            Config:Save()
-        else
-            warn("输入了不正确的数字！")
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(char)
+        if not ESP.Enabled or not ESP.PlayerEnabled then return end
+        task.wait(1)
+        if not ESP._playerHighlights[char] then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp and IsInRange(hrp) then ApplyPlayerESP(char) end
         end
+    end)
+end)
+
+function WatchLivingFolder()
+    local living = workspace:FindFirstChild("Living")
+    if living then
+        living.ChildAdded:Connect(function(obj)
+            if not ESP.Enabled or not ESP.MobEnabled then return end
+            task.wait(0.2)
+            if IsValidMob(obj) and not ESP._mobHighlights[obj] then
+                local hrp = obj:FindFirstChild("HumanoidRootPart")
+                if hrp and IsInRange(hrp) then ApplyMobESP(obj) end
+            end
+        end)
     end
-})
+end
 
-PaddingSafeInput = Main:Input({
-    Title = "设置安全最小偏移（全局底线）",
-    Default = tostring(PADDING_SAFE_MIN),
-    Placeholder = "默认: -30",
-    Callback = function(text)
-        local num = tonumber(text)
-        if num then
-            PADDING_SAFE_MIN = num
-            Config:Set("PaddingSafeMin", num)
-            Config:Save()
-        else
-            warn("输入了不正确的数字！")
-        end
+task.spawn(function()
+    if not workspace:FindFirstChild("Living") then
+        workspace.ChildAdded:Connect(function(child)
+            if child.Name == "Living" then WatchLivingFolder() end
+        end)
+    else
+        WatchLivingFolder()
     end
-})
-
-Main:Slider({
-    Title = "防穿模边距（单位）",
-    Desc = "增加额外间距以减少在怪物附近刷怪时的穿模。",
-    Value = { Min = -10, Max = 10, Default = ANTI_CLIP_MARGIN },
-    Step = 1,
-    Callback = function(value)
-        ANTI_CLIP_MARGIN = value
-        Config:Set("AntiClipMargin", value)
-        Config:Save()
-    end
-})
-
-Main:Slider({
-    Title = "伤害阈值（确认锁定）",
-    Desc = "设置确认当前刷怪位置有效的伤害量。",
-    Value = { Min = 1, Max = 500, Default = DMG_THRESHOLD },
-    Step = 1,
-    Callback = function(value)
-        DMG_THRESHOLD = value
-        Config:Set("DmgThreshold", value)
-        Config:Save()
-    end
-})
-
-Main:Button({
-    Title = "重置所有已确认位置",
-    Desc = "清除所有已保存的怪物高度位置并恢复默认。",
-    Callback = function()
-        MobConfirmedPadding = {}
-        MobHeightOverride   = {}
-        WindUI:Notify({ Title = "覆盖设置", Content = "所有已确认的怪物位置已清除。", Duration = 2, Icon = "refresh-cw" })
-    end
-})
-
-Main:Section({ Title = "冲水设置", Icon = "toilet" })
-
-Flushaura      = Config:Get("flushaura", false)
-FlushAuraValue = Config:Get("FlushAuraValue", 5)
-
-Main:Slider({
-    Title = "冲水光环（单位）",
-    Desc = "设置冲水光环激活附近提示的距离。",
-    Value = { Min = 1, Max = 15, Default = FlushAuraValue },
-    Step = 1,
-    Callback = function(value)
-        FlushAuraValue = value
-        Config:Set("FlushAuraValue", value)
-        Config:Save()
-    end
-})
-
-Main:Toggle({
-    Title = "冲水光环",
-    Desc = "在设定半径内自动冲水附近的冲水提示。",
-    Value = Flushaura,
-    Callback = function(enabled)
-        Flushaura = enabled
-        Config:Set("flushaura", enabled)
-        Config:Save()
-        if enabled then
-            task.spawn(function()
-                while Flushaura do
-                    pcall(function()
-                        local char = game.Players.LocalPlayer.Character
-                        if not char then return end
-                        local root = char:FindFirstChild("HumanoidRootPart")
-                        if not root then return end
-                        if FlushPromptCacheDirty or tick() - (FlushPromptCacheLastScan or 0) > (FlushPromptCacheTTL or 8) then
-                            RebuildFlushPromptCache()
-                        end
-                        for prompt in pairs(FlushPromptCache) do
-                            if prompt and prompt.Parent and IsFlushPrompt(prompt) then
-                                local parent = prompt.Parent
-                                local part = parent:IsA("BasePart") and parent or parent:FindFirstAncestorWhichIsA("BasePart")
-                                if part and (root.Position - part.Position).Magnitude <= FlushAuraValue then
-                                    ActivateProximityPrompt(prompt)
-                                end
-                            else
-                                FlushPromptCache[prompt] = nil
-                            end
-                        end
-                    end)
-                    task.wait(0.25)
-                end
-            end)
-        end
-    end
-})
+end)
 
 -- ============================================================
 -- ====================== UI: ESP TAB ======================
@@ -5861,7 +5995,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     if animate then animate.Disabled = false end
     updatePlayerStats(true)
 end)
-
 -- ============================================================
 -- ============== 商店系统（完整封装 - 原版） ==================
 -- ============================================================
@@ -7790,12 +7923,8 @@ function ApplySavedConfigOnStartup()
     end
 
     if AutoFarmEnabled then
-        if FarmTargetMode == "ZombieV2" then
-            StartZombieV2Mode()
-        else
-            StartFarmLoop()
-            StartJeffreyGuardLoop()
-        end
+        StartFarmLoop()
+        StartJeffreyGuardLoop()
     end
 
     if FarmAstroTokenEnabled then StartFarmAstroToken() end
@@ -7821,6 +7950,13 @@ function ApplySavedConfigOnStartup()
 
     if AutoVoteinGameEnabled then
         StartAutoVoteLoop()
+    end
+
+    -- 如果保存的模式是 ZombieV2 且自动刷怪开启，启动丧失V2模式
+    if FarmTargetMode == "ZombieV2" and AutoFarmEnabled then
+        task.delay(1.5, function()
+            StartZombieV2Mode()
+        end)
     end
 end
 
