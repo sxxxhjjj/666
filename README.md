@@ -144,7 +144,53 @@ if setfpscap then
 else
     WindUI:Notify({ Title = "无法使用", Content = "您的注入器不支持 setfpscap。", Duration = 3, Icon = "ban" })
 end
+-- ====================== WINDOW ======================
+Players = game:GetService("Players")
+LocalPlayer = Players.LocalPlayer
+CoreGui = game:GetService("CoreGui")
 
+Window = WindUI:CreateWindow({
+    Title = "至尊版",
+    IconThemed = true,
+    Icon = "rbxassetid://103720636367587",
+    Author = "STBB | 至尊版",
+    Folder = "YYa",
+    Size = UDim2.fromOffset(550, 380),
+    Transparent = true,
+    Theme = "Dark",
+    BackgroundImageTransparency = 0.8,
+    HasOutline = false,
+    HideSearchBar = true,
+    ScrollBarEnabled = true,
+    User = { Enabled = true, Anonymous = false },
+})
+
+Window:SetToggleKey(Enum.KeyCode.K)
+
+Window:Tag({ Title = "至尊版", Color = Color3.fromHex("#db7093") })
+
+Window:EditOpenButton({
+    Title = "至尊版 - 打开",
+    Icon = "monitor",
+    CornerRadius = UDim.new(0, 6),
+    StrokeThickness = 2,
+    Color = ColorSequence.new(Color3.fromRGB(30, 30, 30), Color3.fromRGB(255, 255, 255)),
+    Draggable = true
+})
+
+-- ====================== TABS（按原脚本顺序） ======================
+Info = Window:Tab({ Title = "信息", Icon = "info" })
+MainDivider = Window:Divider()
+Main = Window:Tab({ Title = "主要", Icon = "rocket" })
+Main4 = Window:Tab({ Title = "透视", Icon = "eye" })
+Main2 = Window:Tab({ Title = "玩家", Icon = "user" })
+MainDivider1 = Window:Divider()
+Main5 = Window:Tab({ Title = "商店", Icon = "shopping-cart" })
+Main6 = Window:Tab({ Title = "收集", Icon = "hand" })
+Main7 = Window:Tab({ Title = "游戏模式", Icon = "gamepad-2" })
+MainDivider2 = Window:Divider()
+Main3 = Window:Tab({ Title = "设置", Icon = "settings" })
+Window:SelectTab(1)
 -- ====================== CUSTOM CONFIG SYSTEM ======================
 HttpService = game:GetService("HttpService")
 ConfigFolder = "YYa_STBB"
@@ -425,8 +471,7 @@ function GetDisplayName(map, englishValue)
     end
     return englishValue
 end
-
--- ====================== ESP 核心表（放在 UI 之前，与原版一致） ======================
+-- ====================== ESP 核心表 ======================
 ESP = {
     Enabled       = Config:Get("EspEnabled", false),
     MobEnabled    = Config:Get("EspMobEnabled", true),
@@ -441,65 +486,6 @@ ESP = {
 }
 
 ESPConnection = nil
-
--- ====================== WINDOW ======================
-Players = game:GetService("Players")
-LocalPlayer = Players.LocalPlayer
-CoreGui = game:GetService("CoreGui")
-
-Window = WindUI:CreateWindow({
-    Title = "至尊版",
-    IconThemed = true,
-    Icon = "rbxassetid://103720636367587",
-    Author = "STBB | 至尊版",
-    Folder = "YYa",
-    Size = UDim2.fromOffset(550, 380),
-    Transparent = true,
-    Theme = "Dark",
-    BackgroundImageTransparency = 0.8,
-    HasOutline = false,
-    HideSearchBar = true,
-    ScrollBarEnabled = true,
-    User = { Enabled = true, Anonymous = false },
-})
-
-Window:SetToggleKey(Enum.KeyCode.K)
-
-Window:Tag({ Title = "至尊版", Color = Color3.fromHex("#db7093") })
-
-Window:EditOpenButton({
-    Title = "至尊版 - 打开",
-    Icon = "monitor",
-    CornerRadius = UDim.new(0, 6),
-    StrokeThickness = 2,
-    Color = ColorSequence.new(Color3.fromRGB(30, 30, 30), Color3.fromRGB(255, 255, 255)),
-    Draggable = true
-})
-
--- ====================== TABS（按原脚本顺序） ======================
-Info = Window:Tab({ Title = "信息", Icon = "info" })
-MainDivider = Window:Divider()
-Main = Window:Tab({ Title = "主要", Icon = "rocket" })
-Main4 = Window:Tab({ Title = "透视", Icon = "eye" })
-Main2 = Window:Tab({ Title = "玩家", Icon = "user" })
-MainDivider1 = Window:Divider()
-Main5 = Window:Tab({ Title = "商店", Icon = "shopping-cart" })
-Main6 = Window:Tab({ Title = "收集", Icon = "hand" })
-Main7 = Window:Tab({ Title = "游戏模式", Icon = "gamepad-2" })
-MainDivider2 = Window:Divider()
-Main3 = Window:Tab({ Title = "设置", Icon = "settings" })
-Window:SelectTab(1)
-
--- ======================== INFO ========================
-Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 })
-Info:Divider()
-Info:Paragraph({
-    Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统",
-    Image = "rbxassetid://103720636367587",
-    ImageSize = 26,
-})
-Info:Divider()
 
 -- ====================== SERVICES ======================
 TweenService        = game:GetService("TweenService")
@@ -2180,7 +2166,6 @@ function CheckInterrupt(currentPriority)
     end
     return false, currentPriority
 end
-
 -- ============================================================
 -- ====================== MOB VISUAL BOUNDS ===================
 -- ============================================================
@@ -2783,7 +2768,6 @@ function LockToMob(mob)
         end
     end)
 end
-
 -- ====================== AUTO LOOPS ======================
 function RefreshCombatCharacter()
     if not Character or not Character.Parent then
@@ -3188,7 +3172,6 @@ task.spawn(function()
         end
     end
 end)
-
 -- ====================== AUTO FILL UP ======================
 function DoFillUp()
     local remote = GetRemote("ShopSystem")
@@ -3433,7 +3416,449 @@ function ActivateAllFlushPrompts()
     end)
 end
 -- ============================================================
--- ====================== UI: ESP TAB ======================
+-- ====================== INFO TAB =============================
+-- ============================================================
+
+Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 })
+Info:Divider()
+Info:Paragraph({
+    Title = "最新更新 | CL: " .. ver,
+    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统",
+    Image = "rbxassetid://103720636367587",
+    ImageSize = 26,
+})
+Info:Divider()
+Info:Paragraph({
+    Title = "社交链接",
+    Desc = "点击下方按钮复制链接",
+    Image = "rbxassetid://103720636367587",
+    ImageSize = 30,
+    Buttons = { { Icon = "copy", Title = "复制链接", Callback = function() setclipboard("https://guns.lol/YYa") end } }
+})
+Info:Paragraph({
+    Title = "Discord",
+    Desc = "加入我们的 Discord 获取更多脚本！",
+    Image = "rbxassetid://103720636367587",
+    ImageSize = 30,
+    Buttons = { { Icon = "copy", Title = "复制链接", Callback = function() setclipboard("https://discord.gg/YYa") end } }
+})
+
+-- ============================================================
+-- ====================== MAIN TAB =============================
+-- ============================================================
+
+Main:Section({ Title = "自动刷怪", Icon = "package" })
+
+AutoFarmToggle = Main:Toggle({
+    Title = "自动刷怪",
+    Desc = "基于优先级系统自动刷怪。",
+    Value = AutoFarmEnabled,
+    Callback = function(state)
+        if state and FarmAstroTokenEnabled then
+            AutoFarmEnabled = false
+            UpdateYYAWaitingPartCollision()
+            Config:Set("AutoFarmEnabled", false)
+            Config:Save()
+            NotifyFarmAstroAutoFarm()
+            return
+        end
+        AutoFarmEnabled = state
+        UpdateYYAWaitingPartCollision()
+        if state then
+            StartFarmLoop()
+            StartJeffreyGuardLoop()
+            HandleMiscOptions(MiscOptions)
+            WindUI:Notify({ Title = "自动刷怪", Content = "已启用，自动刷怪开始！", Duration = 2, Icon = "play" })
+        else
+            FarmLoopToken = (FarmLoopToken or 0) + 1
+            WaitingRespawn = false
+            LockActive = false
+            RestoreFarmCameraAndMovement()
+            UpdateYYAWaitingPartCollision()
+            if SyncFarmOnly then
+                StopMiscFarmRuntime("自动刷怪已关闭，同步农场仅开启")
+                WindUI:Notify({ Title = "自动刷怪", Content = "自动刷怪已关闭：杂项功能停止工作（同步农场仅开启）", Duration = 3, Icon = "square" })
+            else
+                HandleMiscOptions(MiscOptions)
+                WindUI:Notify({ Title = "自动刷怪", Content = "自动刷怪已关闭。杂项功能继续运行（同步农场仅关闭）", Duration = 3, Icon = "unlink" })
+            end
+        end
+        Config:Set("AutoFarmEnabled", state); Config:Save()
+    end
+})
+
+FarmTargetModeDropdown = Main:Dropdown({
+    Title = "刷怪模式",
+    Desc = "不同的刷怪模式。",
+    Values = FarmModeDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
+    Callback = function(value)
+        FarmTargetMode = NormalizeFarmTargetMode(value)
+        Config:Set("FarmTargetMode", FarmTargetMode)
+        Config:Save()
+        InvalidateMobCache("刷怪模式已更改")
+        FarmForceRetarget = true
+        if AutoFarmEnabled then StartFarmLoop(); StartJeffreyGuardLoop() end
+        task.delay(0.4, function() if not IsAntiJeffreyEscapePauseActive() then FarmForceRetarget = false end end)
+        WindUI:Notify({ Title = "刷怪模式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "target" })
+    end
+})
+
+Main:Section({ Title = "刷怪设置", Icon = "settings" })
+
+PositionDropdown = Main:Dropdown({
+    Title = "刷怪位置",
+    Desc = "选择角色在目标周围停留的位置。",
+    Values = FarmPositionDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(FarmPositionMap, FarmPosition) or FarmPosition,
+    Callback = function(value)
+        local english = FarmPositionMap[value] or value
+        FarmPosition = english
+        Config:Set("FarmPosition", english)
+        Config:Save()
+    end
+})
+
+ModeDropdown = Main:Dropdown({
+    Title = "移动方式",
+    Desc = "选择角色移动到每个目标的方式。",
+    Values = MovementDisplayNames,
+    Multi = false,
+    Value = GetDisplayName(MovementMap, FarmMode) or FarmMode,
+    Callback = function(value)
+        local english = MovementMap[value] or value
+        FarmMode = english
+        Config:Set("FarmMode", english)
+        Config:Save()
+        WindUI:Notify({ Title = "移动方式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "mouse-pointer-click" })
+    end
+})
+
+MiscDropdown = Main:Dropdown({
+    Title = "杂项功能",
+    Desc = "选择与自动刷怪一起运行的额外系统。",
+    Values = { "自动攻击", "自动技能", "自动开始", "自动跳过直升机", "自动填充", "安全模式", "上帝模式", "重置波次", "删除地图" },
+    Multi = true,
+    Value = MiscOptions,
+    Callback = function(values)
+        MiscOptions = values
+        if not AutoFarmEnabled and SyncFarmOnly and #values > 0 then
+            WindUI:Notify({
+                Title = "杂项功能",
+                Content = "你必须先开启自动刷怪（同步农场仅已开启）",
+                Duration = 3, Icon = "triangle-alert"
+            })
+        end
+        HandleMiscOptions(values)
+    end
+})
+
+Main:Toggle({
+    Title = "同步农场仅",
+    Desc = "启用时，所有杂项功能需要自动刷怪处于激活状态。",
+    Value = SyncFarmOnly,
+    Callback = function(state)
+        SyncFarmOnly = state
+        Config:Set("SyncFarmOnly", state)
+        Config:Save()
+        if state then
+            WindUI:Notify({ Title = "同步农场仅", Content = "开启：杂项功能必须自动刷怪先启用", Duration = 3, Icon = "link" })
+        else
+            WindUI:Notify({ Title = "同步农场仅", Content = "关闭：杂项功能无需自动刷怪即可工作", Duration = 3, Icon = "unlink" })
+        end
+        ApplyMiscFarmGate("同步农场仅已更改")
+    end
+})
+
+Main:Section({ Title = "Farm Astro", Icon = "flame" })
+
+FarmAstroTokenToggle = Main:Toggle({
+    Title = "Farm Astro Token (坚守模式)",
+    Desc = "避开所有怪物以防止自己死亡，时间耗尽时前往中心",
+    Value = FarmAstroTokenEnabled,
+    Callback = function(state)
+        if state and AutoFarmEnabled then
+            FarmAstroTokenEnabled = false
+            Config:Set("FarmAstroTokenEnabled", false)
+            Config:Save()
+            NotifyFarmAstroAutoFarm()
+            pcall(function()
+                if FarmAstroTokenToggle and FarmAstroTokenToggle.Set then
+                    FarmAstroTokenToggle:Set(false)
+                end
+            end)
+            return
+        end
+
+        FarmAstroTokenEnabled = state
+        Config:Set("FarmAstroTokenEnabled", state)
+        Config:Save()
+
+        if state then
+            StartFarmAstroToken()
+            WindUI:Notify({
+                Title = "Farm Astro Token",
+                Content = "已启用。Astro 路线已启动。",
+                Duration = 3,
+                Icon = "sparkles"
+            })
+        else
+            StopFarmAstroToken(false)
+            WindUI:Notify({
+                Title = "Farm Astro Token",
+                Content = "已禁用。Astro 路线已停止。",
+                Duration = 3,
+                Icon = "square"
+            })
+        end
+    end
+})
+
+Main:Section({ Title = "常规设置", Icon = "zap" })
+
+SkillDropdown = Main:Dropdown({
+    Title = "自动技能（按键）",
+    Desc = "选择自动技能将按下的键盘技能键。",
+    Values = skillDropdownValues,
+    Multi = true,
+    Value = SelectedSkills,
+    Callback = function(values) SelectedSkills = values; Config:Set("SelectedSkills", values); Config:Save() end
+})
+
+SkillDelaySlider = Main:Slider({
+    Title = "技能延迟（秒）",
+    Desc = "设置每次自动技能按键之间的延迟时间（秒）。",
+    Value = { Min = 1, Max = 60, Default = SkillDelay },
+    Step = 1,
+    Callback = function(value) SkillDelay = value; Config:Set("SkillDelay", value); Config:Save() end
+})
+
+FarmHeightSlider = Main:Slider({
+    Title = "刷怪高度（+/-Y）",
+    Desc = "调整在怪物上方或下方刷怪时使用的垂直偏移量。",
+    Value = { Min = -150, Max = 150, Default = HeightValue },
+    Step = 1,
+    Callback = function(value)
+        HeightValue = value; Config:Set("HeightValue", value); Config:Save()
+        for mob, _ in pairs(MobHeightOverride) do
+            if MobConfirmedPadding[mob] == nil then MobHeightOverride[mob] = nil end
+        end
+    end
+})
+
+Main:Slider({
+    Title = "安全模式 HP（%）",
+    Desc = "设置安全模式在撤退前使用的 HP 百分比。",
+    Value = { Min = 1, Max = 99, Default = SafeValue },
+    Step = 1,
+    Callback = function(value) SafeValue = value; Config:Set("SafeValue", value); Config:Save() end
+})
+
+Main:Slider({
+    Title = "上帝模式 HP（%）",
+    Desc = "设置普通上帝模式的 HP 百分比阈值。Farm Astro Token 期间被阻止；改为复活控制。",
+    Value = { Min = 1, Max = 99, Default = GodModeValue },
+    Step = 1,
+    Callback = function(value)
+        GodModeValue = value
+        Config:Set("GodModeValue", value)
+        Config:Save()
+    end
+})
+
+Main:Slider({
+    Title = "重置波次（值）",
+    Desc = "如果达到指定波次，将立即重置",
+    Value = { Min = 1, Max = 100, Default = ResetWaveValue },
+    Step = 1,
+    Callback = function(value)
+        ResetWaveValue = tonumber(value) or 10
+        ClearResetWaveTrigger("滑块已更改")
+        Config:Set("ResetWaveValue", ResetWaveValue)
+        Config:Save()
+
+        if ResetWaveEnabled and IsMiscFarmAllowed() then
+            StartResetWaveLoop()
+            task.defer(function()
+                EvaluateResetWaveNow("滑块已更改", true)
+            end)
+        end
+    end
+})
+
+Main:Divider()
+
+BypassJeffreyToggle = Main:Toggle({
+    Title = "绕过 Jeffrey",
+    Desc = "此功能将使 Jeffrey 不打扰你。",
+    Value = BypassJeffreyEnabled,
+    Callback = function(state)
+        BypassJeffreyEnabled = state
+        Config:Set("BypassJeffreyEnabled", state)
+        Config:Save()
+        if state then
+            StartBypassJeffreyLoop()
+            ScanBypassJeffreys(true)
+        end
+    end
+})
+
+AntiJeffreyToggle = Main:Toggle({
+    Title = "Anti Jeffrey",
+    Desc = "免费功能：创建一个软隐形屏障。如果任何 Jeffrey 在范围内，你将被一点点推开。",
+    Value = AntiJeffreyEnabled,
+    Callback = function(state)
+        AntiJeffreyEnabled = state
+        Config:Set("AntiJeffreyEnabled", state)
+        Config:Save()
+        if state then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
+    end
+})
+
+Main:Slider({
+    Title = "Anti Jeffrey 范围（格）",
+    Desc = "设置 Anti Jeffrey 使用的距离。默认 50 格。",
+    Value = { Min = 10, Max = 200, Default = AntiJeffreyRange },
+    Step = 1,
+    Callback = function(value)
+        AntiJeffreyRange = value
+        Config:Set("AntiJeffreyRange", value)
+        Config:Save()
+    end
+})
+
+if AntiJeffreyEnabled then StartAntiJeffreyLoop(); StartJeffreyGuardLoop() end
+if BypassJeffreyEnabled then StartBypassJeffreyLoop(); ScanBypassJeffreys(true) end
+
+Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
+
+Main:Paragraph({
+    Title = "优先级顺序",
+    Desc = "中断：如果正在攻击低最大生命值怪物时出现更高最大生命值的怪物，立即切换目标",
+    Image = "rbxassetid://103720636367587",
+    ImageSize = 26,
+})
+
+Main:Slider({
+    Title = "高血量阈值（最大生命值）",
+    Desc = "设置怪物成为高血量优先级所需的最大生命值。",
+    Value = { Min = 1, Max = 100000, Default = HighHPThreshold },
+    Step = 100,
+    Callback = function(value)
+        HighHPThreshold = value
+        Config:Set("HighHPThreshold", value)
+        Config:Save()
+        print("[YYa] 高血量阈值设置为 " .. value)
+    end
+})
+
+Main:Section({ Title = "覆盖设置", Icon = "ruler" })
+
+PaddingReduceInput = Main:Input({
+    Title = "设置填充减少量",
+    Default = tostring(PADDING_REDUCE_STEP),
+    Placeholder = "默认: 2",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then PADDING_REDUCE_STEP = num; Config:Set("PaddingReduceStep", num); Config:Save()
+        else warn("输入了无效数字！") end
+    end
+})
+
+PaddingSafeInput = Main:Input({
+    Title = "设置填充安全最小值（全局下限）",
+    Default = tostring(PADDING_SAFE_MIN),
+    Placeholder = "默认: -30",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then PADDING_SAFE_MIN = num; Config:Set("PaddingSafeMin", num); Config:Save()
+        else warn("输入了无效数字！") end
+    end
+})
+
+Main:Slider({
+    Title = "抗穿模边距（格）",
+    Desc = "增加额外间距以减少在怪物身体附近刷怪时的穿模。",
+    Value = { Min = -10, Max = 10, Default = ANTI_CLIP_MARGIN },
+    Step = 1,
+    Callback = function(value)
+        ANTI_CLIP_MARGIN = value; Config:Set("AntiClipMargin", value); Config:Save()
+    end
+})
+
+Main:Slider({
+    Title = "伤害阈值（确认锁定）",
+    Desc = "设置多少伤害确认当前刷怪位置有效。",
+    Value = { Min = 1, Max = 500, Default = DMG_THRESHOLD },
+    Step = 1,
+    Callback = function(value)
+        DMG_THRESHOLD = value; Config:Set("DmgThreshold", value); Config:Save()
+    end
+})
+
+Main:Button({
+    Title = "重置所有已确认位置",
+    Desc = "清除所有已保存的怪物高度位置并重置为默认值。",
+    Callback = function()
+        MobConfirmedPadding = {}
+        MobHeightOverride   = {}
+        WindUI:Notify({ Title = "覆盖重置", Content = "所有已确认的怪物位置已清除。", Duration = 2, Icon = "refresh-cw" })
+    end
+})
+
+Main:Section({ Title = "冲刷设置", Icon = "toilet" })
+
+Flushaura      = Config:Get("flushaura", false)
+FlushAuraValue = Config:Get("FlushAuraValue", 5)
+
+Main:Slider({
+    Title = "冲刷光环（格）",
+    Desc = "设置冲刷光环激活附近提示所使用的距离。",
+    Value = { Min = 1, Max = 15, Default = FlushAuraValue },
+    Step = 1,
+    Callback = function(value) FlushAuraValue = value; Config:Set("FlushAuraValue", value); Config:Save() end
+})
+
+Main:Toggle({
+    Title = "冲刷光环",
+    Desc = "自动冲刷设定半径内的附近冲刷提示。",
+    Value = Flushaura,
+    Callback = function(enabled)
+        Flushaura = enabled; Config:Set("flushaura", enabled); Config:Save()
+        if enabled then
+            task.spawn(function()
+                while Flushaura do
+                    pcall(function()
+                        local char = game.Players.LocalPlayer.Character
+                        if not char then return end
+                        local root = char:FindFirstChild("HumanoidRootPart")
+                        if not root then return end
+                        if FlushPromptCacheDirty or tick() - (FlushPromptCacheLastScan or 0) > (FlushPromptCacheTTL or 8) then
+                            RebuildFlushPromptCache()
+                        end
+                        for prompt in pairs(FlushPromptCache) do
+                            if prompt and prompt.Parent and IsFlushPrompt(prompt) then
+                                local parent = prompt.Parent
+                                local part = parent:IsA("BasePart") and parent or parent:FindFirstAncestorWhichIsA("BasePart")
+                                if part and (root.Position - part.Position).Magnitude <= FlushAuraValue then
+                                    ActivateProximityPrompt(prompt)
+                                end
+                            else
+                                FlushPromptCache[prompt] = nil
+                            end
+                        end
+                    end)
+                    task.wait(0.25)
+                end
+            end)
+        end
+    end
+})
+
+-- ============================================================
+-- ====================== ESP TAB =============================
 -- ============================================================
 
 Main4:Section({ Title = "启用透视", Icon = "eye" })
@@ -3528,7 +3953,7 @@ EspItemDropdown = Main4:Dropdown({
 })
 
 -- ============================================================
--- ====================== UI: PLAYER TAB ======================
+-- ====================== PLAYER TAB ==========================
 -- ============================================================
 
 Main2:Section({ Title = "玩家", Icon = "user" })
@@ -3753,7 +4178,6 @@ Main2:Slider({
     end
 })
 
--- ====================== 全亮/无雾 ======================
 function ApplyFullBright()
     pcall(function()
         Lighting.Brightness = 2
@@ -3845,7 +4269,6 @@ Main2:Toggle({
     end
 })
 
--- ====================== UI: 兑换码 ======================
 Main2:Section({ Title = "兑换码", Icon = "bird" })
 
 SelectedCodes = Config:Get("SelectedCodes", {})
@@ -3891,7 +4314,6 @@ Main2:Button({
     end,
 })
 
--- ====================== UI: 解锁通行证 ======================
 Main2:Section({ Title = "解锁通行证", Icon = "badge-dollar-sign" })
 
 SelectedGamepass = Config:Get("SelectedGamepass", {})
@@ -3986,7 +4408,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ============================================================
--- ============== 商店系统（完整封装 - 原版） ==================
+-- ====================== SHOP TAB ============================
 -- ============================================================
 
 Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
@@ -4073,7 +4495,6 @@ _G.__YYA_ShopSystems = function()
         return english
     end
 
-    -- ====================== 互斥抽奖循环 + UI增强 ======================
     local function StartAutoGachaCharacter()
         if characterGachaRunning then return end
 
@@ -4161,7 +4582,6 @@ _G.__YYA_ShopSystems = function()
         end)
     end
 
-    -- ====================== UI：角色扭蛋 ======================
     Main5:Dropdown({
         Title = "角色扭蛋",
         Desc = "选择角色扭蛋使用的抽奖类型。",
@@ -4260,7 +4680,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 自动使用物品 ======================
     Main5:Section({ Title = "自动使用物品", Icon = "package-open" })
 
     local useItemDisplayValue = GetUseItemDisplay(selectedUseItem)
@@ -4291,7 +4710,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 商店升级 ======================
     Main5:Section({ Title = "商店升级", Icon = "arrow-big-up-dash" })
 
     local selectedTitanSpeakerUpgrades = EnsureList(Config:Get("SelectedTitanSpeakerUpgrades", { "Jetpack" }), { "Jetpack" })
@@ -4405,7 +4823,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 商店武器 ======================
     Main5:Section({ Title = "商店武器", Icon = "helicopter" })
 
     local autoBuyWeaponValue   = Config:Get("AutoBuyWeaponValue", "电击枪")
@@ -4448,7 +4865,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 商店杂项 ======================
     Main5:Section({ Title = "商店杂项", Icon = "package" })
 
     local autoBuyMiscValue   = Config:Get("AutoBuyMiscValue", "头戴式耳机")
@@ -4491,7 +4907,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 请求泰坦/扬声器 ======================
     Main5:Section({ Title = "请求泰坦/扬声器", Icon = "send" })
 
     Main5:Dropdown({
@@ -4523,7 +4938,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 技能树 ======================
     Main5:Section({ Title = "技能树", Icon = "git-branch-plus" })
 
     Main5:Toggle({
@@ -4538,7 +4952,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 商店小时购 ======================
     Main5:Section({ Title = "商店小时购", Icon = "clock" })
 
     local selectedShopHourlyItems   = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
@@ -4593,7 +5006,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 同步商店循环 ======================
     local autoSyncedShopRunning = false
 
     local function IsHeavySyncedShopEnabled()
@@ -4701,7 +5113,6 @@ _G.__YYA_ShopSystems = function()
         end)
     end
 
-    -- ====================== 小时购循环 ======================
     local function IsBuyItemHourlyEnabled()
         return buyItemHourlyEnabled
     end
@@ -4740,7 +5151,6 @@ _G.__YYA_ShopSystems = function()
         end)
     end
 
-    -- ====================== 扭蛋 UI 增强 ======================
     local MoneyUIExists = false
     local GachaHeartbeatConnection = nil
     local GachaEnhancementActive = false
@@ -5000,11 +5410,9 @@ _G.__YYA_ShopSystems = function()
     if IsAnySyncedShopEnabled() then StartAutoSyncedShopLoop() end
     if buyItemHourlyEnabled then StartBuyItemHourlyLoop() end
 end
-_G.__YYA_ShopSystems()
-_G.__YYA_ShopSystems = nil
 
 -- ============================================================
--- ====================== UI: COLLECT TAB ======================
+-- ====================== COLLECT TAB =========================
 -- ============================================================
 
 Main6:Section({ Title = "自动收集", Icon = "package" })
@@ -5089,7 +5497,7 @@ CollectMovementDropdown = Main6:Dropdown({
 })
 
 -- ============================================================
--- ====================== UI: GAMEMODE TAB ======================
+-- ====================== GAMEMODE TAB ========================
 -- ============================================================
 
 Main7:Section({ Title = "投票信息", TextXAlignment = "Center", TextSize = 17 })
@@ -5352,7 +5760,7 @@ AutoVoteToggle = Main7:Toggle({
 })
 
 -- ============================================================
--- ====================== REQUEST / SKILL TREE HELPERS ======================
+-- ====================== REQUEST / SKILL TREE HELPERS =======
 -- ============================================================
 RequestWaveNotifyAt = 0
 AutoSkillTreeNotifyAt = 0
@@ -5566,7 +5974,7 @@ function FireAutoSkillTrees()
 end
 
 -- ============================================================
--- ====================== UI: SETTING TAB ======================
+-- ====================== SETTING TAB =========================
 -- ============================================================
 
 Main3:Section({ Title = "保存配置", Icon = "save" })
@@ -7793,7 +8201,7 @@ ApplySavedConfigOnStartup()
 -- ====================== WINDOW ON CLOSE ======================
 -- ============================================================
 Window.OnClose = function()
-    -- ZombieV2 已完全移除，无需清理
+    -- 无需清理，窗口关闭时自动处理
 end
 
 print("[YYa] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成功！")
