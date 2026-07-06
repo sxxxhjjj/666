@@ -144,6 +144,7 @@ if setfpscap then
 else
     WindUI:Notify({ Title = "无法使用", Content = "您的注入器不支持 setfpscap。", Duration = 3, Icon = "ban" })
 end
+
 -- ====================== WINDOW ======================
 Players = game:GetService("Players")
 LocalPlayer = Players.LocalPlayer
@@ -191,6 +192,7 @@ Main7 = Window:Tab({ Title = "游戏模式", Icon = "gamepad-2" })
 MainDivider2 = Window:Divider()
 Main3 = Window:Tab({ Title = "设置", Icon = "settings" })
 Window:SelectTab(1)
+
 -- ====================== CUSTOM CONFIG SYSTEM ======================
 HttpService = game:GetService("HttpService")
 ConfigFolder = "YYa_STBB"
@@ -471,6 +473,7 @@ function GetDisplayName(map, englishValue)
     end
     return englishValue
 end
+
 -- ====================== ESP 核心表 ======================
 ESP = {
     Enabled       = Config:Get("EspEnabled", false),
@@ -2166,6 +2169,7 @@ function CheckInterrupt(currentPriority)
     end
     return false, currentPriority
 end
+
 -- ============================================================
 -- ====================== MOB VISUAL BOUNDS ===================
 -- ============================================================
@@ -2768,6 +2772,7 @@ function LockToMob(mob)
         end
     end)
 end
+
 -- ====================== AUTO LOOPS ======================
 function RefreshCombatCharacter()
     if not Character or not Character.Parent then
@@ -3172,6 +3177,7 @@ task.spawn(function()
         end
     end
 end)
+
 -- ====================== AUTO FILL UP ======================
 function DoFillUp()
     local remote = GetRemote("ShopSystem")
@@ -3415,6 +3421,7 @@ function ActivateAllFlushPrompts()
         end
     end)
 end
+
 -- ============================================================
 -- ====================== INFO TAB =============================
 -- ============================================================
@@ -3428,20 +3435,6 @@ Info:Paragraph({
     ImageSize = 26,
 })
 Info:Divider()
-Info:Paragraph({
-    Title = "社交链接",
-    Desc = "点击下方按钮复制链接",
-    Image = "rbxassetid://103720636367587",
-    ImageSize = 30,
-    Buttons = { { Icon = "copy", Title = "复制链接", Callback = function() setclipboard("https://guns.lol/YYa") end } }
-})
-Info:Paragraph({
-    Title = "Discord",
-    Desc = "加入我们的 Discord 获取更多脚本！",
-    Image = "rbxassetid://103720636367587",
-    ImageSize = 30,
-    Buttons = { { Icon = "copy", Title = "复制链接", Callback = function() setclipboard("https://discord.gg/YYa") end } }
-})
 
 -- ============================================================
 -- ====================== MAIN TAB =============================
@@ -5151,6 +5144,7 @@ _G.__YYA_ShopSystems = function()
         end)
     end
 
+    -- 这些增强功能用 pcall 保护，防止因 pg 未就绪导致整个商店渲染中断
     local MoneyUIExists = false
     local GachaHeartbeatConnection = nil
     local GachaEnhancementActive = false
@@ -5188,171 +5182,185 @@ _G.__YYA_ShopSystems = function()
 
     local function CreateMoneyUI()
         if MoneyUIExists then return end
-        local parent = CoreGui or pg
-        if not parent then return end
+        -- 用 pcall 保护，防止 pg 未就绪导致错误
+        local success = pcall(function()
+            local parent = CoreGui or pg
+            if not parent then return end
 
-        local old = parent:FindFirstChild("MoneyUI")
-        if old then old:Destroy() end
+            local old = parent:FindFirstChild("MoneyUI")
+            if old then old:Destroy() end
 
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "MoneyUI"
-        screenGui.Parent = parent
-        screenGui.ResetOnSpawn = false
-        screenGui.DisplayOrder = 9999
+            local screenGui = Instance.new("ScreenGui")
+            screenGui.Name = "MoneyUI"
+            screenGui.Parent = parent
+            screenGui.ResetOnSpawn = false
+            screenGui.DisplayOrder = 9999
 
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 200, 0, 50)
-        frame.Position = UDim2.new(0, 10, 0, 10)
-        frame.BackgroundTransparency = 1
-        frame.BorderSizePixel = 0
-        frame.Parent = screenGui
-        frame.ZIndex = 999
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(0, 200, 0, 50)
+            frame.Position = UDim2.new(0, 10, 0, 10)
+            frame.BackgroundTransparency = 1
+            frame.BorderSizePixel = 0
+            frame.Parent = screenGui
+            frame.ZIndex = 999
 
-        local icon = Instance.new("TextLabel")
-        icon.Size = UDim2.new(0, 30, 0, 30)
-        icon.Position = UDim2.new(0, 0, 0, 10)
-        icon.BackgroundTransparency = 1
-        icon.Text = "💰"
-        icon.TextSize = 22
-        icon.TextColor3 = Color3.fromRGB(255, 215, 0)
-        icon.Font = Enum.Font.GothamBold
-        icon.Parent = frame
+            local icon = Instance.new("TextLabel")
+            icon.Size = UDim2.new(0, 30, 0, 30)
+            icon.Position = UDim2.new(0, 0, 0, 10)
+            icon.BackgroundTransparency = 1
+            icon.Text = "💰"
+            icon.TextSize = 22
+            icon.TextColor3 = Color3.fromRGB(255, 215, 0)
+            icon.Font = Enum.Font.GothamBold
+            icon.Parent = frame
 
-        local moneyLabel = Instance.new("TextLabel")
-        moneyLabel.Size = UDim2.new(0, 120, 0, 30)
-        moneyLabel.Position = UDim2.new(0, 35, 0, 10)
-        moneyLabel.BackgroundTransparency = 1
-        moneyLabel.Text = "0"
-        moneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        moneyLabel.TextSize = 22
-        moneyLabel.Font = Enum.Font.GothamBold
-        moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
-        moneyLabel.Parent = frame
+            local moneyLabel = Instance.new("TextLabel")
+            moneyLabel.Size = UDim2.new(0, 120, 0, 30)
+            moneyLabel.Position = UDim2.new(0, 35, 0, 10)
+            moneyLabel.BackgroundTransparency = 1
+            moneyLabel.Text = "0"
+            moneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            moneyLabel.TextSize = 22
+            moneyLabel.Font = Enum.Font.GothamBold
+            moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+            moneyLabel.Parent = frame
 
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(0, 60, 0, 16)
-        nameLabel.Position = UDim2.new(0, 35, 1, -20)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = "Coins"
-        nameLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
-        nameLabel.TextSize = 11
-        nameLabel.Font = Enum.Font.Gotham
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.Parent = frame
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Size = UDim2.new(0, 60, 0, 16)
+            nameLabel.Position = UDim2.new(0, 35, 1, -20)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = "Coins"
+            nameLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
+            nameLabel.TextSize = 11
+            nameLabel.Font = Enum.Font.Gotham
+            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            nameLabel.Parent = frame
 
-        local function UpdateMoney()
-            moneyLabel.Text = tostring(GetMoney())
-        end
-
-        UpdateMoney()
-        task.spawn(function()
-            while true do
-                UpdateMoney()
-                task.wait(1)
+            local function UpdateMoney()
+                moneyLabel.Text = tostring(GetMoney())
             end
-        end)
 
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-        if leaderstats then
-            for _, child in ipairs(leaderstats:GetChildren()) do
-                if child:IsA("IntValue") or child:IsA("NumberValue") then
-                    child.Changed:Connect(UpdateMoney)
+            UpdateMoney()
+            task.spawn(function()
+                while true do
+                    UpdateMoney()
+                    task.wait(1)
+                end
+            end)
+
+            local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+            if leaderstats then
+                for _, child in ipairs(leaderstats:GetChildren()) do
+                    if child:IsA("IntValue") or child:IsA("NumberValue") then
+                        child.Changed:Connect(UpdateMoney)
+                    end
                 end
             end
-        end
 
-        MoneyUIExists = true
+            MoneyUIExists = true
+        end)
+        if not success then
+            warn("[YYa] CreateMoneyUI 失败，但不影响商店主渲染")
+        end
     end
 
     local function ForceShowGacha()
-        if not pg then return end
-        local gacha = pg:FindFirstChild("Gacha")
-        if gacha and gacha:IsA("ScreenGui") then
-            if not gacha.Enabled then
-                gacha.Enabled = true
-            end
-            for _, sub in ipairs(gacha:GetDescendants()) do
-                if sub:IsA("Frame") or sub:IsA("ImageLabel") or sub:IsA("TextLabel") or sub:IsA("TextButton") then
-                    if not sub.Visible then
-                        sub.Visible = true
+        pcall(function()
+            if not pg then return end
+            local gacha = pg:FindFirstChild("Gacha")
+            if gacha and gacha:IsA("ScreenGui") then
+                if not gacha.Enabled then
+                    gacha.Enabled = true
+                end
+                for _, sub in ipairs(gacha:GetDescendants()) do
+                    if sub:IsA("Frame") or sub:IsA("ImageLabel") or sub:IsA("TextLabel") or sub:IsA("TextButton") then
+                        if not sub.Visible then
+                            sub.Visible = true
+                        end
                     end
                 end
             end
-        end
+        end)
     end
 
     local function RemoveBlackScreens()
-        for _, guiParent in ipairs({pg, CoreGui}) do
-            if guiParent then
-                for _, child in ipairs(guiParent:GetChildren()) do
-                    if child:IsA("ScreenGui") then
-                        local name = child.Name:lower()
-                        if name:find("black") or name:find("loading") or name:find("fade") or name:find("white") then
-                            pcall(function() child:Destroy() end)
+        pcall(function()
+            for _, guiParent in ipairs({pg, CoreGui}) do
+                if guiParent then
+                    for _, child in ipairs(guiParent:GetChildren()) do
+                        if child:IsA("ScreenGui") then
+                            local name = child.Name:lower()
+                            if name:find("black") or name:find("loading") or name:find("fade") or name:find("white") then
+                                pcall(function() child:Destroy() end)
+                            end
                         end
                     end
                 end
             end
-        end
+        end)
     end
 
     local function RemoveGachaVisuals()
-        if pg then
-            local gachaUI = pg:FindFirstChild("GachaUI")
-            if gachaUI then
-                local frame = gachaUI:FindFirstChild("Frame")
-                if frame then
-                    local viewport = frame:FindFirstChild("ViewportFrame")
-                    if viewport then
-                        local wm = viewport:FindFirstChild("WorldModel")
-                        if wm then
-                            pcall(function() wm:Destroy() end)
+        pcall(function()
+            if pg then
+                local gachaUI = pg:FindFirstChild("GachaUI")
+                if gachaUI then
+                    local frame = gachaUI:FindFirstChild("Frame")
+                    if frame then
+                        local viewport = frame:FindFirstChild("ViewportFrame")
+                        if viewport then
+                            local wm = viewport:FindFirstChild("WorldModel")
+                            if wm then
+                                pcall(function() wm:Destroy() end)
+                            end
                         end
                     end
                 end
             end
-        end
 
-        local room = workspace:FindFirstChild("GachaRoom")
-        if room then
-            for _, obj in ipairs(room:GetDescendants()) do
-                if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
-                    pcall(function()
-                        obj.Transparency = 1
-                        obj.CanCollide = false
-                    end)
-                end
-                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-                    pcall(function() obj.Enabled = false end)
+            local room = workspace:FindFirstChild("GachaRoom")
+            if room then
+                for _, obj in ipairs(room:GetDescendants()) do
+                    if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+                        pcall(function()
+                            obj.Transparency = 1
+                            obj.CanCollide = false
+                        end)
+                    end
+                    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                        pcall(function() obj.Enabled = false end)
+                    end
                 end
             end
-        end
 
-        local effects = workspace:FindFirstChild("Effects")
-        if effects then
-            for _, child in ipairs(effects:GetChildren()) do
-                if child:IsA("Part") or child:IsA("MeshPart") or child:IsA("Model") then
-                    pcall(function() child:Destroy() end)
+            local effects = workspace:FindFirstChild("Effects")
+            if effects then
+                for _, child in ipairs(effects:GetChildren()) do
+                    if child:IsA("Part") or child:IsA("MeshPart") or child:IsA("Model") then
+                        pcall(function() child:Destroy() end)
+                    end
                 end
             end
-        end
+        end)
     end
 
     local function ResetCamera()
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        local cam = workspace.CurrentCamera
-        if not cam then return end
-        cam.CameraSubject = hrp
-        cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
+        pcall(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local cam = workspace.CurrentCamera
+            if not cam then return end
+            cam.CameraSubject = hrp
+            cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
+        end)
     end
 
     function StartGachaEnhancement()
         if GachaEnhancementActive then return end
         GachaEnhancementActive = true
-        CreateMoneyUI()
+        pcall(function() CreateMoneyUI() end)
 
         if GachaHeartbeatConnection then return end
         GachaHeartbeatConnection = RunService.Heartbeat:Connect(function()
@@ -6251,6 +6259,7 @@ antiafk = Main3:Toggle({
 })
 
 if AntiAFK then StartAntiAFK() end
+
 -- ============================================================
 -- ====================== ESP 核心函数 ======================
 -- ============================================================
@@ -8194,6 +8203,13 @@ function ApplySavedConfigOnStartup()
         StartAutoVoteLoop()
     end
 end
+
+-- ============================================================
+-- ====================== 调用商店系统 ======================
+-- ============================================================
+-- 移到 ApplySavedConfigOnStartup 之后确保 pg 和 CoreGui 已就绪
+_G.__YYA_ShopSystems()
+_G.__YYA_ShopSystems = nil
 
 ApplySavedConfigOnStartup()
 
