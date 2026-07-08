@@ -667,6 +667,11 @@ FarmCollecting         = false
 CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
+-- ★ 环形走位变量（无开关，普通模式自动生效）
+circleRadius = Config:Get("CircleRadius", 5)   -- 环绕半径（格）
+circleDirectionIndex = 0                       -- 0:前, 1:左, 2:右, 3:后
+circleAttackCount = 0                          -- 当前方向已攻击次数
+
 -- ====================== COLLECT VARIABLES ======================
 CollectItems = {
     "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
@@ -2367,13 +2372,37 @@ function GetTargetCFrame(mob, position)
     local padding = GetEffectivePadding(mob)
     local center, minY, maxY = GetMobVisualBounds(mob)
 
+    -- ★ 计算基础垂直位置（上方/下方）
+    local basePos
+    if position == "Above" then
+        local safeTargetY = math.max(maxY + padding, maxY + 0.5)
+        basePos = Vector3.new(center.X, safeTargetY, center.Z)
+    elseif position == "Under" then
+        local safeTargetY = math.min(minY - padding, minY - 0.5)
+        basePos = Vector3.new(center.X, safeTargetY, center.Z)
+    else
+        basePos = Vector3.new(center.X, center.Y, center.Z)
+    end
+
+    -- ★ 普通模式自动叠加环形水平偏移
+    if FarmTargetMode == "Normal Mode" then
+        local mobCF = mobRoot.CFrame
+        local forward = mobCF.LookVector
+        local right = mobCF.RightVector
+        -- 前、左、右、后
+        local dirs = { forward, -right, right, -forward }
+        local offset = dirs[circleDirectionIndex + 1] or forward
+        local targetPos = basePos + offset * circleRadius
+        return CFrame.new(targetPos, center)
+    end
+
+    -- ★ Astro / 黑暗模式：只使用上方/下方，无环形
     if position == "Above" then
         local safeTargetY = math.max(maxY + padding, maxY + 0.5)
         local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
         local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
         local lookCF      = CFrame.new(targetPos, lookAtPos)
         return lookCF * CFrame.Angles(math.rad(-10), 0, 0)
-
     elseif position == "Under" then
         local safeTargetY = math.min(minY - padding, minY - 0.5)
         local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
@@ -2843,6 +2872,20 @@ function StartAutoAttack()
                     local remote = GetRemote("LMB")
                     if remote then
                         pcall(function() remote:FireServer() end)
+                        -- ★ 环形走位计数（普通模式自动）
+                        if FarmTargetMode == "Normal Mode" then
+                            circleAttackCount = circleAttackCount + 1
+                            if circleAttackCount >= 2 then
+                                circleAttackCount = 0
+                                circleDirectionIndex = (circleDirectionIndex + 1) % 4
+                                FarmForceRetarget = true
+                                task.delay(0.1, function()
+                                    if not IsAntiJeffreyEscapePauseActive() then
+                                        FarmForceRetarget = false
+                                    end
+                                end)
+                            end
+                        end
                     else
                         CombatDebug("AutoAttackRemote", "LMB 远程事件缺失。", 5, true)
                     end
@@ -3526,6 +3569,19 @@ ModeDropdown = Main:Dropdown({
         Config:Set("FarmMode", english)
         Config:Save()
         WindUI:Notify({ Title = "移动方式", Content = "已选择: " .. tostring(value), Duration = 2, Icon = "mouse-pointer-click" })
+    end
+})
+
+-- ★ 环形走位半径滑块（无开关，仅调节）
+Main:Slider({
+    Title = "环形走位半径（格）",
+    Desc = "普通模式下角色围绕怪物的水平环绕距离，默认5格。",
+    Value = { Min = 2, Max = 10, Default = circleRadius },
+    Step = 0.5,
+    Callback = function(value)
+        circleRadius = value
+        Config:Set("CircleRadius", value)
+        Config:Save()
     end
 })
 
@@ -6599,8 +6655,15 @@ end)
 -- ====================== COLLECT SYSTEM ======================
 -- ============================================================
 
+-- ★ 修改后的 MatchesPattern：只针对 Special-Request 使用子串匹配
 function MatchesPattern(objectName, pattern)
     local objL, patL = tostring(objectName or ""):lower(), tostring(pattern or ""):lower()
+    
+    -- ★ 特殊处理：Special-Request 只要包含 "request" 就匹配（不区分大小写）
+    if pattern == "Special-Request" then
+        return objL:find("request", 1, true) ~= nil
+    end
+    
     if objL == patL then return true end
     if #objL > #patL and objL:sub(1, #patL) == patL then
         local nc = objL:sub(#patL + 1, #patL + 1)
@@ -8165,6 +8228,10 @@ function ApplySavedConfigOnStartup()
     UpdateYYAWaitingPartCollision()
     if FullBrightEnabled then ApplyFullBright() end
     if NoFogEnabled then ApplyNoFog() end
+
+    -- ★ 重置环形走位状态
+    circleDirectionIndex = 0
+    circleAttackCount = 0
 
     if FarmAstroTokenEnabled and AutoFarmEnabled then
         FarmAstroTokenEnabled = false
