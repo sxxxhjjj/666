@@ -1,9 +1,7 @@
--- v190 | [Local Register Fix] | 完整融合版（基于原版UI渲染顺序）
--- 版本: 完整增强版 | 包含: Astro令牌 + 完整收集 + 汉化投票 + 随机方向传送（普通模式）
--- ★ 新增: CDAttack 触发随机闪避
+-- 版本: 完整增强版 | 包含: Astro令牌 + 完整收集 + 汉化投票 + 随机方向传送（普通模式）+ CDAttack闪避 + 环绕模式（普通模式）
 -- =========================
 version = "Rework"
-ver = "v024.02"
+ver = "v024.03"
 -- =========================
 
 -- ====================== LOAD UI ======================
@@ -55,9 +53,7 @@ end
 
 function EnsureYYAWaitingPartImages(waitingPart)
     if not waitingPart or not waitingPart:IsA("BasePart") then return end
-
     local usedFaces = {}
-
     for _, obj in ipairs(waitingPart:GetChildren()) do
         if obj:IsA("Decal") and obj.Name == "yya_image" then
             if usedFaces[obj.Face] then
@@ -69,7 +65,6 @@ function EnsureYYAWaitingPartImages(waitingPart)
             end
         end
     end
-
     for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
         if not usedFaces[face] then
             local decal = Instance.new("Decal")
@@ -84,7 +79,6 @@ end
 
 function ConfigureYYAWaitingPart(waitingPart)
     if not waitingPart or not waitingPart:IsA("BasePart") then return nil end
-
     waitingPart.Name = YYA_WAITING_PART_NAME
     waitingPart.Size = YYA_WAITING_PART_SIZE
     waitingPart.CFrame = YYA_WAITING_PART_CF
@@ -96,13 +90,10 @@ function ConfigureYYAWaitingPart(waitingPart)
     waitingPart.Color = Color3.fromRGB(45, 130, 255)
     waitingPart.TopSurface = Enum.SurfaceType.Smooth
     waitingPart.BottomSurface = Enum.SurfaceType.Smooth
-
     local active = AutoFarmEnabled == true
     waitingPart.CanCollide = active
     waitingPart.Transparency = active and YYA_WAITING_PART_VISIBLE_TRANSPARENCY or 1
-
     EnsureYYAWaitingPartImages(waitingPart)
-
     return waitingPart
 end
 
@@ -110,11 +101,7 @@ function GetYYAWaitingPart()
     local keep = nil
     for _, obj in ipairs(workspace:GetChildren()) do
         if obj.Name == YYA_WAITING_PART_NAME and obj:IsA("BasePart") then
-            if not keep then
-                keep = obj
-            else
-                pcall(function() obj:Destroy() end)
-            end
+            if not keep then keep = obj else pcall(function() obj:Destroy() end) end
         end
     end
     return keep
@@ -168,9 +155,7 @@ Window = WindUI:CreateWindow({
 })
 
 Window:SetToggleKey(Enum.KeyCode.K)
-
 Window:Tag({ Title = "至尊版", Color = Color3.fromHex("#db7093") })
-
 Window:EditOpenButton({
     Title = "至尊版 - 打开",
     Icon = "monitor",
@@ -224,10 +209,7 @@ function CustomConfig:Save(force)
     if not force and self._LastSaveAt and now - self._LastSaveAt < 0.75 then
         if not self._SaveQueued then
             self._SaveQueued = true
-            task.delay(0.85, function()
-                self._SaveQueued = false
-                self:Save(true)
-            end)
+            task.delay(0.85, function() self._SaveQueued = false; self:Save(true) end)
         end
         return true
     end
@@ -275,6 +257,7 @@ end
 Config = CustomConfig.new()
 
 -- ====================== UI DISPLAY NAME MAPPING ======================
+-- ★ 修改：FarmPositionDisplayNames 增加 "环绕"
 GachaDisplayNames = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
 GachaMap = {
     ["1次抽奖"] = "1Spin",
@@ -342,10 +325,12 @@ FarmModeMap = {
     ["黑暗维度模式"] = "Dark Dimension Mode",
 }
 
-FarmPositionDisplayNames = { "上方", "下方" }
+-- ★ 修改：FarmPositionDisplayNames 增加 "环绕"
+FarmPositionDisplayNames = { "上方", "下方", "环绕" }
 FarmPositionMap = {
     ["上方"] = "Above",
     ["下方"] = "Under",
+    ["环绕"] = "环绕",
 }
 
 MovementDisplayNames = { "传送", "补间" }
@@ -464,9 +449,7 @@ end
 
 function GetDisplayName(map, englishValue)
     for k, v in pairs(map) do
-        if v == englishValue then
-            return k
-        end
+        if v == englishValue then return k end
     end
     return englishValue
 end
@@ -484,7 +467,6 @@ ESP = {
     _playerHighlights = {},
     _itemHighlights   = {},
 }
-
 ESPConnection = nil
 
 -- ====================== SERVICES ======================
@@ -665,13 +647,21 @@ CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
 -- ★ 随机方向传送变量
-circleRadius = Config:Get("CircleRadius", 5)   -- 最大传送半径（格）
-randomTeleportEnabled = Config:Get("RandomTeleportEnabled", false)  -- 开关
+circleRadius = Config:Get("CircleRadius", 5)
+randomTeleportEnabled = Config:Get("RandomTeleportEnabled", false)
 
--- ★ CDAttack 闪避（新增）
+-- ★ 环绕模式变量（新增）
+orbitDirectionIndex = 0   -- 0:前, 1:后, 2:左, 3:右
+orbitAttackCount = 0
+orbitRadius = circleRadius  -- 使用相同的半径控制
+
+-- ★ CDAttack 闪避
 CDAttackDodgeCooldown = 0.25
 CDAttackLastDodge = 0
 CDAttackBoundMonsters = {}
+
+-- ★ 环绕模式是否启用的标志（内部使用）
+_orbitModeActive = false
 
 -- ====================== COLLECT VARIABLES ======================
 CollectItems = {
@@ -679,7 +669,6 @@ CollectItems = {
     "Astro Samples", "Weird Prism", "Key Card", "Zombie Core",
     "Flash Drives", "Presents", "Genesis Core", "Special-Request",
 }
-
 CollectGroupMap = {
     ["Astro Samples"] = {
         "Trooper Blast","Trooper Spinner","Specialist Blaster","Specialist Spinner",
@@ -688,11 +677,8 @@ CollectGroupMap = {
         "High Impactor Laser","Destructor Laser","Destructor Blaster","Destructor Core",
         "Obliterator Blaster","Obliterator Spinner",
     },
-    ["Presents"] = {
-        "Gacha Capsule",
-    },
+    ["Presents"] = { "Gacha Capsule" },
 }
-
 AutoCollectEnabled = Config:Get("AutoCollectEnabled", false)
 CollectMode = Config:Get("CollectMode", "Clean")
 CollectMovementMode = Config:Get("CollectMovementMode", "Tween")
@@ -727,7 +713,6 @@ function UpdateYYAWaitingPartCollision()
     part = waitingPart
     pcall(function() ConfigureYYAWaitingPart(waitingPart) end)
 end
-
 UpdateYYAWaitingPartCollision()
 
 workspace.ChildRemoved:Connect(function(obj)
@@ -746,9 +731,7 @@ function CombatDebug(tag, message, cooldown, showNotify)
     local text = "[YYa][" .. key .. "] " .. tostring(message or "")
     print(text)
     if showNotify and WindUI then
-        pcall(function()
-            WindUI:Notify({ Title = "战斗调试", Content = tostring(message or ""), Duration = 3, Icon = "bug" })
-        end)
+        pcall(function() WindUI:Notify({ Title = "战斗调试", Content = tostring(message or ""), Duration = 3, Icon = "bug" }) end)
     end
 end
 
@@ -799,18 +782,14 @@ function GetCameraTargetForMode(char)
     return humanoid or char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head"), humanoid
 end
 
--- ★ 修改后的 ApplyCameraMode：普通模式 + 随机传送开启 → 强制锁定怪物视角
 function ApplyCameraMode(force)
     local now = tick()
     if force ~= true and now - (CameraLastApplyAt or 0) < (CameraApplyCooldown or 0.22) then return end
     CameraLastApplyAt = now
-
     pcall(function()
         local cam = workspace.CurrentCamera
         local char = LocalPlayer.Character or Character
         if not cam or not char then return end
-
-        -- ★ 普通模式且开启随机传送 → 锁定视角看向目标怪物
         if FarmTargetMode == "Normal Mode" and AutoFarmEnabled and randomTeleportEnabled then
             local mob = SafeGetPriorityMob()
             if mob then
@@ -826,8 +805,6 @@ function ApplyCameraMode(force)
                 end
             end
         end
-
-        -- 非普通模式或随机传送关闭 → 默认逻辑
         CameraMode = NormalizeCameraMode(CameraMode)
         local target, humanoid = GetCameraTargetForMode(char)
         if not target then return end
@@ -871,7 +848,6 @@ end
 workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function() RequestCameraSync(true) end)
 
 MissingRemoteWarnAt = {}
-
 function GetRemote(name)
     local remote = ReplicatedStorage and ReplicatedStorage:FindFirstChild(name)
     if not remote then
@@ -913,9 +889,7 @@ function FireAutoVote(force)
     if not remote then pcall(function() remote = ReplicatedStorage:WaitForChild("Vote", 3) end) end
     if not remote then return false end
     local englishValue = VoteMap[AutoVoteValue] or AutoVoteValue
-    local ok, err = pcall(function()
-        remote:FireServer(englishValue)
-    end)
+    local ok, err = pcall(function() remote:FireServer(englishValue) end)
     if ok then
         HideVoteUI()
         print("[YYa] 自动投票已触发:", AutoVoteValue, "->", englishValue)
@@ -932,11 +906,7 @@ function StartAutoVoteLoop()
     task.spawn(function()
         while AutoVoteinGameEnabled do
             if IsVoteUIOpen() then
-                if AutoStartEnabled and IsMiscFarmAllowed() then
-                    FireGetReady(0)
-                else
-                    FireAutoVote(false)
-                end
+                if AutoStartEnabled and IsMiscFarmAllowed() then FireGetReady(0) else FireAutoVote(false) end
             end
             task.wait(0.2)
         end
@@ -980,7 +950,7 @@ end
 
 -- ====================== ALLY SYSTEM ======================
 AllyNames = {
-    ["Heavy Soldier Toilet V2"]  = true, ["Quad Laser Toilet"] = true,
+    ["Heavy Soldier Toilet V2"] = true, ["Quad Laser Toilet"] = true,
     ["Strider Rocket Laser"] = true, ["Helicopter Camera"] = true,
     ["Heavy Soldier Toilet V1"] = true, ["Rocket Heli v2"] = true,
     ["Gunner Camera man"] = true, ["Attack Helicopter"] = true,
@@ -1830,7 +1800,6 @@ function HookMobCacheFolder(folder)
         return
     end
     MobCacheChildAddedConnection = folder.ChildAdded:Connect(function(obj)
-        -- ★ 新增：对每个新出现的有效怪物绑定 CDAttack
         if IsValidMob(obj) then
             BindCDAttack(obj)
         end
@@ -1877,7 +1846,6 @@ function RebuildMobCache()
     if folder then
         for _, mob in ipairs(folder:GetChildren()) do
             if IsValidMob(mob) then
-                -- ★ 新增：绑定 CDAttack
                 BindCDAttack(mob)
                 table.insert(MobCacheList, mob)
             end
@@ -2016,9 +1984,7 @@ end
 
 function GetAstroMob()
     for _, mob in ipairs(GetCachedLivingMobs(false)) do
-        if IsAstroMob(mob) then
-            return mob
-        end
+        if IsAstroMob(mob) then return mob end
     end
     return nil
 end
@@ -2028,9 +1994,7 @@ function GetPriorityMob()
     if not HumanoidRootPart then return nil, nil, nil, 0 end
     if FarmTargetMode == "Astro Holdout Mode" then
         local astroMob = GetAstroMob()
-        if astroMob then
-            return astroMob, "Astro", nil, 1
-        end
+        if astroMob then return astroMob, "Astro", nil, 1 end
         return nil, nil, nil, 0
     end
     local giant, prompt = nil, nil
@@ -2045,21 +2009,13 @@ function GetPriorityMob()
                 if pr then giant = mob; prompt = pr end
             end
         end
-        if not heli and mob.Name:lower():find("helicopter") then
-            heli = mob
-        end
+        if not heli and mob.Name:lower():find("helicopter") then heli = mob end
         local hp = GetMobMaxHP(mob)
-        if hp > bestHP then
-            bestHP = hp
-            highMob = mob
-        end
+        if hp > bestHP then bestHP = hp; highMob = mob end
         local mobRoot = mob:FindFirstChild("HumanoidRootPart")
         if mobRoot and HumanoidRootPart then
             local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
-            if d < nearDist then
-                nearDist = d
-                nearMob = mob
-            end
+            if d < nearDist then nearDist = d; nearMob = mob end
         end
     end
     if giant and prompt then return giant, "GiantST", prompt, 4 end
@@ -2101,12 +2057,12 @@ function ComputeMobVisualBounds(mob)
     for _, part in ipairs(mob:GetDescendants()) do
         if part:IsA("BasePart") and part.Transparency < 0.9 and part.Size.Y > 0.1 then
             local pos = part.Position
-            local hy  = part.Size.Y * 0.5
+            local hy = part.Size.Y * 0.5
             if pos.Y - hy < minY then minY = pos.Y - hy end
             if pos.Y + hy > maxY then maxY = pos.Y + hy end
             centerX = centerX + pos.X
             centerZ = centerZ + pos.Z
-            count   = count + 1
+            count = count + 1
         end
     end
     if count == 0 then
@@ -2175,13 +2131,13 @@ function StartDamageChecker(mob)
         local humanoid = mob and mob:FindFirstChild("Humanoid")
         if not humanoid then return end
         if MobConfirmedPadding[mob] ~= nil then return end
-        MobLastHealth[mob]     = humanoid.Health
+        MobLastHealth[mob] = humanoid.Health
         MobHeightOverride[mob] = ClampPaddingToAntiClip(mob, MobHeightOverride[mob] or HeightValue)
         local lastDamageTime = tick()
-        local noDamageTimer  = 0
-        local hitStreak      = 0
-        local lastWasHit     = false
-        local reducedOnce    = false
+        local noDamageTimer = 0
+        local hitStreak = 0
+        local lastWasHit = false
+        local reducedOnce = false
         while mob and mob.Parent and not IsMobDead(mob) and AutoFarmEnabled do
             task.wait(0.3)
             if MobCheckerCancelled[mob] then break end
@@ -2189,33 +2145,33 @@ function StartDamageChecker(mob)
             humanoid = mob:FindFirstChild("Humanoid")
             if not humanoid then break end
             local currentHP = humanoid.Health
-            local lastHP    = MobLastHealth[mob] or currentHP
-            local dmgDealt  = lastHP - currentHP
-            local gotHit    = dmgDealt > 0
+            local lastHP = MobLastHealth[mob] or currentHP
+            local dmgDealt = lastHP - currentHP
+            local gotHit = dmgDealt > 0
             if gotHit then
                 lastDamageTime = tick()
-                noDamageTimer  = 0
-                reducedOnce    = false
+                noDamageTimer = 0
+                reducedOnce = false
                 if lastWasHit then hitStreak = hitStreak + 1 else hitStreak = 1 end
                 lastWasHit = true
                 local curPad = GetEffectivePadding(mob)
                 if dmgDealt >= DMG_THRESHOLD and MobConfirmedPadding[mob] == nil then
                     if not MobCheckerCancelled[mob] then
                         MobConfirmedPadding[mob] = curPad
-                        MobHeightOverride[mob]   = curPad
+                        MobHeightOverride[mob] = curPad
                     end
                     break
                 end
                 if hitStreak >= 2 and MobConfirmedPadding[mob] == nil then
                     if not MobCheckerCancelled[mob] then
                         MobConfirmedPadding[mob] = curPad
-                        MobHeightOverride[mob]   = curPad
+                        MobHeightOverride[mob] = curPad
                     end
                     break
                 end
             else
-                lastWasHit    = false
-                hitStreak     = 0
+                lastWasHit = false
+                hitStreak = 0
                 noDamageTimer = tick() - lastDamageTime
             end
             if noDamageTimer >= 3 and not reducedOnce then
@@ -2226,33 +2182,32 @@ function StartDamageChecker(mob)
             end
             if noDamageTimer >= 6 then
                 lastDamageTime = tick()
-                reducedOnce    = false
-                local curPad   = GetEffectivePadding(mob)
-                local newPad   = ClampPaddingToAntiClip(mob, curPad - PADDING_REDUCE_STEP)
+                reducedOnce = false
+                local curPad = GetEffectivePadding(mob)
+                local newPad = ClampPaddingToAntiClip(mob, curPad - PADDING_REDUCE_STEP)
                 if newPad ~= curPad then MobHeightOverride[mob] = newPad end
             end
             MobLastHealth[mob] = currentHP
         end
         if not MobCheckerCancelled[mob] then
             MobHeightOverride[mob] = nil
-            MobLastHealth[mob]     = nil
+            MobLastHealth[mob] = nil
         end
     end)
 end
 
 function ResetMobOverride(mob)
     MobCheckerCancelled[mob] = true
-    MobHeightOverride[mob]   = nil
+    MobHeightOverride[mob] = nil
     MobConfirmedPadding[mob] = nil
-    MobLastHealth[mob]       = nil
+    MobLastHealth[mob] = nil
     task.delay(0.5, function()
         MobCheckerCancelled[mob] = nil
     end)
 end
 
 -- ============================================================
--- ====================== TARGET CFRAME =======================
--- ★ 随机方向传送（普通模式）
+-- ====================== ★ TARGET CFRAME（含环绕模式） ======================
 -- ============================================================
 function GetTargetCFrame(mob, position)
     local mobRoot = GetMobRootPart(mob)
@@ -2260,6 +2215,38 @@ function GetTargetCFrame(mob, position)
 
     local padding = GetEffectivePadding(mob)
     local center, minY, maxY = GetMobVisualBounds(mob)
+
+    -- ★ 检测环绕模式激活状态（仅在普通模式生效）
+    local useOrbit = (position == "环绕" or position == "Orbit") and FarmTargetMode == "Normal Mode"
+
+    -- ★ 如果选择了环绕但当前不是普通模式 → 弹窗提示 + 自动降级
+    if (position == "环绕" or position == "Orbit") and FarmTargetMode ~= "Normal Mode" then
+        if AutoFarmEnabled then
+            local now = tick()
+            if not _orbitModeNotifyAt or now - _orbitModeNotifyAt > 5 then
+                _orbitModeNotifyAt = now
+                WindUI:Notify({
+                    Title = "环绕模式",
+                    Content = "⚠️ 环绕模式仅限普通模式使用！已自动切换为\"上方\"",
+                    Duration = 3,
+                    Icon = "triangle-alert"
+                })
+            end
+        end
+        useOrbit = false
+        position = "Above"
+        -- 更新 FarmPosition 为 Above
+        if FarmPosition == "环绕" or FarmPosition == "Orbit" then
+            FarmPosition = "Above"
+            Config:Set("FarmPosition", "Above")
+            Config:Save()
+            pcall(function()
+                if PositionDropdown and PositionDropdown.Set then
+                    PositionDropdown:Set("上方")
+                end
+            end)
+        end
+    end
 
     -- 计算基础垂直位置
     local basePos
@@ -2273,38 +2260,35 @@ function GetTargetCFrame(mob, position)
         basePos = Vector3.new(center.X, center.Y, center.Z)
     end
 
-    -- ★ 普通模式且开启随机传送 → 随机方向，距离受控
-    if FarmTargetMode == "Normal Mode" and randomTeleportEnabled then
+    -- ★ 环绕模式：计算环绕位置（前→后→左→右循环）
+    if useOrbit then
         local mobCF = mobRoot.CFrame
         local forward = mobCF.LookVector
         local right = mobCF.RightVector
-        -- 8 个方向：前、后、左、右 + 对角线
-        local dirs = {
-            forward, -forward, -right, right,
-            (forward + right).Unit, (forward - right).Unit,
-            (-forward + right).Unit, (-forward - right).Unit
-        }
-        local dir = dirs[math.random(1, #dirs)]
-        -- 距离在 circleRadius 的 60%~100% 之间随机
-        local randomDist = circleRadius * (0.6 + math.random() * 0.4)
-        local targetPos = basePos + dir * randomDist
-        -- 保持 Y 不变，防止飞高或下落
+        -- 方向列表：前、后、左、右
+        local dirs = { forward, -forward, -right, right }
+        local dir = dirs[orbitDirectionIndex + 1] or forward
+        local targetPos = basePos + dir * orbitRadius
+        -- 保持 Y 不变
         targetPos = Vector3.new(targetPos.X, basePos.Y, targetPos.Z)
+        _orbitModeActive = true
         return CFrame.new(targetPos, center)
     end
+
+    _orbitModeActive = false
 
     -- Astro / 黑暗模式：原逻辑
     if position == "Above" then
         local safeTargetY = math.max(maxY + padding, maxY + 0.5)
-        local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
-        local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
-        local lookCF      = CFrame.new(targetPos, lookAtPos)
+        local targetPos = Vector3.new(center.X, safeTargetY, center.Z)
+        local lookAtPos = Vector3.new(center.X, maxY, center.Z)
+        local lookCF = CFrame.new(targetPos, lookAtPos)
         return lookCF * CFrame.Angles(math.rad(-10), 0, 0)
     elseif position == "Under" then
         local safeTargetY = math.min(minY - padding, minY - 0.5)
-        local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
-        local lookAtPos   = Vector3.new(center.X, minY, center.Z)
-        local lookCF      = CFrame.new(targetPos, lookAtPos)
+        local targetPos = Vector3.new(center.X, safeTargetY, center.Z)
+        local lookAtPos = Vector3.new(center.X, minY, center.Z)
+        local lookCF = CFrame.new(targetPos, lookAtPos)
         return lookCF * CFrame.Angles(math.rad(10), 0, 0)
     end
 end
@@ -2315,8 +2299,7 @@ function WaitTweenWithTimeout(tween, timeout)
     if not tween then return false end
     timeout = tonumber(timeout) or 2
     local completed = false
-    local conn
-    conn = tween.Completed:Connect(function() completed = true end)
+    local conn = tween.Completed:Connect(function() completed = true end)
     local startedAt = tick()
     while not completed and tick() - startedAt < timeout do
         if ResetWaveTeleporting then break end
@@ -2328,24 +2311,21 @@ function WaitTweenWithTimeout(tween, timeout)
     return completed
 end
 
--- ★ 修改后的 MoveCharacterToFarmCFrame：防掉落
 function MoveCharacterToFarmCFrame(cf)
     if ResetWaveTeleporting then return end
     if not Character or not HumanoidRootPart or not cf then return end
-
     local targetCF = GetStableFarmCFrame(cf)
     pcall(function()
         local humanoid = Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
             humanoid.Sit = false
             humanoid.AutoRotate = false
-            humanoid.PlatformStand = true   -- 防止掉落
+            humanoid.PlatformStand = true
         end
-
         Character:PivotTo(targetCF)
         HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
         HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-        HumanoidRootPart.Velocity = Vector3.zero  -- 清除所有速度
+        HumanoidRootPart.Velocity = Vector3.zero
         StabilizeFarmCamera()
     end)
 end
@@ -2708,7 +2688,6 @@ function SafeGetPriorityMob()
     return nil, nil, nil, 0
 end
 
--- ★ 修改后的 StartAutoAttack：攻击后强制刷新位置
 function StartAutoAttack()
     if AutoAttackLoopRunning then return end
     AutoAttackLoopRunning = true
@@ -2728,7 +2707,21 @@ function StartAutoAttack()
                     local remote = GetRemote("LMB")
                     if remote then
                         pcall(function() remote:FireServer() end)
-                        -- ★ 普通模式且随机传送开启 → 攻击后强制刷新位置
+                        -- ★ 环绕模式：每攻击2次切换方向（仅普通模式 + 环绕位置）
+                        if FarmTargetMode == "Normal Mode" and (FarmPosition == "环绕" or FarmPosition == "Orbit") then
+                            orbitAttackCount = orbitAttackCount + 1
+                            if orbitAttackCount >= 2 then
+                                orbitAttackCount = 0
+                                orbitDirectionIndex = (orbitDirectionIndex + 1) % 4
+                                FarmForceRetarget = true
+                                task.delay(0.1, function()
+                                    if not IsAntiJeffreyEscapePauseActive() then
+                                        FarmForceRetarget = false
+                                    end
+                                end)
+                            end
+                        end
+                        -- ★ 随机方向传送（独立于环绕）
                         if FarmTargetMode == "Normal Mode" and randomTeleportEnabled then
                             FarmForceRetarget = true
                             task.delay(0.08, function()
@@ -2749,7 +2742,6 @@ function StartAutoAttack()
                 task.wait(0.25)
             end
         end
-
         AutoAttackLoopRunning = false
     end)
 end
@@ -2800,7 +2792,6 @@ function StartAutoSkill()
             end
             task.wait(0.05)
         end
-
         AutoSkillLoopRunning = false
     end)
 end
@@ -2841,16 +2832,16 @@ function SaveAndBoostFPS()
     BoostFPS_LightingData = {}
     local Lighting = game:GetService("Lighting")
     BoostFPS_LightingData = {
-        Brightness        = Lighting.Brightness,
-        GlobalShadows     = Lighting.GlobalShadows,
-        FogEnd            = Lighting.FogEnd,
-        FogStart          = Lighting.FogStart,
+        Brightness = Lighting.Brightness,
+        GlobalShadows = Lighting.GlobalShadows,
+        FogEnd = Lighting.FogEnd,
+        FogStart = Lighting.FogStart,
     }
     pcall(function()
         Lighting.GlobalShadows = false
-        Lighting.Brightness    = 1
-        Lighting.FogEnd        = 100000
-        Lighting.FogStart      = 100000
+        Lighting.Brightness = 1
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 100000
     end)
     for _, effect in ipairs(Lighting:GetChildren()) do
         pcall(function()
@@ -2870,11 +2861,11 @@ function SaveAndBoostFPS()
                     if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
                         BoostFPS_OriginalData[obj] = {
                             Transparency = obj.Transparency,
-                            CastShadow   = obj.CastShadow,
-                            Material     = obj.Material,
+                            CastShadow = obj.CastShadow,
+                            Material = obj.Material,
                         }
                         obj.Transparency = 1
-                        obj.CastShadow   = false
+                        obj.CastShadow = false
                         pcall(function() obj.Material = Enum.Material.SmoothPlastic end)
                     end
                 end
@@ -2899,7 +2890,7 @@ function SaveAndBoostFPS()
             if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
                 if not IsLivingDescendant(obj) then
                     obj.Transparency = 1
-                    obj.CastShadow   = false
+                    obj.CastShadow = false
                 end
             elseif obj:IsA("Decal") or obj:IsA("Texture") then
                 obj.Transparency = 1
@@ -2921,10 +2912,10 @@ function RestoreBoostFPS()
     end
     local Lighting = game:GetService("Lighting")
     pcall(function()
-        if BoostFPS_LightingData.Brightness        ~= nil then Lighting.Brightness        = BoostFPS_LightingData.Brightness end
-        if BoostFPS_LightingData.GlobalShadows     ~= nil then Lighting.GlobalShadows     = BoostFPS_LightingData.GlobalShadows end
-        if BoostFPS_LightingData.FogEnd            ~= nil then Lighting.FogEnd            = BoostFPS_LightingData.FogEnd end
-        if BoostFPS_LightingData.FogStart          ~= nil then Lighting.FogStart          = BoostFPS_LightingData.FogStart end
+        if BoostFPS_LightingData.Brightness ~= nil then Lighting.Brightness = BoostFPS_LightingData.Brightness end
+        if BoostFPS_LightingData.GlobalShadows ~= nil then Lighting.GlobalShadows = BoostFPS_LightingData.GlobalShadows end
+        if BoostFPS_LightingData.FogEnd ~= nil then Lighting.FogEnd = BoostFPS_LightingData.FogEnd end
+        if BoostFPS_LightingData.FogStart ~= nil then Lighting.FogStart = BoostFPS_LightingData.FogStart end
     end)
     for key, data in pairs(BoostFPS_LightingData) do
         if type(key) == "string" and key:sub(1, 7) == "effect_" then
@@ -2940,9 +2931,9 @@ function RestoreBoostFPS()
                 obj.Transparency = data.Transparency
             end
             if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
-            if data.Material   ~= nil then pcall(function() obj.Material = data.Material end) end
-            if data.Enabled    ~= nil then pcall(function() obj.Enabled  = data.Enabled  end) end
-            if data.TextureId  ~= nil then obj.TextureId = data.TextureId end
+            if data.Material ~= nil then pcall(function() obj.Material = data.Material end) end
+            if data.Enabled ~= nil then pcall(function() obj.Enabled = data.Enabled end) end
+            if data.TextureId ~= nil then obj.TextureId = data.TextureId end
         end)
     end
     BoostFPS_OriginalData = {}
@@ -2961,7 +2952,7 @@ task.spawn(function()
                         if not IsLivingDescendant(obj) then
                             if obj.Transparency < 0.99 and not BoostFPS_OriginalData[obj] then
                                 obj.Transparency = 1
-                                obj.CastShadow   = false
+                                obj.CastShadow = false
                             end
                         end
                     end
@@ -3283,7 +3274,7 @@ Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 
 Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统\n• [新增] 随机方向传送（普通模式）\n• [新增] CDAttack 触发闪避",
+    Desc = "更新日期: 07/09/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统\n• [新增] 随机方向传送（普通模式）\n• [新增] CDAttack 触发闪避\n• [新增] 环绕模式（普通模式）— 每攻击2次切换方向",
     Image = "rbxassetid://103720636367587",
     ImageSize = 26,
 })
@@ -3353,6 +3344,7 @@ FarmTargetModeDropdown = Main:Dropdown({
 
 Main:Section({ Title = "刷怪设置", Icon = "settings" })
 
+-- ★ 修改后的下拉菜单：增加"环绕"
 PositionDropdown = Main:Dropdown({
     Title = "刷怪位置",
     Desc = "选择角色在目标周围停留的位置。",
@@ -3364,6 +3356,24 @@ PositionDropdown = Main:Dropdown({
         FarmPosition = english
         Config:Set("FarmPosition", english)
         Config:Save()
+        -- ★ 如果选择了"环绕"但当前不是普通模式，弹窗提示
+        if (english == "环绕" or english == "Orbit") and FarmTargetMode ~= "Normal Mode" then
+            WindUI:Notify({
+                Title = "环绕模式",
+                Content = "⚠️ 环绕模式仅限普通模式使用！请先切换刷怪模式为\"普通模式\"",
+                Duration = 4,
+                Icon = "triangle-alert"
+            })
+            -- 自动切换为"上方"
+            FarmPosition = "Above"
+            Config:Set("FarmPosition", "Above")
+            Config:Save()
+            pcall(function()
+                if PositionDropdown and PositionDropdown.Set then
+                    PositionDropdown:Set("上方")
+                end
+            end)
+        end
     end
 })
 
@@ -3402,14 +3412,15 @@ Main:Toggle({
     end
 })
 
--- ★ 随机传送半径滑块（复用 circleRadius）
+-- ★ 随机传送半径滑块（同时控制环绕半径）
 Main:Slider({
-    Title = "传送半径（格）",
-    Desc = "最大传送距离，实际为 60%~100% 随机。",
+    Title = "传送/环绕半径（格）",
+    Desc = "最大传送距离 / 环绕半径，实际值在 60%~100% 随机。",
     Value = { Min = 2, Max = 10, Default = circleRadius },
     Step = 0.5,
     Callback = function(value)
         circleRadius = value
+        orbitRadius = value
         Config:Set("CircleRadius", value)
         Config:Save()
     end
@@ -3679,14 +3690,14 @@ Main:Button({
     Desc = "清除所有已保存的怪物高度位置并重置为默认值。",
     Callback = function()
         MobConfirmedPadding = {}
-        MobHeightOverride   = {}
+        MobHeightOverride = {}
         WindUI:Notify({ Title = "覆盖重置", Content = "所有已确认的怪物位置已清除。", Duration = 2, Icon = "refresh-cw" })
     end
 })
 
 Main:Section({ Title = "冲刷设置", Icon = "toilet" })
 
-Flushaura      = Config:Get("flushaura", false)
+Flushaura = Config:Get("flushaura", false)
 FlushAuraValue = Config:Get("FlushAuraValue", 5)
 
 Main:Slider({
@@ -3836,7 +3847,7 @@ Main2:Section({ Title = "玩家", Icon = "user" })
 
 WSValue = Config:Get("WSValue", 16)
 JPValue = Config:Get("JPValue", 50)
-NoClip  = Config:Get("NoClip", false)
+NoClip = Config:Get("NoClip", false)
 LockMovementStats = Config:Get("LockMovementStats", true)
 
 FlyEnabled = Config:Get("FlyEnabled", false)
@@ -4277,23 +4288,20 @@ end)
 Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
 
 _G.__YYA_ShopSystems = function()
-    -- 完整商店系统，与 xckj.lua 完全一致
+    -- 完整商店系统，与之前版本完全一致
     local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
-
     local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
-    local autoGachaSkinEnabled      = Config:Get("AutoGachaSkinEnabled", false)
+    local autoGachaSkinEnabled = Config:Get("AutoGachaSkinEnabled", false)
     local selectedGachaCharacterArg = Config:Get("SelectedGachaCharacterArg", "1次抽奖")
-    local selectedGachaSkinArg      = Config:Get("SelectedGachaSkinArg", "1次抽奖")
-    local characterGachaRunning     = false
-    local skinGachaRunning          = false
-
-    local autoUseItemEnabled        = Config:Get("AutoUseItemEnabled", false)
-    local selectedUseItem           = Config:Get("SelectedUseItem", "Presents")
-    local useItemRunning            = false
-
-    local selectedRequestItem       = Config:Get("SelectedRequestItem", "泰坦请求")
-    local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
-    local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
+    local selectedGachaSkinArg = Config:Get("SelectedGachaSkinArg", "1次抽奖")
+    local characterGachaRunning = false
+    local skinGachaRunning = false
+    local autoUseItemEnabled = Config:Get("AutoUseItemEnabled", false)
+    local selectedUseItem = Config:Get("SelectedUseItem", "Presents")
+    local useItemRunning = false
+    local selectedRequestItem = Config:Get("SelectedRequestItem", "泰坦请求")
+    local autoRequestEnabled = Config:Get("AutoRequestEnabled", false)
+    local autoSkillTreeEnabled = Config:Get("AutoSkillTreeEnabled", false)
 
     local function EnsureList(value, fallback)
         if type(value) == "table" then return value end
@@ -4571,8 +4579,8 @@ _G.__YYA_ShopSystems = function()
     Main5:Section({ Title = "商店升级", Icon = "arrow-big-up-dash" })
 
     local selectedTitanSpeakerUpgrades = EnsureList(Config:Get("SelectedTitanSpeakerUpgrades", { "Jetpack" }), { "Jetpack" })
-    local selectedUTCMUpgrades         = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
-    local selectedTVUpgrades           = EnsureList(Config:Get("SelectedTVUpgrades", { "Absorb" }), { "Absorb" })
+    local selectedUTCMUpgrades = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
+    local selectedTVUpgrades = EnsureList(Config:Get("SelectedTVUpgrades", { "Absorb" }), { "Absorb" })
 
     local titanDisplay = {}
     for _, v in ipairs(selectedTitanSpeakerUpgrades) do
@@ -4588,8 +4596,8 @@ _G.__YYA_ShopSystems = function()
     end
 
     local upgradeTitanSpeakerEnabled = Config:Get("UpgradeTitanSpeakerEnabled", false)
-    local upgradeUTCMEnabled         = Config:Get("UpgradeUTCMEnabled", false)
-    local upgradeTVEnabled           = Config:Get("UpgradeTVEnabled", false)
+    local upgradeUTCMEnabled = Config:Get("UpgradeUTCMEnabled", false)
+    local upgradeTVEnabled = Config:Get("UpgradeTVEnabled", false)
 
     Main5:Dropdown({
         Title = "选择泰坦扬声器升级",
@@ -4683,7 +4691,7 @@ _G.__YYA_ShopSystems = function()
 
     Main5:Section({ Title = "商店武器", Icon = "helicopter" })
 
-    local autoBuyWeaponValue   = Config:Get("AutoBuyWeaponValue", "电击枪")
+    local autoBuyWeaponValue = Config:Get("AutoBuyWeaponValue", "电击枪")
     local autoBuyWeaponEnabled = Config:Get("AutoBuyWeaponEnabled", false)
 
     Main5:Dropdown({
@@ -4725,7 +4733,7 @@ _G.__YYA_ShopSystems = function()
 
     Main5:Section({ Title = "商店杂项", Icon = "package" })
 
-    local autoBuyMiscValue   = Config:Get("AutoBuyMiscValue", "头戴式耳机")
+    local autoBuyMiscValue = Config:Get("AutoBuyMiscValue", "头戴式耳机")
     local autoBuyMiscEnabled = Config:Get("AutoBuyMiscEnabled", false)
 
     Main5:Dropdown({
@@ -4812,15 +4820,15 @@ _G.__YYA_ShopSystems = function()
 
     Main5:Section({ Title = "商店小时购", Icon = "clock" })
 
-    local selectedShopHourlyItems   = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
+    local selectedShopHourlyItems = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
     local hourlyDisplay = {}
     for _, v in ipairs(selectedShopHourlyItems) do
         table.insert(hourlyDisplay, GetShopHourlyDisplay(v))
     end
 
-    local shopHourlyItemAmount      = Config:Get("ShopHourlyItemAmount", 1)
-    local buyItemHourlyEnabled      = Config:Get("BuyItemHourlyEnabled", false)
-    local buyItemHourlyRunning      = false
+    local shopHourlyItemAmount = Config:Get("ShopHourlyItemAmount", 1)
+    local buyItemHourlyEnabled = Config:Get("BuyItemHourlyEnabled", false)
+    local buyItemHourlyRunning = false
 
     Main5:Dropdown({
         Title = "选择商店小时购",
@@ -4894,13 +4902,11 @@ _G.__YYA_ShopSystems = function()
             FireShopRemote("ShopSystem", "Buy", english)
             task.wait(0.35)
         end
-
         if autoBuyMiscEnabled and autoBuyMiscValue then
             local english = MiscMap[autoBuyMiscValue] or autoBuyMiscValue
             FireShopRemote("ShopSystem", "Buy", english)
             task.wait(0.35)
         end
-
         if autoRequestEnabled and selectedRequestItem then
             if IsRequestWaveReady() then
                 local english = RequestMap[selectedRequestItem] or selectedRequestItem
@@ -4910,26 +4916,22 @@ _G.__YYA_ShopSystems = function()
             end
             task.wait(0.35)
         end
-
         if autoSkillTreeEnabled then
             FireAutoSkillTrees()
             task.wait(0.35)
         end
-
         if upgradeTitanSpeakerEnabled then
             for _, upgradeName in ipairs(selectedTitanSpeakerUpgrades or {}) do
                 FireShopRemote("ChangeUpgradedTitanSpeaker", upgradeName)
                 task.wait(0.35)
             end
         end
-
         if upgradeUTCMEnabled then
             for _, upgradeName in ipairs(selectedUTCMUpgrades or {}) do
                 FireShopRemote("ForUpgradeUTCM", upgradeName)
                 task.wait(0.35)
             end
         end
-
         if upgradeTVEnabled then
             for _, upgradeName in ipairs(selectedTVUpgrades or {}) do
                 FireShopRemote("ForUpgradeTV", upgradeName)
@@ -5485,8 +5487,7 @@ function notify(title, content, icon)
 end
 
 task.spawn(function()
-    local playBtn =
-        workspace:FindFirstChild("ForGui") and
+    local playBtn = workspace:FindFirstChild("ForGui") and
         workspace.ForGui:FindFirstChild("SurfaceGui") and
         workspace.ForGui.SurfaceGui:FindFirstChild("Frame") and
         workspace.ForGui.SurfaceGui.Frame:FindFirstChild("Play")
@@ -5494,9 +5495,7 @@ task.spawn(function()
     if playBtn then
         notify("自动游戏模式（大厅）", "检测到 Play 按钮，自动开始...")
         task.wait(DELAY)
-
         local playGui = pg:FindFirstChild("Play")
-
         if not (playGui and playGui.Enabled) then
             click_btn(playBtn)
             notify("自动游戏模式（大厅）", "已按下 Play 按钮")
@@ -5506,12 +5505,9 @@ task.spawn(function()
     end
 
     task.wait(DELAY)
-
     local playGui = pg:FindFirstChild("Play")
     if not (playGui and playGui.Enabled) then return end
-
     local classicBtn = playGui:FindFirstChild("Classic")
-
     if classicBtn then
         notify("自动游戏模式（大厅）", "正在选择经典模式...")
         task.wait(DELAY)
@@ -5519,14 +5515,10 @@ task.spawn(function()
     end
 
     task.wait(DELAY)
-
     local modeGui = pg:FindFirstChild("mode select2")
-
     if modeGui and modeGui.Enabled then
-        local diffBtn =
-            modeGui:FindFirstChild("MainFrame") and
+        local diffBtn = modeGui:FindFirstChild("MainFrame") and
             modeGui.MainFrame:FindFirstChild("DiffMode")
-
         if diffBtn then
             notify("自动游戏模式（大厅）", "正在选择难度...")
             task.wait(DELAY)
@@ -5540,44 +5532,32 @@ AutoVoteEnabled = Config:Get("AutoVoteEnabled", false)
 task.spawn(function()
     while true do
         task.wait(0.5)
-
         local loadingGui = pg:FindFirstChild("LoadingScreen")
-
         if loadingGui then
             notify("自动游戏模式（大厅）", "检测到大厅，准备自动设置...")
             pcall(function() loadingGui:Destroy() end)
         end
-
         local lobby = pg:FindFirstChild("Lobby")
-
         if lobby and lobby.Enabled then
             notify("自动游戏模式（大厅）", "检测到大厅，准备自动设置...")
-
-            local btn =
-                lobby:FindFirstChild("MainFrame") and
+            local btn = lobby:FindFirstChild("MainFrame") and
                 lobby.MainFrame:FindFirstChild("Frame") and
                 lobby.MainFrame.Frame:FindFirstChild("Create") and
                 lobby.MainFrame.Frame.Create:FindFirstChild("TrackQuestButton")
-
             if btn and btn.Visible then
                 notify("自动游戏模式（大厅）", "正在按下 TrackQuestButton...")
                 click_btn(btn)
-
                 task.wait(0.5)
-
                 if AutoVoteEnabled then
                     notify("自动游戏模式（大厅）", "正在创建游戏模式...")
-
                     ReplicatedStorage.MainHandler:FireServer({
                         [1] = "StartSolo",
                         [2] = AutoGameValue
                     })
-
                     notify("自动游戏模式（大厅）", "游戏模式创建成功！")
                 else
                     notify("自动游戏模式（大厅）", "请使用自动游戏模式！")
                 end
-
                 break
             end
         end
@@ -5592,7 +5572,6 @@ AutoVoteToggle = Main7:Toggle({
         AutoVoteEnabled = enabled
         Config:Set("AutoVoteEnabled", enabled)
         Config:Save()
-
         if enabled then
             notify("自动游戏模式（大厅）", "已启用")
         else
@@ -5803,8 +5782,8 @@ Main3:Button({
 })
 
 AutoSaveEnabled = Config:Get("AutoSaveEnabled", true)
-AutoSaveDelay   = Config:Get("AutoSaveDelay", 15)
-AutoSaveThread  = nil
+AutoSaveDelay = Config:Get("AutoSaveDelay", 15)
+AutoSaveThread = nil
 
 function RestartAutoSave()
     if AutoSaveThread then
@@ -6165,9 +6144,9 @@ function GetESPSettings()
     local s = ESP.Settings
     return {
         highlight = table.find(s, "高亮") ~= nil,
-        distance  = table.find(s, "距离") ~= nil,
-        health    = table.find(s, "血量") ~= nil,
-        name      = table.find(s, "名称") ~= nil,
+        distance = table.find(s, "距离") ~= nil,
+        health = table.find(s, "血量") ~= nil,
+        name = table.find(s, "名称") ~= nil,
     }
 end
 
@@ -6393,15 +6372,11 @@ end)
 -- ====================== COLLECT SYSTEM ======================
 -- ============================================================
 
--- ★ 修改后的 MatchesPattern：只针对 Special-Request 使用子串匹配
 function MatchesPattern(objectName, pattern)
     local objL, patL = tostring(objectName or ""):lower(), tostring(pattern or ""):lower()
-    
-    -- ★ 特殊处理：Special-Request 只要包含 "request" 就匹配（不区分大小写）
     if pattern == "Special-Request" then
         return objL:find("request", 1, true) ~= nil
     end
-    
     if objL == patL then return true end
     if #objL > #patL and objL:sub(1, #patL) == patL then
         local nc = objL:sub(#patL + 1, #patL + 1)
@@ -7705,7 +7680,7 @@ function HandleMiscOptions(selectedOptions)
     end
 
     SafeModeEnabled = table.find(selectedOptions, "安全模式") ~= nil and canRun
-    GodModeEnabled  = table.find(selectedOptions, "上帝模式") ~= nil and canRun
+    GodModeEnabled = table.find(selectedOptions, "上帝模式") ~= nil and canRun
 
     local hasResetWave = table.find(selectedOptions, "重置波次")
     if hasResetWave and canRun then
@@ -7748,9 +7723,9 @@ end
 LocalPlayer.CharacterAdded:Connect(function(char)
     local keepFarmAstroBottomLock = ShouldKeepFarmAstroFinalLock and ShouldKeepFarmAstroFinalLock()
 
-    Character        = char
+    Character = char
     HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
-    Client           = LocalPlayer
+    Client = LocalPlayer
     FarmAstroTokenRespawnCounter = FarmAstroTokenRespawnCounter + 1
 
     ResetWaveToken = (ResetWaveToken or 0) + 1
@@ -7791,11 +7766,11 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 
     JeffreyCacheAt = 0
     UpdateYYAWaitingPartCollision()
-    MobHeightOverride   = {}
+    MobHeightOverride = {}
     MobConfirmedPadding = {}
-    MobLastHealth       = {}
+    MobLastHealth = {}
     IdlePositionReached = false
-    LastIdleTeleportAt  = 0
+    LastIdleTeleportAt = 0
     InvalidateMobCache("角色重生")
     ClearMobBoundsCache()
     FarmForceRetarget = true
@@ -7833,7 +7808,6 @@ task.spawn(function()
         local lobby = pg:FindFirstChild("Lobby")
         local loading = pg:FindFirstChild("LoadingScreen")
         local openVote = pg:FindFirstChild("OpenVoteUI")
-        
         if (lobby and lobby.Enabled) or (loading and loading.Enabled) then
             inMap = false
             task.wait(1)
@@ -7870,6 +7844,42 @@ task.spawn(function()
 end)
 
 -- ============================================================
+-- ====================== ★ CDAttack 闪避系统 ======================
+-- ============================================================
+
+function BindCDAttack(monster)
+    if not monster or not monster.Parent then return end
+    if CDAttackBoundMonsters[monster] then return end
+    CDAttackBoundMonsters[monster] = true
+
+    local ai = monster:FindFirstChild("AIFolders")
+    if not ai then return end
+    local cd = ai:FindFirstChild("CDAttack")
+    if not cd then return end
+
+    cd:GetPropertyChangedSignal("Value"):Connect(function()
+        if not cd.Value then return end
+        if tick() - CDAttackLastDodge < CDAttackDodgeCooldown then return end
+        CDAttackLastDodge = tick()
+
+        if AutoFarmEnabled and FarmTargetMode == "Normal Mode" and randomTeleportEnabled then
+            local cf = GetTargetCFrame(monster, FarmPosition)
+            if cf then
+                MoveCharacterToFarmCFrame(cf)
+            end
+        end
+    end)
+end
+
+function InitializeCDAttackBinding()
+    for _, mob in ipairs(workspace:GetDescendants()) do
+        if IsValidMob(mob) then
+            BindCDAttack(mob)
+        end
+    end
+end
+
+-- ============================================================
 -- ====================== APPLY SAVED CONFIG ON LOAD ======================
 -- ============================================================
 function ApplySavedConfigOnStartup()
@@ -7880,7 +7890,10 @@ function ApplySavedConfigOnStartup()
     if FullBrightEnabled then ApplyFullBright() end
     if NoFogEnabled then ApplyNoFog() end
 
-    -- ★ 随机传送状态由配置加载，无需额外重置
+    -- ★ 重置环绕状态
+    orbitDirectionIndex = 0
+    orbitAttackCount = 0
+    _orbitModeActive = false
 
     if FarmAstroTokenEnabled and AutoFarmEnabled then
         FarmAstroTokenEnabled = false
@@ -7919,47 +7932,7 @@ function ApplySavedConfigOnStartup()
         StartAutoVoteLoop()
     end
 
-    -- ★ 初始化 CDAttack 绑定（新增）
     InitializeCDAttackBinding()
-end
-
--- ============================================================
--- ====================== ★ CDAttack 闪避系统（新增） ======================
--- ============================================================
-
-function BindCDAttack(monster)
-    if not monster or not monster.Parent then return end
-    if CDAttackBoundMonsters[monster] then return end
-    CDAttackBoundMonsters[monster] = true
-
-    local ai = monster:FindFirstChild("AIFolders")
-    if not ai then return end
-    local cd = ai:FindFirstChild("CDAttack")
-    if not cd then return end
-
-    cd:GetPropertyChangedSignal("Value"):Connect(function()
-        if not cd.Value then return end
-        if tick() - CDAttackLastDodge < CDAttackDodgeCooldown then return end
-        CDAttackLastDodge = tick()
-
-        -- ★ 执行现有随机方向传送
-        if AutoFarmEnabled and FarmTargetMode == "Normal Mode" and randomTeleportEnabled then
-            local cf = GetTargetCFrame(monster, FarmPosition)
-            if cf then
-                MoveCharacterToFarmCFrame(cf)
-            end
-        end
-    end)
-end
-
-function InitializeCDAttackBinding()
-    -- 遍历所有现有怪物进行绑定
-    for _, mob in ipairs(workspace:GetDescendants()) do
-        if IsValidMob(mob) then
-            BindCDAttack(mob)
-        end
-    end
-    -- 监听新出现的怪物（绑定已在 HookMobCacheFolder 和 RebuildMobCache 中处理）
 end
 
 -- ============================================================
@@ -7988,4 +7961,4 @@ print("[YYa] 至尊版 - ESP、商店系统、自动收集全部完整保留")
 print("[YYa] 至尊版 - 投票UI已汉化")
 print("[YYa] 至尊版 - 新增：随机方向传送（普通模式）")
 print("[YYa] 至尊版 - 新增：CDAttack 触发闪避")
-
+print("[YYa] 至尊版 - 新增：环绕模式（普通模式）— 每攻击2次切换方向")
