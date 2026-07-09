@@ -1,8 +1,9 @@
 -- v190 | [Local Register Fix] | 完整融合版（基于原版UI渲染顺序）
 -- 版本: 完整增强版 | 包含: Astro令牌 + 完整收集 + 汉化投票 + 随机方向传送（普通模式）
+-- ★ 新增: CDAttack 触发随机闪避
 -- =========================
 version = "Rework"
-ver = "v024.01"
+ver = "v024.02"
 -- =========================
 
 -- ====================== LOAD UI ======================
@@ -666,6 +667,11 @@ CombatDebugCooldowns   = {}
 -- ★ 随机方向传送变量
 circleRadius = Config:Get("CircleRadius", 5)   -- 最大传送半径（格）
 randomTeleportEnabled = Config:Get("RandomTeleportEnabled", false)  -- 开关
+
+-- ★ CDAttack 闪避（新增）
+CDAttackDodgeCooldown = 0.25
+CDAttackLastDodge = 0
+CDAttackBoundMonsters = {}
 
 -- ====================== COLLECT VARIABLES ======================
 CollectItems = {
@@ -1824,6 +1830,10 @@ function HookMobCacheFolder(folder)
         return
     end
     MobCacheChildAddedConnection = folder.ChildAdded:Connect(function(obj)
+        -- ★ 新增：对每个新出现的有效怪物绑定 CDAttack
+        if IsValidMob(obj) then
+            BindCDAttack(obj)
+        end
         InvalidateMobCache("怪物添加")
         CombatDebug("MobCacheAdded", "怪物出现: " .. tostring(obj and obj.Name or "nil"), 2)
         task.delay(0.15, function()
@@ -1866,7 +1876,11 @@ function RebuildMobCache()
     MobCacheList = {}
     if folder then
         for _, mob in ipairs(folder:GetChildren()) do
-            if IsValidMob(mob) then table.insert(MobCacheList, mob) end
+            if IsValidMob(mob) then
+                -- ★ 新增：绑定 CDAttack
+                BindCDAttack(mob)
+                table.insert(MobCacheList, mob)
+            end
         end
     end
     MobCacheDirty = false
@@ -3269,7 +3283,7 @@ Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 
 Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统\n• [新增] 随机方向传送（普通模式）",
+    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统\n• [新增] 随机方向传送（普通模式）\n• [新增] CDAttack 触发闪避",
     Image = "rbxassetid://103720636367587",
     ImageSize = 26,
 })
@@ -7904,6 +7918,48 @@ function ApplySavedConfigOnStartup()
     if AutoVoteinGameEnabled then
         StartAutoVoteLoop()
     end
+
+    -- ★ 初始化 CDAttack 绑定（新增）
+    InitializeCDAttackBinding()
+end
+
+-- ============================================================
+-- ====================== ★ CDAttack 闪避系统（新增） ======================
+-- ============================================================
+
+function BindCDAttack(monster)
+    if not monster or not monster.Parent then return end
+    if CDAttackBoundMonsters[monster] then return end
+    CDAttackBoundMonsters[monster] = true
+
+    local ai = monster:FindFirstChild("AIFolders")
+    if not ai then return end
+    local cd = ai:FindFirstChild("CDAttack")
+    if not cd then return end
+
+    cd:GetPropertyChangedSignal("Value"):Connect(function()
+        if not cd.Value then return end
+        if tick() - CDAttackLastDodge < CDAttackDodgeCooldown then return end
+        CDAttackLastDodge = tick()
+
+        -- ★ 执行现有随机方向传送
+        if AutoFarmEnabled and FarmTargetMode == "Normal Mode" and randomTeleportEnabled then
+            local cf = GetTargetCFrame(monster, FarmPosition)
+            if cf then
+                MoveCharacterToFarmCFrame(cf)
+            end
+        end
+    end)
+end
+
+function InitializeCDAttackBinding()
+    -- 遍历所有现有怪物进行绑定
+    for _, mob in ipairs(workspace:GetDescendants()) do
+        if IsValidMob(mob) then
+            BindCDAttack(mob)
+        end
+    end
+    -- 监听新出现的怪物（绑定已在 HookMobCacheFolder 和 RebuildMobCache 中处理）
 end
 
 -- ============================================================
@@ -7931,3 +7987,5 @@ print("[YYa] 至尊版 - 丧失V2模式已移除")
 print("[YYa] 至尊版 - ESP、商店系统、自动收集全部完整保留")
 print("[YYa] 至尊版 - 投票UI已汉化")
 print("[YYa] 至尊版 - 新增：随机方向传送（普通模式）")
+print("[YYa] 至尊版 - 新增：CDAttack 触发闪避")
+
