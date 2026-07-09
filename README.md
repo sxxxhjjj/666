@@ -1,8 +1,8 @@
 -- v190 | [Local Register Fix] | 完整融合版（基于原版UI渲染顺序）
--- 版本: 完整版 | 包含: Astro令牌 + 完整收集 + 汉化投票
+-- 版本: 完整增强版 | 包含: Astro令牌 + 完整收集 + 汉化投票 + 随机方向传送（普通模式）
 -- =========================
 version = "Rework"
-ver = "v023.92"
+ver = "v024.01"
 -- =========================
 
 -- ====================== LOAD UI ======================
@@ -179,7 +179,7 @@ Window:EditOpenButton({
     Draggable = true
 })
 
--- ====================== TABS（按原脚本顺序） ======================
+-- ====================== TABS ======================
 Info = Window:Tab({ Title = "信息", Icon = "info" })
 MainDivider = Window:Divider()
 Main = Window:Tab({ Title = "主要", Icon = "rocket" })
@@ -212,7 +212,6 @@ function CustomConfig.new()
 end
 
 function CustomConfig:Set(key, value) self.ConfigData[key] = value end
-
 function CustomConfig:Get(key, default)
     if self.ConfigData[key] ~= nil then return self.ConfigData[key] end
     return default
@@ -220,7 +219,6 @@ end
 
 function CustomConfig:Save(force)
     if not writefile then return false end
-
     local now = tick()
     if not force and self._LastSaveAt and now - self._LastSaveAt < 0.75 then
         if not self._SaveQueued then
@@ -232,11 +230,9 @@ function CustomConfig:Save(force)
         end
         return true
     end
-
     local success, err = pcall(function()
         writefile(self.ConfigPath, HttpService:JSONEncode(self.ConfigData))
     end)
-
     if success then
         self._LastSaveAt = now
         return true
@@ -667,10 +663,9 @@ FarmCollecting         = false
 CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
--- ★ 环形走位变量（无开关，普通模式自动生效）
-circleRadius = Config:Get("CircleRadius", 5)   -- 环绕半径（格）
-circleDirectionIndex = 0                       -- 0:前, 1:左, 2:右, 3:后
-circleAttackCount = 0                          -- 当前方向已攻击次数
+-- ★ 随机方向传送变量
+circleRadius = Config:Get("CircleRadius", 5)   -- 最大传送半径（格）
+randomTeleportEnabled = Config:Get("RandomTeleportEnabled", false)  -- 开关
 
 -- ====================== COLLECT VARIABLES ======================
 CollectItems = {
@@ -721,10 +716,8 @@ function UpdateYYAWaitingPartCollision()
         part = nil
         return
     end
-
     local waitingPart = EnsureYYAWaitingPart and EnsureYYAWaitingPart() or GetYYAWaitingPart()
     if not waitingPart then return end
-
     part = waitingPart
     pcall(function() ConfigureYYAWaitingPart(waitingPart) end)
 end
@@ -742,13 +735,10 @@ function CombatDebug(tag, message, cooldown, showNotify)
     cooldown = cooldown or 3
     local now = tick()
     local key = tostring(tag or "Debug")
-
     if CombatDebugCooldowns[key] and now - CombatDebugCooldowns[key] < cooldown then return end
     CombatDebugCooldowns[key] = now
-
     local text = "[YYa][" .. key .. "] " .. tostring(message or "")
     print(text)
-
     if showNotify and WindUI then
         pcall(function()
             WindUI:Notify({ Title = "战斗调试", Content = tostring(message or ""), Duration = 3, Icon = "bug" })
@@ -774,13 +764,9 @@ function StopMiscFarmRuntime(reason)
     ResetWaveLastTriggeredWave = nil
     ResetWaveLastTriggeredKey = nil
     FillUpRunning = false
-
     if AutoStartEnabled then StopAutoStart() end
-
     pcall(function() TriggerAutoSkipHeli(false) end)
-
     if BoostFPS_Active then RestoreBoostFPS() end
-
     CombatDebug("MiscGate", "杂项功能已停止: " .. tostring(reason or "同步锁定"), 3)
 end
 
@@ -800,16 +786,14 @@ CameraSyncToken = 0
 
 function GetCameraTargetForMode(char)
     if not char or not char.Parent then return nil, nil end
-
     local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
-
     if CameraMode == "Classic" then
         return char:FindFirstChild("Head") or humanoid or char:FindFirstChild("HumanoidRootPart"), humanoid
     end
-
     return humanoid or char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head"), humanoid
 end
 
+-- ★ 修改后的 ApplyCameraMode：普通模式 + 随机传送开启 → 强制锁定怪物视角
 function ApplyCameraMode(force)
     local now = tick()
     if force ~= true and now - (CameraLastApplyAt or 0) < (CameraApplyCooldown or 0.22) then return end
@@ -820,18 +804,33 @@ function ApplyCameraMode(force)
         local char = LocalPlayer.Character or Character
         if not cam or not char then return end
 
+        -- ★ 普通模式且开启随机传送 → 锁定视角看向目标怪物
+        if FarmTargetMode == "Normal Mode" and AutoFarmEnabled and randomTeleportEnabled then
+            local mob = SafeGetPriorityMob()
+            if mob then
+                local mobRoot = GetMobRootPart(mob)
+                if mobRoot then
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local camPos = hrp.Position + Vector3.new(0, 2, 0)
+                        cam.CFrame = CFrame.new(camPos, mobRoot.Position)
+                        cam.CameraType = Enum.CameraType.Scriptable
+                        return
+                    end
+                end
+            end
+        end
+
+        -- 非普通模式或随机传送关闭 → 默认逻辑
         CameraMode = NormalizeCameraMode(CameraMode)
         local target, humanoid = GetCameraTargetForMode(char)
         if not target then return end
-
         if humanoid and not AutoFarmEnabled and not LockActive and not FarmCollecting then
             humanoid.AutoRotate = true
         end
-
         if cam.CameraType ~= Enum.CameraType.Custom then
             cam.CameraType = Enum.CameraType.Custom
         end
-
         if cam.CameraSubject ~= target then
             cam.CameraSubject = target
         end
@@ -847,12 +846,10 @@ function RequestCameraSync(force)
 end
 
 LastFarmCameraStabilize = 0
-
 function StabilizeFarmCamera()
     local now = tick()
     if now - (LastFarmCameraStabilize or 0) < 0.35 then return end
     LastFarmCameraStabilize = now
-
     if AutoFarmEnabled then ApplyCameraMode(false) end
 end
 
@@ -886,10 +883,8 @@ end
 function GetVoteUIFrame()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
-
     local voteGui = playerGui:FindFirstChild("OpenVoteUI")
     if not voteGui then return nil end
-
     return voteGui:FindFirstChild("OPEN UI")
 end
 
@@ -905,21 +900,16 @@ end
 
 function FireAutoVote(force)
     if not force and not IsVoteUIOpen() then return false end
-
     local now = tick()
     if now - AutoVoteLastFireAt < 0.25 then return false end
     AutoVoteLastFireAt = now
-
     local remote = GetRemote("Vote")
     if not remote then pcall(function() remote = ReplicatedStorage:WaitForChild("Vote", 3) end) end
     if not remote then return false end
-
     local englishValue = VoteMap[AutoVoteValue] or AutoVoteValue
-
     local ok, err = pcall(function()
         remote:FireServer(englishValue)
     end)
-
     if ok then
         HideVoteUI()
         print("[YYa] 自动投票已触发:", AutoVoteValue, "->", englishValue)
@@ -933,7 +923,6 @@ end
 function StartAutoVoteLoop()
     if AutoVoteLoopRunning then return end
     AutoVoteLoopRunning = true
-
     task.spawn(function()
         while AutoVoteinGameEnabled do
             if IsVoteUIOpen() then
@@ -945,7 +934,6 @@ function StartAutoVoteLoop()
             end
             task.wait(0.2)
         end
-
         AutoVoteLoopRunning = false
     end)
 end
@@ -992,7 +980,6 @@ AllyNames = {
     ["Gunner Camera man"] = true, ["Attack Helicopter"] = true,
     ["Swat Mutant"] = true, ["Huge DJ Toilet"] = true,
 }
-
 function IsAlly(mob) return AllyNames[mob.Name] ~= nil end
 
 -- ====================== TP SYSTEM ======================
@@ -1101,21 +1088,17 @@ end
 function GetJeffreyRoots(forceRefresh)
     local now = tick()
     if not forceRefresh and now - JeffreyCacheAt <= JeffreyCacheTTL then return JeffreyCacheList end
-
     local list, seen = {}, {}
     pcall(function()
         for _, obj in ipairs(workspace:GetChildren()) do AddJeffreyRootFromObject(obj, list, seen) end
-
         local living = workspace:FindFirstChild("Living")
         if living then
             for _, obj in ipairs(living:GetDescendants()) do AddJeffreyRootFromObject(obj, list, seen) end
         end
-
         if #list == 0 then
             for _, obj in ipairs(workspace:GetDescendants()) do AddJeffreyRootFromObject(obj, list, seen) end
         end
     end)
-
     JeffreyCacheList = list
     JeffreyCacheAt = now
     return JeffreyCacheList
@@ -1189,7 +1172,6 @@ function BreakFarmLockForJeffrey(reason, pauseTime)
     LockActive = false
     _interruptSignal = true
     WaitingRespawn = false
-
     pcall(function()
         RefreshCombatCharacter()
         if Character then
@@ -1204,7 +1186,6 @@ function BreakFarmLockForJeffrey(reason, pauseTime)
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
-
     task.delay(pauseTime + 0.25, function()
         if tick() >= (AntiJeffreyForceRetargetUntil or 0) and not FarmCollecting and not DarkDimensionCollecting then
             FarmForceRetarget = false
@@ -1276,23 +1257,19 @@ function IsFarmTargetSafeFromJeffrey(mob, forceRefresh)
     if not IsFarmJeffreyAvoidActive or not IsFarmJeffreyAvoidActive() then return true end
     if not mob or not mob.Parent then return false end
     if IsJeffreyName(mob.Name) or IsMobTemporarilyBlocked(mob) then return false end
-
     local root = GetMobRootPart(mob)
     if not root then return false end
-
     local range = GetFarmTargetDangerRange()
     if IsPositionBlockedByJeffrey(root.Position, range, forceRefresh == true) then
         MarkMobUnsafeByJeffrey(mob, 2.5)
         return false
     end
-
     local cf = nil
     pcall(function() cf = GetTargetCFrame(mob, FarmPosition) end)
     if cf and IsPositionBlockedByJeffrey(cf.Position, range, forceRefresh == true) then
         MarkMobUnsafeByJeffrey(mob, 2.5)
         return false
     end
-
     return true
 end
 
@@ -1316,7 +1293,6 @@ end
 function GetBarrierParts(forceRefresh)
     local now = tick()
     if not forceRefresh and now - (BarrierCacheAt or 0) <= (BarrierCacheTTL or 1.25) then return BarrierCacheParts or {} end
-
     local parts = {}
     local model = GetMapBarrierModel()
     if model then
@@ -1325,7 +1301,6 @@ function GetBarrierParts(forceRefresh)
         end
         if model:IsA("BasePart") then table.insert(parts, model) end
     end
-
     BarrierCacheParts = parts
     BarrierCacheAt = now
     BarrierBoundsCache = nil
@@ -1343,10 +1318,8 @@ end
 function GetBarrierBounds(forceRefresh)
     local now = tick()
     if not forceRefresh and BarrierBoundsCache and now - (BarrierBoundsAt or 0) <= (BarrierCacheTTL or 1.25) then return BarrierBoundsCache end
-
     local parts = GetBarrierParts(forceRefresh == true)
     if not parts or #parts == 0 then BarrierBoundsCache = nil return nil end
-
     local bounds = { minX = math.huge, maxX = -math.huge, minZ = math.huge, maxZ = -math.huge }
     for _, part in ipairs(parts) do
         if part and part.Parent and part:IsA("BasePart") then
@@ -1363,12 +1336,10 @@ function GetBarrierBounds(forceRefresh)
             end
         end
     end
-
     if bounds.minX == math.huge or bounds.maxX == -math.huge or bounds.minZ == math.huge or bounds.maxZ == -math.huge then
         BarrierBoundsCache = nil
         return nil
     end
-
     BarrierBoundsCache = bounds
     BarrierBoundsAt = now
     return BarrierBoundsCache
@@ -1388,7 +1359,6 @@ function ClampPositionInsideBarrier(pos, padding, forceRefresh)
     if not pos then return nil, false end
     local bounds = GetBarrierBounds(forceRefresh == true)
     if not bounds then return pos, false end
-
     padding = padding or BarrierInsetPadding or 8
     local minX, maxX = bounds.minX + padding, bounds.maxX - padding
     local minZ, maxZ = bounds.minZ + padding, bounds.maxZ - padding
@@ -1411,10 +1381,8 @@ function RaycastBarrierPath(fromPos, toPos, forceRefresh)
     if not fromPos or not toPos then return nil end
     local parts = GetBarrierParts(forceRefresh == true)
     if not parts or #parts == 0 then return nil end
-
     local direction = toPos - fromPos
     if direction.Magnitude <= 0.1 then return nil end
-
     local params = RaycastParams.new()
     pcall(function() params.FilterType = Enum.RaycastFilterType.Include end)
     if tostring(params.FilterType):find("Include") == nil then
@@ -1422,7 +1390,6 @@ function RaycastBarrierPath(fromPos, toPos, forceRefresh)
     end
     params.FilterDescendantsInstances = parts
     params.IgnoreWater = true
-
     local ok, result = pcall(function()
         return workspace:Raycast(fromPos, direction, params)
     end)
@@ -1432,11 +1399,9 @@ end
 
 function GetBarrierSafeEscapePosition(fromPos, wantedPos, forceRefresh)
     if not fromPos or not wantedPos then return nil, false end
-
     local adjusted = false
     local safePos, wasClamped = ClampPositionInsideBarrier(wantedPos, BarrierInsetPadding, forceRefresh == true)
     if wasClamped then adjusted = true end
-
     local hit = RaycastBarrierPath(fromPos, safePos, forceRefresh == true)
     if hit and hit.Position then
         local dir = safePos - fromPos
@@ -1445,16 +1410,13 @@ function GetBarrierSafeEscapePosition(fromPos, wantedPos, forceRefresh)
             adjusted = true
         end
     end
-
     local safePos2, wasClamped2 = ClampPositionInsideBarrier(safePos, BarrierInsetPadding, false)
     if wasClamped2 then adjusted = true end
     safePos = safePos2
-
     if not IsPositionInsideBarrier(safePos, BarrierInsetPadding, false) then
         safePos = ClampPositionInsideBarrier(fromPos, BarrierInsetPadding, false)
         adjusted = true
     end
-
     return safePos, adjusted
 end
 
@@ -1491,7 +1453,6 @@ end
 function GetBestJeffreyEscapeCFrame(step, forceRefresh)
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart then return nil end
-
     step = step or AntiJeffreyHardEscapeStep or 70
     local base = HumanoidRootPart.Position
     local look = HumanoidRootPart.CFrame.LookVector
@@ -1500,7 +1461,6 @@ function GetBestJeffreyEscapeCFrame(step, forceRefresh)
         Vector3.new(1,0,1), Vector3.new(1,0,-1), Vector3.new(-1,0,1), Vector3.new(-1,0,-1),
     }
     local steps = { step, step * 0.75, step * 0.5, step * 0.32 }
-
     local bestPos, bestScore = nil, -math.huge
     for _, tryStep in ipairs(steps) do
         for _, dir in ipairs(dirs) do
@@ -1520,7 +1480,6 @@ function GetBestJeffreyEscapeCFrame(step, forceRefresh)
             end
         end
     end
-
     if not bestPos then
         bestPos = ClampPositionInsideBarrier(base, BarrierInsetPadding, true)
     end
@@ -1533,29 +1492,23 @@ function GetJeffreyEscapeCFrame(range, step, forceRefresh)
     if not Character or not HumanoidRootPart then return nil end
     range = range or GetFarmJeffreyAvoidRange()
     step = step or AntiJeffreyEscapeStep or 70
-
     local jeffrey = GetNearestJeffreyRoot(HumanoidRootPart.Position, range, forceRefresh == true)
     if not jeffrey then return nil end
-
     return GetBestJeffreyEscapeCFrame(step, forceRefresh == true)
 end
 
 function MoveAwayFromJeffrey(range, step, tweenTime, forceCritical)
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart then return false end
-
     range = range or GetFarmJeffreyAvoidRange()
     local scanRange = math.max(range, AntiJeffreyDangerRange or 20)
     local jeffrey, dist = GetNearestJeffreyRoot(HumanoidRootPart.Position, scanRange, forceCritical == true)
     if not jeffrey then return false end
-
     local now = tick()
     local isKillZone = dist <= (AntiJeffreyKillZoneRange or 5)
     local isDanger = dist <= (AntiJeffreyDangerRange or 20)
-
     if AntiJeffreyEscapeBusy and not isKillZone then return true end
     if not isKillZone and now - AntiJeffreyLastEscapeAt < AntiJeffreyEscapeCooldown then return true end
-
     if isKillZone then
         step = math.max(step or 0, AntiJeffreyCriticalEscapeStep or 90)
         tweenTime = 0.08
@@ -1566,14 +1519,11 @@ function MoveAwayFromJeffrey(range, step, tweenTime, forceCritical)
         step = math.max(step or 0, AntiJeffreyEscapeStep or 70)
         tweenTime = tweenTime or 0.28
     end
-
     local cf = GetBestJeffreyEscapeCFrame(step, true)
     if not cf then return false end
-
     AntiJeffreyEscapeBusy = true
     AntiJeffreyLastEscapeAt = now
     BreakFarmLockForJeffrey("Jeffrey 逃离", isKillZone and 0.65 or 0.45)
-
     local ok = false
     if MoveFarmSpecialCFrame then
         ok = MoveFarmSpecialCFrame(cf, tweenTime)
@@ -1581,7 +1531,6 @@ function MoveAwayFromJeffrey(range, step, tweenTime, forceCritical)
         pcall(function() Character:PivotTo(cf) end)
         ok = true
     end
-
     task.wait(0.03)
     pcall(function()
         if HumanoidRootPart then
@@ -1589,7 +1538,6 @@ function MoveAwayFromJeffrey(range, step, tweenTime, forceCritical)
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
-
     AntiJeffreyEscapeBusy = false
     return ok
 end
@@ -1597,46 +1545,37 @@ end
 function HandleFarmJeffreyEmergency(mob)
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart then return false end
-
     local active = IsFarmJeffreyAvoidActive()
     if not active and not AntiJeffreyEnabled then return false end
-
     local range = math.max(GetFarmJeffreyAvoidRange(), DarkDimensionJeffreyAvoidRange or 70, AntiJeffreyDangerRange or 20)
     local scanRange = math.max(range, AntiJeffreyDangerRange or 20)
     local jeffrey, dist = GetNearestJeffreyRoot(HumanoidRootPart.Position, scanRange, true)
-
     if jeffrey and dist <= (AntiJeffreyKillZoneRange or 5) then
         MoveAwayFromJeffrey(scanRange, AntiJeffreyCriticalEscapeStep, 0.08, true)
         return true
     end
-
     if jeffrey and dist <= (AntiJeffreyDangerRange or 20) then
         MoveAwayFromJeffrey(scanRange, AntiJeffreyHardEscapeStep, 0.16, true)
         return true
     end
-
     if active and mob and not IsFarmTargetSafeFromJeffrey(mob, true) then
         MarkMobUnsafeByJeffrey(mob, 3)
         BreakFarmLockForJeffrey("目标被 Jeffrey 阻挡", 0.55)
         MoveToJeffreySafeHold("目标被 Jeffrey 阻挡")
         return true
     end
-
     if active and not mob and HasAnyJeffreyRoot() and tick() < (JeffreySafeHoldUntil or 0) then
         BreakFarmLockForJeffrey("Jeffrey 安全保持等待", 0.35)
         return true
     end
-
     if active and not mob and HasAnyJeffreyRoot() and tick() - (JeffreyLastUnsafeTargetAt or 0) <= 2 then
         MoveToJeffreySafeHold("所有目标在 Jeffrey 附近不安全")
         return true
     end
-
     if active and not mob and jeffrey and dist <= range then
         MoveAwayFromJeffrey(scanRange, AntiJeffreyHardEscapeStep, 0.22, true)
         return true
     end
-
     return false
 end
 
@@ -1647,26 +1586,20 @@ function PushAwayFromJeffrey()
     if not AntiJeffreyEnabled then return false end
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart then return false end
-
     local jeffrey, dist = GetNearestJeffreyRoot(HumanoidRootPart.Position, math.max(AntiJeffreyRange, AntiJeffreyDangerRange or 20), false)
     if not jeffrey then return false end
-
     local now = tick()
     if dist > (AntiJeffreyDangerRange or 20) and now - AntiJeffreyLastPushAt < 0.25 then return true end
     AntiJeffreyLastPushAt = now
-
     if dist <= (AntiJeffreyDangerRange or 20) or AutoFarmEnabled then
         return MoveAwayFromJeffrey(math.max(AntiJeffreyRange, AntiJeffreyDangerRange or 20), AntiJeffreyHardEscapeStep, 0.16, dist <= 20)
     end
-
     local pushSize = math.clamp(((AntiJeffreyRange - dist) / math.max(AntiJeffreyRange, 1)) * 18, 5, 28)
     local targetCF = GetBestJeffreyEscapeCFrame(pushSize, false)
     if not targetCF then return false end
-
     if MoveFarmSpecialCFrame then
         return MoveFarmSpecialCFrame(targetCF, 0.18)
     end
-
     pcall(function()
         Character:PivotTo(targetCF)
         HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
@@ -1722,44 +1655,36 @@ end
 function GetBypassJeffreyObject(obj)
     if not obj then return nil end
     if IsJeffreyName(obj.Name) then return obj end
-
     local cur = obj.Parent
     while cur and cur ~= workspace do
         if IsJeffreyName(cur.Name) then return cur end
         cur = cur.Parent
     end
-
     return nil
 end
 
 function SetBypassJeffreySit(jeffrey)
     if not BypassJeffreyEnabled then return false end
     if not jeffrey or not jeffrey.Parent then return false end
-
     local target = GetBypassJeffreyObject(jeffrey)
     if not target or not target.Parent then return false end
-
     local notHumanoid = nil
     pcall(function()
         notHumanoid = target:FindFirstChild("NotHumanoid") or target:FindFirstChild("NotHumanoid", true)
     end)
     if not notHumanoid then return false end
-
     local ok = pcall(function()
         if notHumanoid.Sit ~= true then
             notHumanoid.Sit = true
         end
     end)
-
     return ok
 end
 
 function ScanBypassJeffreys(forceFullScan)
     if not BypassJeffreyEnabled then return 0 end
-
     local count = 0
     local seen = {}
-
     local function try(obj)
         local target = GetBypassJeffreyObject(obj)
         if target and not seen[target] then
@@ -1769,12 +1694,10 @@ function ScanBypassJeffreys(forceFullScan)
             end
         end
     end
-
     pcall(function()
         for _, obj in ipairs(workspace:GetChildren()) do
             if IsJeffreyName(obj.Name) then try(obj) end
         end
-
         local living = workspace:FindFirstChild("Living")
         if living then
             for _, obj in ipairs(living:GetChildren()) do
@@ -1784,7 +1707,6 @@ function ScanBypassJeffreys(forceFullScan)
                 if obj.Name == "NotHumanoid" then try(obj) end
             end
         end
-
         local now = tick()
         if forceFullScan or now - (BypassJeffreyLastFullScanAt or 0) >= (BypassJeffreyFullScanDelay or 3) then
             BypassJeffreyLastFullScanAt = now
@@ -1793,27 +1715,23 @@ function ScanBypassJeffreys(forceFullScan)
             end
         end
     end)
-
     return count
 end
 
 function StartBypassJeffreyLoop()
     if BypassJeffreyLoopRunning then return end
     BypassJeffreyLoopRunning = true
-
     task.spawn(function()
         while BypassJeffreyEnabled do
             pcall(function() ScanBypassJeffreys(false) end)
             task.wait(0.75)
         end
-
         BypassJeffreyLoopRunning = false
     end)
 end
 
 function HandleBypassJeffreyObject(obj)
     if not BypassJeffreyEnabled or not obj then return end
-
     if IsJeffreyName(obj.Name) or obj.Name == "NotHumanoid" or GetBypassJeffreyObject(obj) then
         task.defer(function()
             if BypassJeffreyEnabled then
@@ -1897,17 +1815,14 @@ end
 
 function HookMobCacheFolder(folder)
     if MobCacheFolder == folder and MobCacheChildAddedConnection and MobCacheChildRemovedConnection then return end
-
     DisconnectMobCacheFolderHooks()
     MobCacheFolder = folder
     MobCacheList = {}
     MobCacheDirty = true
-
     if not folder then
         CombatDebug("MobCache", "Living 文件夹未找到。", 5)
         return
     end
-
     MobCacheChildAddedConnection = folder.ChildAdded:Connect(function(obj)
         InvalidateMobCache("怪物添加")
         CombatDebug("MobCacheAdded", "怪物出现: " .. tostring(obj and obj.Name or "nil"), 2)
@@ -1920,19 +1835,16 @@ function HookMobCacheFolder(folder)
             RestartCombatLoopsIfNeeded("怪物加载")
         end)
     end)
-
     MobCacheChildRemovedConnection = folder.ChildRemoved:Connect(function(obj)
         InvalidateMobCache("怪物移除")
         CombatDebug("MobCacheRemoved", "怪物移除: " .. tostring(obj and obj.Name or "nil"), 2)
         task.delay(0.05, function() RestartCombatLoopsIfNeeded("怪物移除") end)
     end)
-
     CombatDebug("MobCache", "Living 文件夹已挂钩。", 5)
 end
 
 function SetupMobCacheWorkspaceHooks()
     if MobCacheWorkspaceAddedConnection then return end
-
     MobCacheWorkspaceAddedConnection = workspace.ChildAdded:Connect(function(obj)
         if obj and obj.Name == "Living" then
             HookMobCacheFolder(obj)
@@ -1940,7 +1852,6 @@ function SetupMobCacheWorkspaceHooks()
             task.delay(0.25, function() RestartCombatLoopsIfNeeded("Living 文件夹添加") end)
         end
     end)
-
     MobCacheWorkspaceRemovedConnection = workspace.ChildRemoved:Connect(function(obj)
         if obj and obj == MobCacheFolder then
             HookMobCacheFolder(nil)
@@ -1952,15 +1863,12 @@ end
 function RebuildMobCache()
     local folder = workspace:FindFirstChild("Living")
     if folder ~= MobCacheFolder then HookMobCacheFolder(folder) end
-
     MobCacheList = {}
-
     if folder then
         for _, mob in ipairs(folder:GetChildren()) do
             if IsValidMob(mob) then table.insert(MobCacheList, mob) end
         end
     end
-
     MobCacheDirty = false
     MobCacheLastRebuild = tick()
     CombatDebug("MobCacheRebuild", "缓存有效怪物数: " .. tostring(#MobCacheList), 3)
@@ -1969,9 +1877,7 @@ end
 function GetCachedLivingMobs(forceRefresh)
     local folder = workspace:FindFirstChild("Living")
     if folder ~= MobCacheFolder then HookMobCacheFolder(folder) end
-
     if forceRefresh or MobCacheDirty or tick() - MobCacheLastRebuild > 2 then RebuildMobCache() end
-
     local alive = {}
     for _, mob in ipairs(MobCacheList) do
         if IsValidMob(mob) then
@@ -1980,7 +1886,6 @@ function GetCachedLivingMobs(forceRefresh)
             MobCacheDirty = true
         end
     end
-
     if #alive == 0 and folder and #folder:GetChildren() > 0 and not forceRefresh then
         CombatDebug("MobCacheFallback", "缓存为空但 Living 有子对象，重建一次。", 3)
         RebuildMobCache()
@@ -1989,7 +1894,6 @@ function GetCachedLivingMobs(forceRefresh)
             if IsValidMob(mob) then table.insert(alive, mob) end
         end
     end
-
     return alive
 end
 
@@ -2010,12 +1914,9 @@ end
 function GetFarmCandidateMobs(forceRefresh)
     local source = GetCachedLivingMobs(forceRefresh == true)
     local useJeffreyAvoid = IsFarmJeffreyAvoidActive and IsFarmJeffreyAvoidActive()
-
     if FarmTargetMode ~= "Astro Holdout Mode" and not useJeffreyAvoid then return source end
-
     local filtered = {}
     local range = GetFarmTargetDangerRange and GetFarmTargetDangerRange() or (GetFarmJeffreyAvoidRange and GetFarmJeffreyAvoidRange() or DarkDimensionJeffreyAvoidRange)
-
     for _, mob in ipairs(source) do
         if IsFarmMobAllowedByMode(mob) then
             if useJeffreyAvoid and IsMobBlockedByJeffrey(mob, range) then
@@ -2025,14 +1926,12 @@ function GetFarmCandidateMobs(forceRefresh)
             end
         end
     end
-
     return filtered
 end
 
 function GetNearestMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
     if not HumanoidRootPart then return nil end
-
     local nearestMob, nearestDist = nil, math.huge
     for _, mob in ipairs(GetFarmCandidateMobs(false)) do
         local mobRoot = mob:FindFirstChild("HumanoidRootPart")
@@ -2049,10 +1948,8 @@ end
 
 function GetHighestMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
-
     local highestMob, highestY = nil, -math.huge
     local myY = HumanoidRootPart and HumanoidRootPart.Position.Y or 0
-
     for _, mob in ipairs(GetFarmCandidateMobs(false)) do
         local mobRoot = mob:FindFirstChild("HumanoidRootPart")
         if mobRoot then
@@ -2063,7 +1960,6 @@ function GetHighestMob()
             end
         end
     end
-
     return highestMob
 end
 
@@ -2116,7 +2012,6 @@ end
 function GetPriorityMob()
     if RefreshCombatCharacter then RefreshCombatCharacter() end
     if not HumanoidRootPart then return nil, nil, nil, 0 end
-
     if FarmTargetMode == "Astro Holdout Mode" then
         local astroMob = GetAstroMob()
         if astroMob then
@@ -2124,12 +2019,10 @@ function GetPriorityMob()
         end
         return nil, nil, nil, 0
     end
-
     local giant, prompt = nil, nil
     local heli, highMob, nearMob = nil, nil, nil
     local bestHP, nearDist = HighHPThreshold, math.huge
     local candidates = GetFarmCandidateMobs(false)
-
     for _, mob in ipairs(candidates) do
         if not giant and FarmTargetMode ~= "Astro Holdout Mode" and mob.Name == "Giant ST toilet" then
             local lever = mob:FindFirstChild("lever")
@@ -2138,17 +2031,14 @@ function GetPriorityMob()
                 if pr then giant = mob; prompt = pr end
             end
         end
-
         if not heli and mob.Name:lower():find("helicopter") then
             heli = mob
         end
-
         local hp = GetMobMaxHP(mob)
         if hp > bestHP then
             bestHP = hp
             highMob = mob
         end
-
         local mobRoot = mob:FindFirstChild("HumanoidRootPart")
         if mobRoot and HumanoidRootPart then
             local d = (HumanoidRootPart.Position - mobRoot.Position).Magnitude
@@ -2158,12 +2048,10 @@ function GetPriorityMob()
             end
         end
     end
-
     if giant and prompt then return giant, "GiantST", prompt, 4 end
     if heli then return heli, "直升机", nil, 3 end
     if highMob then return highMob, "高血量", nil, 2 end
     if nearMob then return nearMob, "最近怪物", nil, 1 end
-
     return nil, nil, nil, 0
 end
 
@@ -2196,7 +2084,6 @@ end
 function ComputeMobVisualBounds(mob)
     local minY, maxY = math.huge, -math.huge
     local centerX, centerZ, count = 0, 0, 0
-
     for _, part in ipairs(mob:GetDescendants()) do
         if part:IsA("BasePart") and part.Transparency < 0.9 and part.Size.Y > 0.1 then
             local pos = part.Position
@@ -2208,7 +2095,6 @@ function ComputeMobVisualBounds(mob)
             count   = count + 1
         end
     end
-
     if count == 0 then
         local hrp = mob:FindFirstChild("HumanoidRootPart")
         if hrp then
@@ -2216,7 +2102,6 @@ function ComputeMobVisualBounds(mob)
         end
         return Vector3.new(0, 0, 0), 0, 4
     end
-
     local cx = centerX / count
     local cz = centerZ / count
     local cy = (minY + maxY) * 0.5
@@ -2225,13 +2110,11 @@ end
 
 function GetMobVisualBounds(mob)
     if not mob then return Vector3.new(0, 0, 0), 0, 4 end
-
     local now = tick()
     local cached = MobBoundsCache[mob]
     if cached and MobBoundsCacheAt[mob] and now - MobBoundsCacheAt[mob] <= MobBoundsCacheTTL then
         return cached[1], cached[2], cached[3]
     end
-
     local center, minY, maxY = ComputeMobVisualBounds(mob)
     MobBoundsCache[mob] = { center, minY, maxY }
     MobBoundsCacheAt[mob] = now
@@ -2278,28 +2161,23 @@ function StartDamageChecker(mob)
         local humanoid = mob and mob:FindFirstChild("Humanoid")
         if not humanoid then return end
         if MobConfirmedPadding[mob] ~= nil then return end
-
         MobLastHealth[mob]     = humanoid.Health
         MobHeightOverride[mob] = ClampPaddingToAntiClip(mob, MobHeightOverride[mob] or HeightValue)
-
         local lastDamageTime = tick()
         local noDamageTimer  = 0
         local hitStreak      = 0
         local lastWasHit     = false
         local reducedOnce    = false
-
         while mob and mob.Parent and not IsMobDead(mob) and AutoFarmEnabled do
             task.wait(0.3)
             if MobCheckerCancelled[mob] then break end
             if not mob or not mob.Parent or IsMobDead(mob) then break end
             humanoid = mob:FindFirstChild("Humanoid")
             if not humanoid then break end
-
             local currentHP = humanoid.Health
             local lastHP    = MobLastHealth[mob] or currentHP
             local dmgDealt  = lastHP - currentHP
             local gotHit    = dmgDealt > 0
-
             if gotHit then
                 lastDamageTime = tick()
                 noDamageTimer  = 0
@@ -2326,14 +2204,12 @@ function StartDamageChecker(mob)
                 hitStreak     = 0
                 noDamageTimer = tick() - lastDamageTime
             end
-
             if noDamageTimer >= 3 and not reducedOnce then
                 reducedOnce = true
                 local curPad = GetEffectivePadding(mob)
                 local newPad = ClampPaddingToAntiClip(mob, curPad - PADDING_REDUCE_STEP)
                 if newPad ~= curPad then MobHeightOverride[mob] = newPad end
             end
-
             if noDamageTimer >= 6 then
                 lastDamageTime = tick()
                 reducedOnce    = false
@@ -2341,10 +2217,8 @@ function StartDamageChecker(mob)
                 local newPad   = ClampPaddingToAntiClip(mob, curPad - PADDING_REDUCE_STEP)
                 if newPad ~= curPad then MobHeightOverride[mob] = newPad end
             end
-
             MobLastHealth[mob] = currentHP
         end
-
         if not MobCheckerCancelled[mob] then
             MobHeightOverride[mob] = nil
             MobLastHealth[mob]     = nil
@@ -2364,6 +2238,7 @@ end
 
 -- ============================================================
 -- ====================== TARGET CFRAME =======================
+-- ★ 随机方向传送（普通模式）
 -- ============================================================
 function GetTargetCFrame(mob, position)
     local mobRoot = GetMobRootPart(mob)
@@ -2372,7 +2247,7 @@ function GetTargetCFrame(mob, position)
     local padding = GetEffectivePadding(mob)
     local center, minY, maxY = GetMobVisualBounds(mob)
 
-    -- ★ 计算基础垂直位置（上方/下方）
+    -- 计算基础垂直位置
     local basePos
     if position == "Above" then
         local safeTargetY = math.max(maxY + padding, maxY + 0.5)
@@ -2384,19 +2259,27 @@ function GetTargetCFrame(mob, position)
         basePos = Vector3.new(center.X, center.Y, center.Z)
     end
 
-    -- ★ 普通模式自动叠加环形水平偏移
-    if FarmTargetMode == "Normal Mode" then
+    -- ★ 普通模式且开启随机传送 → 随机方向，距离受控
+    if FarmTargetMode == "Normal Mode" and randomTeleportEnabled then
         local mobCF = mobRoot.CFrame
         local forward = mobCF.LookVector
         local right = mobCF.RightVector
-        -- 前、左、右、后
-        local dirs = { forward, -right, right, -forward }
-        local offset = dirs[circleDirectionIndex + 1] or forward
-        local targetPos = basePos + offset * circleRadius
+        -- 8 个方向：前、后、左、右 + 对角线
+        local dirs = {
+            forward, -forward, -right, right,
+            (forward + right).Unit, (forward - right).Unit,
+            (-forward + right).Unit, (-forward - right).Unit
+        }
+        local dir = dirs[math.random(1, #dirs)]
+        -- 距离在 circleRadius 的 60%~100% 之间随机
+        local randomDist = circleRadius * (0.6 + math.random() * 0.4)
+        local targetPos = basePos + dir * randomDist
+        -- 保持 Y 不变，防止飞高或下落
+        targetPos = Vector3.new(targetPos.X, basePos.Y, targetPos.Z)
         return CFrame.new(targetPos, center)
     end
 
-    -- ★ Astro / 黑暗模式：只使用上方/下方，无环形
+    -- Astro / 黑暗模式：原逻辑
     if position == "Above" then
         local safeTargetY = math.max(maxY + padding, maxY + 0.5)
         local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
@@ -2417,23 +2300,21 @@ function GetStableFarmCFrame(cf) return cf end
 function WaitTweenWithTimeout(tween, timeout)
     if not tween then return false end
     timeout = tonumber(timeout) or 2
-
     local completed = false
     local conn
     conn = tween.Completed:Connect(function() completed = true end)
-
     local startedAt = tick()
     while not completed and tick() - startedAt < timeout do
         if ResetWaveTeleporting then break end
         if not AutoFarmEnabled and not FarmAstroTokenEnabled and not DarkDimensionCollecting then break end
         task.wait(0.03)
     end
-
     if conn then pcall(function() conn:Disconnect() end) end
     if not completed then pcall(function() tween:Cancel() end) end
     return completed
 end
 
+-- ★ 修改后的 MoveCharacterToFarmCFrame：防掉落
 function MoveCharacterToFarmCFrame(cf)
     if ResetWaveTeleporting then return end
     if not Character or not HumanoidRootPart or not cf then return end
@@ -2444,11 +2325,13 @@ function MoveCharacterToFarmCFrame(cf)
         if humanoid then
             humanoid.Sit = false
             humanoid.AutoRotate = false
+            humanoid.PlatformStand = true   -- 防止掉落
         end
 
         Character:PivotTo(targetCF)
         HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
         HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+        HumanoidRootPart.Velocity = Vector3.zero  -- 清除所有速度
         StabilizeFarmCamera()
     end)
 end
@@ -2456,7 +2339,6 @@ end
 function TeleportToMob(mob)
     local cf = GetTargetCFrame(mob, FarmPosition)
     if not cf then return end
-
     if FarmMode == "Tween" then
         local tweenInfo = TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         local tween = TweenService:Create(HumanoidRootPart, tweenInfo, { CFrame = GetStableFarmCFrame(cf) })
@@ -2478,7 +2360,6 @@ function MoveSpecialCharacterCFrame(cf)
     if ResetWaveTeleporting then return false end
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart or not cf then return false end
-
     local ok = pcall(function()
         local humanoid = Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
@@ -2490,14 +2371,12 @@ function MoveSpecialCharacterCFrame(cf)
         HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         StabilizeFarmCamera()
     end)
-
     return ok
 end
 
 function MoveFarmSpecialCFrame(cf, tweenTime)
     RefreshCombatCharacter()
     if not Character or not HumanoidRootPart or not cf then return false end
-
     if FarmMode == "Tween" then
         local ok = pcall(function()
             local tween = TweenService:Create(
@@ -2513,7 +2392,6 @@ function MoveFarmSpecialCFrame(cf, tweenTime)
         end)
         return ok
     end
-
     return MoveSpecialCharacterCFrame(cf)
 end
 
@@ -2524,7 +2402,6 @@ function StopFarmLockForSanityCollect(reason)
     FarmForceRetarget = true
     LockActive = false
     _interruptSignal = true
-
     pcall(function()
         RefreshCombatCharacter()
         if Character then
@@ -2539,7 +2416,6 @@ function StopFarmLockForSanityCollect(reason)
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
-
     pcall(function() RunService.Heartbeat:Wait() end)
     task.wait(0.03)
     return DarkDimensionCollectToken
@@ -2575,22 +2451,18 @@ end
 function GetSanityTouchPart(orb)
     if not orb or not orb.Parent then return nil end
     if IsValidSanityTouchPart(orb) then return orb end
-
     local touch = orb:FindFirstChild("TouchInterest", true)
     if touch and touch.Parent and touch.Parent:IsA("BasePart") then
         return touch.Parent
     end
-
     for _, obj in ipairs(orb:GetDescendants()) do
         if IsValidSanityTouchPart(obj) then return obj end
     end
-
     return nil
 end
 
 function ScanSanityOrbContainer(container, bestPart, bestDist)
     if not container then return bestPart, bestDist end
-
     if container.Name == "OrbSanity" then
         local directPart = GetSanityTouchPart(container)
         if directPart then
@@ -2601,7 +2473,6 @@ function ScanSanityOrbContainer(container, bestPart, bestDist)
             end
         end
     end
-
     for _, obj in ipairs(container:GetDescendants()) do
         if obj.Name == "OrbSanity" then
             local part = GetSanityTouchPart(obj)
@@ -2614,33 +2485,27 @@ function ScanSanityOrbContainer(container, bestPart, bestDist)
             end
         end
     end
-
     return bestPart, bestDist
 end
 
 function GetNearestSanityOrbPart()
     RefreshCombatCharacter()
     if not HumanoidRootPart then return nil end
-
     local bestPart, bestDist = nil, math.huge
     local living = workspace:FindFirstChild("Living")
     bestPart, bestDist = ScanSanityOrbContainer(living, bestPart, bestDist)
-
     if not bestPart and tick() - (DarkDimensionOrbSearchCooldown or 0) > 0.4 then
         DarkDimensionOrbSearchCooldown = tick()
         bestPart, bestDist = ScanSanityOrbContainer(workspace, bestPart, bestDist)
     end
-
     return bestPart
 end
 
 function TouchSanityOrb(part)
     RefreshCombatCharacter()
     if not part or not part.Parent or not HumanoidRootPart then return false end
-
     local touchCF = part.CFrame + Vector3.new(0, 2, 0)
     MoveSpecialCharacterCFrame(touchCF)
-
     local ok = pcall(function()
         if firetouchinterest and HasSanityTouchInterest(part) then
             for _ = 1, 3 do
@@ -2655,7 +2520,6 @@ function TouchSanityOrb(part)
             task.wait(0.2)
         end
     end)
-
     return ok
 end
 
@@ -2692,12 +2556,9 @@ end
 
 function HandleDarkDimensionSanity()
     if FarmTargetMode ~= "Dark Dimension Mode" or DarkDimensionCollecting or not AutoFarmEnabled then return false end
-
     local sanity = GetSanityTransparency()
     if not sanity or sanity >= DarkDimensionLowValue then return false end
-
     local collectToken = StopFarmLockForSanityCollect("理智值低")
-
     local didCollect = false
     pcall(function()
         while AutoFarmEnabled and FarmTargetMode == "Dark Dimension Mode" and DarkDimensionCollectToken == collectToken do
@@ -2706,17 +2567,14 @@ function HandleDarkDimensionSanity()
             LockActive = false
             FarmCollecting = true
             FarmForceRetarget = true
-
             sanity = GetSanityTransparency()
             if not sanity then break end
             if sanity >= DarkDimensionSafeValue then break end
-
             local part = GetNearestSanityOrbPart()
             if not part then
                 WarnDarkDimensionMissingOrb()
                 break
             end
-
             if MoveToSanityOrb(part) then
                 task.wait(1.25)
                 if DarkDimensionCollectToken ~= collectToken then break end
@@ -2724,7 +2582,6 @@ function HandleDarkDimensionSanity()
                 TouchSanityOrb(part)
                 didCollect = true
             end
-
             local waited = 0
             repeat
                 task.wait(0.12)
@@ -2733,7 +2590,6 @@ function HandleDarkDimensionSanity()
             until not AutoFarmEnabled or FarmTargetMode ~= "Dark Dimension Mode" or not sanity or sanity >= DarkDimensionSafeValue or not part.Parent or not HasSanityTouchInterest(part) or waited >= 3
         end
     end)
-
     if DarkDimensionCollectToken == collectToken then
         DarkDimensionCollecting = false
         FarmCollecting = false
@@ -2749,38 +2605,31 @@ function HandleDarkDimensionSanity()
             FarmForceRetarget = false
         end
     end
-
     return didCollect
 end
 
 function DoAstroModeFinalDoor()
     if FarmTargetMode ~= "Astro Holdout Mode" or AstroModeFinalRunning then return false end
-
     local now = tick()
     if now - AstroModeLastFinalAt < 2 then return false end
     AstroModeLastFinalAt = now
     AstroModeFinalRunning = true
-
     local ok = pcall(function()
         RefreshCombatCharacter()
         if not Character or not HumanoidRootPart then return end
         LockActive = false
         WaitingRespawn = true
         FarmForceRetarget = true
-
         MoveCharacterToFarmCFrame(AstroModeDoorTopCF)
         task.wait(0.12)
-
         if FarmMode == "Tween" then
             MoveFarmSpecialCFrame(AstroModeDoorBottomCF, 0.45)
         else
             MoveCharacterToFarmCFrame(AstroModeDoorBottomCF)
         end
-
         task.wait(0.15)
         FarmForceRetarget = false
     end)
-
     AstroModeFinalRunning = false
     return ok
 end
@@ -2807,11 +2656,9 @@ function RefreshCombatCharacter()
     if not Character or not Character.Parent then
         Character = LocalPlayer.Character
     end
-
     if Character and (not HumanoidRootPart or HumanoidRootPart.Parent ~= Character) then
         HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
     end
-
     Client = LocalPlayer
     return Character, HumanoidRootPart
 end
@@ -2822,37 +2669,32 @@ function SafeGetPriorityMob()
         CombatDebug("CombatCharacter", "角色或 HumanoidRootPart 未就绪。", 4)
         return nil, nil, nil, 0
     end
-
     local ok, mob, mobType, extraData, priority = pcall(function() return GetPriorityMob() end)
-
     if ok then
         if mob then
             return mob, mobType, extraData, priority
         end
-
         if tick() - MobCacheLastRebuild > 0.6 then
             InvalidateMobCache("优先级返回 nil")
             local ok2, mob2, mobType2, extraData2, priority2 = pcall(function()
                 RebuildMobCache()
                 return GetPriorityMob()
             end)
-
             if ok2 and mob2 then
                 CombatDebug("PriorityRecovered", "缓存重建后恢复优先级怪物: " .. tostring(mob2.Name), 3)
                 return mob2, mobType2, extraData2, priority2
             end
         end
-
         CombatDebug("PriorityNoMob", "未找到有效怪物。", 4)
         return nil, nil, nil, 0
     end
-
     CombatDebug("PriorityError", "GetPriorityMob 失败: " .. tostring(mob), 3, true)
     warn("[YYa] GetPriorityMob 失败:", tostring(mob))
     InvalidateMobCache("优先级错误")
     return nil, nil, nil, 0
 end
 
+-- ★ 修改后的 StartAutoAttack：攻击后强制刷新位置
 function StartAutoAttack()
     if AutoAttackLoopRunning then return end
     AutoAttackLoopRunning = true
@@ -2872,19 +2714,14 @@ function StartAutoAttack()
                     local remote = GetRemote("LMB")
                     if remote then
                         pcall(function() remote:FireServer() end)
-                        -- ★ 环形走位计数（普通模式自动）
-                        if FarmTargetMode == "Normal Mode" then
-                            circleAttackCount = circleAttackCount + 1
-                            if circleAttackCount >= 2 then
-                                circleAttackCount = 0
-                                circleDirectionIndex = (circleDirectionIndex + 1) % 4
-                                FarmForceRetarget = true
-                                task.delay(0.1, function()
-                                    if not IsAntiJeffreyEscapePauseActive() then
-                                        FarmForceRetarget = false
-                                    end
-                                end)
-                            end
+                        -- ★ 普通模式且随机传送开启 → 攻击后强制刷新位置
+                        if FarmTargetMode == "Normal Mode" and randomTeleportEnabled then
+                            FarmForceRetarget = true
+                            task.delay(0.08, function()
+                                if not IsAntiJeffreyEscapePauseActive() then
+                                    FarmForceRetarget = false
+                                end
+                            end)
                         end
                     else
                         CombatDebug("AutoAttackRemote", "LMB 远程事件缺失。", 5, true)
@@ -2919,17 +2756,14 @@ function StartAutoSkill()
                 local mob = SafeGetPriorityMob()
                 if mob then
                     WaitingRespawn = false
-
                     local keysToPress = {}
                     if table.find(SelectedSkills, "全部") then
                         keysToPress = skillList
                     else
                         keysToPress = SelectedSkills
                     end
-
                     for _, key in ipairs(keysToPress) do
                         if not AutoSkillEnabled or not IsMiscFarmAllowed() or FarmCollecting or (IsAntiJeffreyEscapePauseActive and IsAntiJeffreyEscapePauseActive()) or (IsDarkDimensionSanityLow and IsDarkDimensionSanityLow()) then break end
-
                         local keyCode = Enum.KeyCode[key]
                         if keyCode then
                             pcall(function()
@@ -2991,7 +2825,6 @@ function SaveAndBoostFPS()
     BoostFPS_Active = true
     BoostFPS_OriginalData = {}
     BoostFPS_LightingData = {}
-
     local Lighting = game:GetService("Lighting")
     BoostFPS_LightingData = {
         Brightness        = Lighting.Brightness,
@@ -3015,11 +2848,9 @@ function SaveAndBoostFPS()
             end
         end)
     end
-
     pcall(function()
         for _, obj in ipairs(workspace:GetDescendants()) do
             if IsLivingDescendant(obj) then continue end
-
             if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") or obj:IsA("SpecialMesh") then
                 if not IsLivingDescendant(obj) then
                     if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
@@ -3046,7 +2877,6 @@ function SaveAndBoostFPS()
             end
         end
     end)
-
     BoostFPS_RestoreConnection = workspace.DescendantAdded:Connect(function(obj)
         if not BoostFPS_Active then return end
         if IsLivingDescendant(obj) then return end
@@ -3065,19 +2895,16 @@ function SaveAndBoostFPS()
             end
         end)
     end)
-
     print("[YYa] 删除地图: ON")
 end
 
 function RestoreBoostFPS()
     if not BoostFPS_Active then return end
     BoostFPS_Active = false
-
     if BoostFPS_RestoreConnection then
         BoostFPS_RestoreConnection:Disconnect()
         BoostFPS_RestoreConnection = nil
     end
-
     local Lighting = game:GetService("Lighting")
     pcall(function()
         if BoostFPS_LightingData.Brightness        ~= nil then Lighting.Brightness        = BoostFPS_LightingData.Brightness end
@@ -3092,7 +2919,6 @@ function RestoreBoostFPS()
             end)
         end
     end
-
     for obj, data in pairs(BoostFPS_OriginalData) do
         pcall(function()
             if not obj or not obj.Parent then return end
@@ -3105,7 +2931,6 @@ function RestoreBoostFPS()
             if data.TextureId  ~= nil then obj.TextureId = data.TextureId end
         end)
     end
-
     BoostFPS_OriginalData = {}
     BoostFPS_LightingData = {}
     print("[YYa] 删除地图: OFF (已恢复)")
@@ -3162,34 +2987,25 @@ function ForceGodModeOnce(reason)
     local ok, result = pcall(function()
         local char = LocalPlayer.Character
         if not char then return false end
-
         local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
         if not humanoid then return false end
         if IsCharacterDeadForGodMode(char, humanoid) then return false end
-
         local destroyed = false
-
         local head = char:FindFirstChild("Head")
         if head then head:Destroy(); destroyed = true end
-
         task.wait(0.05)
-
         if IsCharacterDeadForGodMode(char, humanoid) then
             CombatDebug("GodMode", "上帝模式已触发: " .. tostring(reason or "手动"), 2)
             return true
         end
-
         local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
         if torso then torso:Destroy(); destroyed = true end
-
         if not destroyed and not IsCharacterDeadForGodMode(char, humanoid) then
             humanoid.Health = 0
         end
-
         CombatDebug("GodMode", "上帝模式已触发: " .. tostring(reason or "手动"), 2)
         return true
     end)
-
     return ok and result == true
 end
 
@@ -3201,18 +3017,14 @@ end
 task.spawn(function()
     while true do
         task.wait(0.1)
-
         if GodModeEnabled and not FarmAstroGodModePaused and IsMiscFarmAllowed() and not ShouldBlockFarmAstroGodModePercent() then
             pcall(function()
                 local char = LocalPlayer.Character
                 if not char then return end
-
                 local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
                 if not humanoid then return end
                 if humanoid.MaxHealth <= 0 then return end
-
                 local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
-
                 if hpPercent < GodModeValue then
                     ForceGodModeOnce("血量低于上帝模式阈值")
                 end
@@ -3284,19 +3096,15 @@ end
 function FireGetReady(delayBefore)
     if delayBefore == nil then delayBefore = 0 end
     if delayBefore > 0 then task.wait(delayBefore) end
-
     local now = tick()
     if now - (AutoStartLastReadyAt or 0) < 0.85 then return false end
     AutoStartLastReadyAt = now
-
     if AutoVoteinGameEnabled then
         FireAutoVote(true)
         task.wait(0.2)
     end
-
     local remote = GetRemote("GetReadyRemote")
     if not remote then return false end
-
     local ok, err = pcall(function()
         remote:FireServer("1", true)
         task.wait(0.2)
@@ -3308,7 +3116,6 @@ function FireGetReady(delayBefore)
         task.wait(0.2)
         remote:FireServer("1", true)
     end)
-
     if not ok then warn("[YYa] GetReadyRemote 失败:", err) end
     return ok
 end
@@ -3318,11 +3125,8 @@ function SetupAutoStartOnly(enabled)
         AutoStartConnection:Disconnect()
         AutoStartConnection = nil
     end
-
     if not enabled then return end
-
     FireGetReady(0)
-
     AutoStartConnection = LocalPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         if AutoStartEnabled then
@@ -3361,25 +3165,19 @@ function TeleportToIdle(force)
     WaitingRespawn = true
     IdlePosition = GetYYAWaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
     UpdateYYAWaitingPartCollision()
-
     if not Character or not Character.Parent or not HumanoidRootPart then return end
-
     local now = tick()
-
     if not force and IsNearIdlePosition() then
         IdlePositionReached = true
         StopIdleVelocity()
         return
     end
-
     if not force and (now - LastIdleTeleportAt) < IdleTeleportCooldown then
         StopIdleVelocity()
         return
     end
-
     LastIdleTeleportAt = now
     IdlePositionReached = true
-
     pcall(function()
         Character:PivotTo(IdlePosition)
         HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
@@ -3449,12 +3247,10 @@ function ActivateAllFlushPrompts()
     local now = tick()
     if now - (LastFlushPromptActivateAllAt or 0) < 0.35 then return end
     LastFlushPromptActivateAllAt = now
-
     pcall(function()
         if FlushPromptCacheDirty or tick() - (FlushPromptCacheLastScan or 0) > (FlushPromptCacheTTL or 8) then
             RebuildFlushPromptCache()
         end
-
         for prompt in pairs(FlushPromptCache) do
             if prompt and prompt.Parent and IsFlushPrompt(prompt) then
                 ActivateProximityPrompt(prompt)
@@ -3473,7 +3269,7 @@ Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 
 Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统",
+    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统\n• [新增] 随机方向传送（普通模式）",
     Image = "rbxassetid://103720636367587",
     ImageSize = 26,
 })
@@ -3572,10 +3368,30 @@ ModeDropdown = Main:Dropdown({
     end
 })
 
--- ★ 环形走位半径滑块（无开关，仅调节）
+-- ★ 随机方向传送开关
+Main:Toggle({
+    Title = "随机方向传送（普通模式）",
+    Desc = "每次攻击后在怪物附近随机方向移动，视角锁定，防掉落。",
+    Value = randomTeleportEnabled,
+    Callback = function(state)
+        randomTeleportEnabled = state
+        Config:Set("RandomTeleportEnabled", state)
+        Config:Save()
+        if state and FarmTargetMode ~= "Normal Mode" then
+            WindUI:Notify({
+                Title = "提示",
+                Content = "随机传送仅适用于普通模式，当前模式非普通。",
+                Duration = 3,
+                Icon = "triangle-alert"
+            })
+        end
+    end
+})
+
+-- ★ 随机传送半径滑块（复用 circleRadius）
 Main:Slider({
-    Title = "环形走位半径（格）",
-    Desc = "普通模式下角色围绕怪物的水平环绕距离，默认5格。",
+    Title = "传送半径（格）",
+    Desc = "最大传送距离，实际为 60%~100% 随机。",
     Value = { Min = 2, Max = 10, Default = circleRadius },
     Step = 0.5,
     Callback = function(value)
@@ -3640,11 +3456,9 @@ FarmAstroTokenToggle = Main:Toggle({
             end)
             return
         end
-
         FarmAstroTokenEnabled = state
         Config:Set("FarmAstroTokenEnabled", state)
         Config:Save()
-
         if state then
             StartFarmAstroToken()
             WindUI:Notify({
@@ -3727,7 +3541,6 @@ Main:Slider({
         ClearResetWaveTrigger("滑块已更改")
         Config:Set("ResetWaveValue", ResetWaveValue)
         Config:Save()
-
         if ResetWaveEnabled and IsMiscFarmAllowed() then
             StartResetWaveLoop()
             task.defer(function()
@@ -4058,47 +3871,36 @@ end
 function FlyStart()
     if FlyNowe then return end
     FlyNowe = true
-
     local plr = game.Players.LocalPlayer
     local char = plr.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
     if not hum then return end
-
     for _, state in pairs(Enum.HumanoidStateType:GetEnumItems()) do
         pcall(function() hum:SetStateEnabled(state, false) end)
     end
     pcall(function() hum:ChangeState(Enum.HumanoidStateType.Swimming) end)
-
     local animate = char:FindFirstChild("Animate")
     if animate then animate.Disabled = true end
-
     local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
     if not torso then return end
-
     FlyCleanupForces()
-
     FlyBodyGyro = Instance.new("BodyGyro", torso)
     FlyBodyGyro.P = 9e4
     FlyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
     FlyBodyGyro.CFrame = torso.CFrame
-
     FlyBodyVelocity = Instance.new("BodyVelocity", torso)
     FlyBodyVelocity.Velocity = Vector3.new(0, 0.1, 0)
     FlyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-
     hum.PlatformStand = true
-
     if FlyRenderConnection then FlyRenderConnection:Disconnect() end
     FlyRenderConnection = RunService.RenderStepped:Connect(function()
         if not FlyNowe or not char or not char.Parent then
             FlyStopAll()
             return
         end
-
         local cam = workspace.CurrentCamera
         if not cam or not torso or not FlyBodyVelocity or not FlyBodyGyro then return end
-
         local moveDir = hum.MoveDirection
         local vertical = 0
         pcall(function()
@@ -4109,12 +3911,10 @@ function FlyStart()
                 vertical = vertical - 1
             end
         end)
-
         local velocity = moveDir + Vector3.new(0, vertical * (FlyHeight or 10), 0)
         if velocity.Magnitude > 0 then
             velocity = velocity.Unit
         end
-
         local speed = (FlySpeeds or 1) * 50
         FlyBodyVelocity.Velocity = velocity * speed
         FlyBodyGyro.CFrame = cam.CFrame
@@ -4463,6 +4263,7 @@ end)
 Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
 
 _G.__YYA_ShopSystems = function()
+    -- 完整商店系统，与 xckj.lua 完全一致
     local gachaValues = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
 
     local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
@@ -4546,7 +4347,6 @@ _G.__YYA_ShopSystems = function()
 
     local function StartAutoGachaCharacter()
         if characterGachaRunning then return end
-
         if skinGachaRunning then
             autoGachaSkinEnabled = false
             Config:Set("AutoGachaSkinEnabled", false)
@@ -4563,10 +4363,8 @@ _G.__YYA_ShopSystems = function()
                 Icon = "alert-triangle"
             })
         end
-
         characterGachaRunning = true
         StartGachaEnhancement()
-
         task.spawn(function()
             while autoGachaCharacterEnabled do
                 local english = GachaMap[selectedGachaCharacterArg] or selectedGachaCharacterArg
@@ -4582,7 +4380,6 @@ _G.__YYA_ShopSystems = function()
 
     local function StartAutoGachaSkin()
         if skinGachaRunning then return end
-
         if characterGachaRunning then
             autoGachaCharacterEnabled = false
             Config:Set("AutoGachaCharacterEnabled", false)
@@ -4599,10 +4396,8 @@ _G.__YYA_ShopSystems = function()
                 Icon = "alert-triangle"
             })
         end
-
         skinGachaRunning = true
         StartGachaEnhancement()
-
         task.spawn(function()
             while autoGachaSkinEnabled do
                 local english = GachaMap[selectedGachaSkinArg] or selectedGachaSkinArg
@@ -5132,32 +4927,25 @@ _G.__YYA_ShopSystems = function()
     function StartAutoSyncedShopLoop()
         if autoSyncedShopRunning then return end
         autoSyncedShopRunning = true
-
         task.spawn(function()
             local firstCycle = true
-
             while IsAnySyncedShopEnabled() do
                 if not firstCycle then
                     if not WaitWhileEnabled(GetSyncedShopPreDelay(), IsAnySyncedShopEnabled) then break end
                 end
                 firstCycle = false
-
                 local shouldSyncHeli = ShouldShopSyncWithHeli()
                 if shouldSyncHeli then
                     TriggerAutoSkipHeli(false)
                     task.wait(0.5)
                 end
-
                 FireSyncedShopBatch()
-
                 if shouldSyncHeli then
                     task.wait(0.5)
                     TriggerAutoSkipHeli(true)
                 end
-
                 if not WaitWhileEnabled(GetSyncedShopPostDelay(), IsAnySyncedShopEnabled) then break end
             end
-
             autoSyncedShopRunning = false
         end)
     end
@@ -5169,7 +4957,6 @@ _G.__YYA_ShopSystems = function()
     local function FireShopHourlyBatch()
         local amount = tonumber(shopHourlyItemAmount) or 1
         amount = math.max(1, math.floor(amount))
-
         for _, itemName in ipairs(selectedShopHourlyItems or {}) do
             if itemName and itemName ~= "" then
                 FireShopRemote("BuyItemFromShopHourly", itemName, amount)
@@ -5181,26 +4968,20 @@ _G.__YYA_ShopSystems = function()
     function StartBuyItemHourlyLoop()
         if buyItemHourlyRunning then return end
         buyItemHourlyRunning = true
-
         task.spawn(function()
             local firstCycle = true
-
             while buyItemHourlyEnabled do
                 if not firstCycle then
                     if not WaitWhileEnabled(30, IsBuyItemHourlyEnabled) then break end
                 end
                 firstCycle = false
-
                 FireShopHourlyBatch()
-
                 if not WaitWhileEnabled(10, IsBuyItemHourlyEnabled) then break end
             end
-
             buyItemHourlyRunning = false
         end)
     end
 
-    -- 这些增强功能用 pcall 保护，防止因 pg 未就绪导致整个商店渲染中断
     local MoneyUIExists = false
     local GachaHeartbeatConnection = nil
     local GachaEnhancementActive = false
@@ -5238,20 +5019,16 @@ _G.__YYA_ShopSystems = function()
 
     local function CreateMoneyUI()
         if MoneyUIExists then return end
-        -- 用 pcall 保护，防止 pg 未就绪导致错误
         local success = pcall(function()
             local parent = CoreGui or pg
             if not parent then return end
-
             local old = parent:FindFirstChild("MoneyUI")
             if old then old:Destroy() end
-
             local screenGui = Instance.new("ScreenGui")
             screenGui.Name = "MoneyUI"
             screenGui.Parent = parent
             screenGui.ResetOnSpawn = false
             screenGui.DisplayOrder = 9999
-
             local frame = Instance.new("Frame")
             frame.Size = UDim2.new(0, 200, 0, 50)
             frame.Position = UDim2.new(0, 10, 0, 10)
@@ -5259,7 +5036,6 @@ _G.__YYA_ShopSystems = function()
             frame.BorderSizePixel = 0
             frame.Parent = screenGui
             frame.ZIndex = 999
-
             local icon = Instance.new("TextLabel")
             icon.Size = UDim2.new(0, 30, 0, 30)
             icon.Position = UDim2.new(0, 0, 0, 10)
@@ -5269,7 +5045,6 @@ _G.__YYA_ShopSystems = function()
             icon.TextColor3 = Color3.fromRGB(255, 215, 0)
             icon.Font = Enum.Font.GothamBold
             icon.Parent = frame
-
             local moneyLabel = Instance.new("TextLabel")
             moneyLabel.Size = UDim2.new(0, 120, 0, 30)
             moneyLabel.Position = UDim2.new(0, 35, 0, 10)
@@ -5280,7 +5055,6 @@ _G.__YYA_ShopSystems = function()
             moneyLabel.Font = Enum.Font.GothamBold
             moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
             moneyLabel.Parent = frame
-
             local nameLabel = Instance.new("TextLabel")
             nameLabel.Size = UDim2.new(0, 60, 0, 16)
             nameLabel.Position = UDim2.new(0, 35, 1, -20)
@@ -5291,11 +5065,9 @@ _G.__YYA_ShopSystems = function()
             nameLabel.Font = Enum.Font.Gotham
             nameLabel.TextXAlignment = Enum.TextXAlignment.Left
             nameLabel.Parent = frame
-
             local function UpdateMoney()
                 moneyLabel.Text = tostring(GetMoney())
             end
-
             UpdateMoney()
             task.spawn(function()
                 while true do
@@ -5303,7 +5075,6 @@ _G.__YYA_ShopSystems = function()
                     task.wait(1)
                 end
             end)
-
             local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
             if leaderstats then
                 for _, child in ipairs(leaderstats:GetChildren()) do
@@ -5312,7 +5083,6 @@ _G.__YYA_ShopSystems = function()
                     end
                 end
             end
-
             MoneyUIExists = true
         end)
         if not success then
@@ -5373,7 +5143,6 @@ _G.__YYA_ShopSystems = function()
                     end
                 end
             end
-
             local room = workspace:FindFirstChild("GachaRoom")
             if room then
                 for _, obj in ipairs(room:GetDescendants()) do
@@ -5388,7 +5157,6 @@ _G.__YYA_ShopSystems = function()
                     end
                 end
             end
-
             local effects = workspace:FindFirstChild("Effects")
             if effects then
                 for _, child in ipairs(effects:GetChildren()) do
@@ -5417,7 +5185,6 @@ _G.__YYA_ShopSystems = function()
         if GachaEnhancementActive then return end
         GachaEnhancementActive = true
         pcall(function() CreateMoneyUI() end)
-
         if GachaHeartbeatConnection then return end
         GachaHeartbeatConnection = RunService.Heartbeat:Connect(function()
             if not GachaEnhancementActive then return end
@@ -5436,7 +5203,6 @@ _G.__YYA_ShopSystems = function()
             GachaHeartbeatConnection:Disconnect()
             GachaHeartbeatConnection = nil
         end
-
         pcall(function()
             local parent = CoreGui or pg
             if parent then
@@ -5445,7 +5211,6 @@ _G.__YYA_ShopSystems = function()
             end
         end)
         MoneyUIExists = false
-
         pcall(function()
             ApplyCameraMode(true)
             local cam = workspace.CurrentCamera
@@ -5457,7 +5222,6 @@ _G.__YYA_ShopSystems = function()
                 end
             end
         end)
-
         pcall(function()
             local readyRemote = GetRemote("GetReadyRemote")
             if readyRemote then
@@ -5846,23 +5610,18 @@ function GetCurrentWaveText()
     local ok, result = pcall(function()
         local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
         if not playerGui then return nil end
-
         local wavesGui = playerGui:FindFirstChild("WavesGui")
         if not wavesGui then return nil end
-
         local frame = wavesGui:FindFirstChild("Frame")
         if not frame then return nil end
-
         local timer = frame:FindFirstChild("Timer")
         if timer and timer:IsA("TextLabel") then
             return tostring(timer.Text or "")
         end
         local label = frame:FindFirstChild("TextLabel")
         if not label then return nil end
-
         return tostring(label.Text or "")
     end)
-
     if ok then return result end
     return nil
 end
@@ -5870,10 +5629,8 @@ end
 function GetCurrentWaveNumber()
     local text = GetCurrentWaveText()
     if not text then return nil end
-
     local numberText = tostring(text):match("(%d+)")
     if not numberText then return nil end
-
     return tonumber(numberText)
 end
 
@@ -5886,7 +5643,6 @@ function NotifyRequestWaveNotReady()
     local now = tick()
     if now - RequestWaveNotifyAt < 4 then return end
     RequestWaveNotifyAt = now
-
     if GetCurrentWaveNumber() == nil then
         SafeWindNotify("自动请求", "无法请求。波次 UI 未就绪。", 3, "triangle-alert")
     else
@@ -5898,13 +5654,10 @@ function GetCurrentCharacterValue()
     local ok, result = pcall(function()
         local playerValues = LocalPlayer and LocalPlayer:FindFirstChild("PlayerValues")
         if not playerValues then return nil end
-
         local charValue = playerValues:FindFirstChild("Character")
         if not charValue then return nil end
-
         return tostring(charValue.Value or "")
     end)
-
     if ok then return result end
     return nil
 end
@@ -5912,23 +5665,17 @@ end
 function GetSkillTreeUIFolder()
     local characterName = GetCurrentCharacterValue()
     if not characterName or characterName == "" then return nil, characterName end
-
     local ok, result = pcall(function()
         local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
         if not playerGui then return nil end
-
         local skillGui = playerGui:FindFirstChild("003-A")
         if not skillGui then return nil end
-
         local main = skillGui:FindFirstChild("Main")
         if not main then return nil end
-
         local scrolling = main:FindFirstChild("ScrollingFrame")
         if not scrolling then return nil end
-
         local direct = scrolling:FindFirstChild("Skills " .. characterName)
         if direct then return direct end
-
         local loweredName = characterName:lower()
         for _, child in ipairs(scrolling:GetChildren()) do
             local childName = tostring(child.Name or ""):lower()
@@ -5936,10 +5683,8 @@ function GetSkillTreeUIFolder()
                 return child
             end
         end
-
         return nil
     end)
-
     if ok then return result, characterName end
     return nil, characterName
 end
@@ -5947,46 +5692,38 @@ end
 function HasOwnedSkillTree(skillName)
     local folder = LocalPlayer and LocalPlayer:FindFirstChild("SkillTreesFolder")
     if not folder then return false end
-
     if folder:FindFirstChild(skillName) then return true end
-
     local loweredName = tostring(skillName or ""):lower()
     for _, child in ipairs(folder:GetChildren()) do
         if tostring(child.Name or ""):lower() == loweredName then
             return true
         end
     end
-
     return false
 end
 
 function IsSkillTreeBuyObject(obj)
     if not obj or not obj.Name then return false end
-
     local loweredName = tostring(obj.Name):lower()
     if loweredName == "" then return false end
     if loweredName:find("layout", 1, true) then return false end
     if loweredName:find("padding", 1, true) then return false end
     if loweredName:find("stroke", 1, true) then return false end
     if loweredName:find("corner", 1, true) then return false end
-
     if obj:IsA("GuiObject") or obj:IsA("Folder") or obj:IsA("Model") then
         return true
     end
-
     return false
 end
 
 function GetSkillTreesRemote()
     local remote = GetRemote("skilltrees")
     if remote then return remote end
-
     pcall(function()
         remote = ReplicatedStorage:FindFirstChild("SkillTrees") or
                  ReplicatedStorage:FindFirstChild("SkillTree") or
                  ReplicatedStorage:WaitForChild("skilltrees", 2)
     end)
-
     return remote
 end
 
@@ -6003,18 +5740,15 @@ function FireAutoSkillTrees()
         NotifyAutoSkillTree("技能树尚未就绪。")
         return false
     end
-
     local folder, characterName = GetSkillTreeUIFolder()
     if not characterName or characterName == "" then
         NotifyAutoSkillTree("技能树尚未就绪。")
         return false
     end
-
     if not folder then
         NotifyAutoSkillTree("技能树尚未就绪。")
         return false
     end
-
     local fired = 0
     for _, skillObj in ipairs(folder:GetChildren()) do
         if IsSkillTreeBuyObject(skillObj) and not HasOwnedSkillTree(skillObj.Name) then
@@ -6022,18 +5756,15 @@ function FireAutoSkillTrees()
             local ok, err = pcall(function()
                 remote:FireServer(remoteArg)
             end)
-
             if ok then
                 fired = fired + 1
                 print("[YYa] 自动技能树已触发:", remoteArg)
             else
                 warn("[YYa] 自动技能树失败:", remoteArg, err)
             end
-
             task.wait(0.35)
         end
     end
-
     return true
 end
 
@@ -6228,7 +5959,6 @@ AntiAFKDisabledConnections = false
 
 function StartAntiAFK()
     AntiAFK = true
-
     if getconnections and not AntiAFKDisabledConnections then
         pcall(function()
             for _, connection in pairs(getconnections(LocalPlayer.Idled)) do
@@ -6241,12 +5971,10 @@ function StartAntiAFK()
         end)
         AntiAFKDisabledConnections = true
     end
-
     if AntiAFKConnection then
         AntiAFKConnection:Disconnect()
         AntiAFKConnection = nil
     end
-
     AntiAFKConnection = LocalPlayer.Idled:Connect(function()
         if not AntiAFK then return end
         pcall(function()
@@ -6254,12 +5982,10 @@ function StartAntiAFK()
             VirtualUser:ClickButton2(Vector2.new())
         end)
     end)
-
     if AntiAFKThread then
         pcall(function() task.cancel(AntiAFKThread) end)
         AntiAFKThread = nil
     end
-
     AntiAFKThread = task.spawn(function()
         while AntiAFK do
             pcall(function()
@@ -6274,12 +6000,10 @@ end
 
 function StopAntiAFK()
     AntiAFK = false
-
     if AntiAFKConnection then
         AntiAFKConnection:Disconnect()
         AntiAFKConnection = nil
     end
-
     if AntiAFKThread then
         pcall(function() task.cancel(AntiAFKThread) end)
         AntiAFKThread = nil
@@ -6711,7 +6435,6 @@ function FindNewCollectItems()
     if CollectCacheDirty or tick() - CollectLastFullScan > 5 then
         RebuildCollectCache()
     end
-
     local found = {}
     for obj, _ in pairs(CollectCandidateCache) do
         if not obj or not obj.Parent or not IsCollectTarget(obj.Name) then
@@ -6738,10 +6461,8 @@ end
 function MoveToItem(itemRoot)
     RefreshCombatCharacter()
     if not itemRoot or not Character or not HumanoidRootPart then return false end
-
     local targetCF = GetItemTargetCFrame(itemRoot)
     if not targetCF then return false end
-
     if CollectMovementMode == "Teleport" then
         pcall(function()
             Character:PivotTo(targetCF)
@@ -6750,7 +6471,6 @@ function MoveToItem(itemRoot)
         end)
         return true
     end
-
     local ok = pcall(function()
         local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(TweenSpeed, Enum.EasingStyle.Linear), { CFrame = targetCF })
         tween:Play()
@@ -6768,7 +6488,6 @@ function MoveToItem(itemRoot)
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end)
     end)
-
     return ok
 end
 
@@ -6817,14 +6536,11 @@ function CollectSingleItem(obj)
     if IsItemGone(obj) then return end
     local itemRoot = GetItemRootPart(obj)
     if not itemRoot then return end
-
     MoveToItem(itemRoot)
-
     local timeout = 0
     while AutoCollectEnabled and not IsItemGone(obj) and timeout < 8 do
         itemRoot = GetItemRootPart(obj)
         if not itemRoot then break end
-
         if timeout == 0 or timeout % 0.3 < 0.16 then
             local targetCF = GetItemTargetCFrame(itemRoot)
             pcall(function()
@@ -6835,12 +6551,10 @@ function CollectSingleItem(obj)
                 end
             end)
         end
-
         ActivateItemPrompts(obj)
         task.wait(0.15)
         timeout = timeout + 0.15
     end
-
     KnownCollectItems[obj] = true
 end
 
@@ -6858,7 +6572,6 @@ function StartAutoCollectLoop()
                 task.wait(1)
                 continue
             end
-
             if #SelectedCollectItems > 0 then
                 local itemsToCollect = FindNewCollectItems()
                 if #itemsToCollect > 0 then
@@ -6869,7 +6582,6 @@ function StartAutoCollectLoop()
                             if not IsItemGone(obj) then CollectSingleItem(obj) else KnownCollectItems[obj] = true end
                         end
                         EndCollectPause()
-
                     elseif CollectMode == "Clean" then
                         local waitedClean = 0
                         while not AllMobsDead() and AutoCollectEnabled do
@@ -6878,7 +6590,6 @@ function StartAutoCollectLoop()
                             if waitedClean >= 120 then break end
                         end
                         if not AutoCollectEnabled then break end
-
                         if AutoSkipHeliEnabled then TriggerAutoSkipHeli(false) end
                         BeginCollectPause()
                         for _, obj in ipairs(FindNewCollectItems()) do
@@ -6887,7 +6598,6 @@ function StartAutoCollectLoop()
                         end
                         EndCollectPause()
                         if AutoSkipHeliEnabled then TriggerAutoSkipHeli(true) end
-
                         if not IsPlayerHPFull() and AutoFillUpEnabled then
                             local fw = 0
                             while not IsPlayerHPFull() and AutoFillUpEnabled and AutoCollectEnabled do
@@ -6925,7 +6635,6 @@ function NotifyFarmAstroAutoFarm()
     local now = tick()
     if now - FarmAstroTokenLastAutoFarmNotify < 5 then return end
     FarmAstroTokenLastAutoFarmNotify = now
-
     WindUI:Notify({
         Title = "Astro 令牌",
         Content = "⚠️ 自动刷怪不能与 Astro 令牌模式同时启用",
@@ -7024,7 +6733,6 @@ function PauseFarmAstroGodModeForTimer()
     if not IsFarmAstroGodModeSelected() then return false end
     if FarmAstroGodModePaused then return true end
     if tick() < FarmAstroTokenTimerIgnoreUntil then return false end
-
     local timerValue = GetFarmAstroTimerValue()
     UpdateFarmAstroWaveTimerArmed(timerValue)
     if timerValue ~= nil and timerValue <= 10 and FarmAstroWaveTimerArmed == true then
@@ -7033,7 +6741,6 @@ function PauseFarmAstroGodModeForTimer()
         CombatDebug("FarmAstroGodSync", "God Mode percentage paused at wave timer " .. tostring(timerValue), 2, false)
         return true
     end
-
     return false
 end
 
@@ -7050,7 +6757,6 @@ function ResumeFarmAstroGodModeAfterRespawn(reason)
     FarmAstroLastReviveTimer = nil
     FarmAstroWaveTimerArmed = false
     FarmAstroLastWaveTimer = nil
-
     if wasPaused and IsFarmAstroGodModeSelected() then
         CombatDebug("FarmAstroGodSync", "God Mode resume after " .. tostring(reason or "respawn"), 2, false)
         task.defer(function()
@@ -7109,10 +6815,8 @@ function CheckFarmAstroReviveGodModeOnce()
         FarmAstroLastReviveTimer = nil
         return
     end
-
     local reviveTimer = GetFarmAstroReviveTimerValue()
     UpdateFarmAstroReviveTimerArmed(reviveTimer)
-
     if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
         if not FarmAstroReviveGodTriggered then
             if ForceGodModeOnce("Farm Astro Revive Timer") then
@@ -7133,10 +6837,8 @@ function CheckFarmAstroBottomGodMode()
     if not FarmAstroTokenEnabled or not ShouldBlockFarmAstroGodModePercent() then return end
     if not FarmAstroFinalLockActive then return end
     if FarmAstroBottomGodTriggered then return end
-
     local reviveTimer = GetFarmAstroReviveTimerValue()
     UpdateFarmAstroReviveTimerArmed(reviveTimer)
-
     if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
         if ForceGodModeOnce("Farm Astro bottom lock Revive Timer") then
             FarmAstroBottomGodTriggered = true
@@ -7173,7 +6875,6 @@ end
 
 function CreateFarmAstroTokenPart()
     if FarmAstroTokenPart and FarmAstroTokenPart.Parent then return FarmAstroTokenPart end
-
     local part = Instance.new("Part")
     part.Name = "farm_astro_token"
     part.Size = Vector3.new(10, 1, 10)
@@ -7185,7 +6886,6 @@ function CreateFarmAstroTokenPart()
     part.Transparency = 1
     part.CFrame = FARM_ASTRO_TOP_A
     part.Parent = workspace
-
     for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
         local decal = Instance.new("Decal")
         decal.Name = "farm_astro_token_image"
@@ -7194,7 +6894,6 @@ function CreateFarmAstroTokenPart()
         decal.Transparency = 0
         decal.Parent = part
     end
-
     FarmAstroTokenPart = part
     return part
 end
@@ -7224,10 +6923,8 @@ end
 
 function MoveFarmAstroToTimerSafe()
     if FarmAstroFinalLockActive then return end
-
     CancelFarmAstroTween()
     CreateFarmAstroTokenPart()
-
     FarmAstroTokenTimerHold = false
     FarmAstroTimerDropping = true
     FarmAstroFinalLockActive = false
@@ -7236,13 +6933,11 @@ function MoveFarmAstroToTimerSafe()
     FarmAstroLastReviveTimer = nil
     FarmAstroWaveTimerArmed = false
     FarmAstroLastWaveTimer = nil
-
     pcall(function()
         if FarmAstroTokenPart and FarmAstroTokenPart.Parent then
             FarmAstroTokenPart.CFrame = FARM_ASTRO_TIMER_BOTTOM_CF * FARM_ASTRO_TIMER_PART_OFFSET
         end
     end)
-
     pcall(function()
         local char, hrp, hum = GetFarmAstroCharacter()
         if not char or not hrp then return end
@@ -7251,12 +6946,10 @@ function MoveFarmAstroToTimerSafe()
             hum.PlatformStand = false
             hum.AutoRotate = true
         end
-
         char:PivotTo(FARM_ASTRO_TIMER_TOP_CF)
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
-
     pcall(function()
         local char, hrp, hum = GetFarmAstroCharacter()
         if not char or not hrp then return end
@@ -7276,7 +6969,6 @@ function MoveFarmAstroToTimerSafe()
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
-
     FarmAstroTimerDropping = false
     FarmAstroTokenTimerHold = true
     FarmAstroFinalLockActive = true
@@ -7286,20 +6978,16 @@ end
 function WaitFarmAstroRespawnAfterTimer()
     MoveFarmAstroToTimerSafe()
     local lockStartedAt = tick()
-
     while FarmAstroTokenEnabled do
         FarmAstroRuntimeChecks()
         if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
             HoldFarmAstroBottomLockOnce()
         end
-
         if tick() - lockStartedAt >= 0.25 and IsFarmAstroTimerResetForNextWave() then
             break
         end
-
         task.wait(0.1)
     end
-
     FarmAstroTokenTimerHold = false
     FarmAstroFinalLockActive = false
     FarmAstroTimerDropping = false
@@ -7322,7 +7010,6 @@ function RebuildFarmAstroNoClipParts(char)
     FarmAstroNoClipChar = char
     FarmAstroNoClipPartsAt = tick()
     if not char then return end
-
     pcall(function()
         for _, obj in ipairs(char:GetDescendants()) do
             if obj:IsA("BasePart") then
@@ -7337,7 +7024,6 @@ function ApplyFarmAstroNoClipToCharacter(char)
     if FarmAstroNoClipChar ~= char or tick() - (FarmAstroNoClipPartsAt or 0) > 1.25 then
         RebuildFarmAstroNoClipParts(char)
     end
-
     for i = #FarmAstroNoClipParts, 1, -1 do
         local obj = FarmAstroNoClipParts[i]
         if obj and obj.Parent then
@@ -7395,14 +7081,12 @@ function TweenFarmAstroTokenTo(cf, duration)
         return "timer_end"
     end
     CancelFarmAstroTween()
-
     FarmAstroTokenTween = TweenService:Create(
         FarmAstroTokenPart,
         TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
         { CFrame = cf }
     )
     FarmAstroTokenTween:Play()
-
     while FarmAstroTokenEnabled do
         FarmAstroRuntimeChecks()
         if IsFarmAstroTimerEnding() then
@@ -7416,12 +7100,10 @@ function TweenFarmAstroTokenTo(cf, duration)
         if not FarmAstroTokenTween or FarmAstroTokenTween.PlaybackState ~= Enum.PlaybackState.Playing then break end
         task.wait(0.05)
     end
-
     if not FarmAstroTokenEnabled then
         CancelFarmAstroTween()
         return false
     end
-
     FarmAstroTokenTween = nil
     pcall(function() FarmAstroTokenPart.CFrame = cf end)
     return true
@@ -7436,7 +7118,6 @@ function StartFarmAstroToken()
         NotifyFarmAstroAutoFarm()
         return
     end
-
     FarmAstroTokenRunning = true
     NeedNoClip = true
     LockActive = false
@@ -7449,46 +7130,37 @@ function StartFarmAstroToken()
     StartFarmAstroNoClip()
     CheckFarmAstroCollectMode()
     HandleMiscOptions(MiscOptions)
-
     task.spawn(function()
         while FarmAstroTokenEnabled do
             if FarmAstroTokenPauseCollect then
                 repeat task.wait(0.2) until not FarmAstroTokenPauseCollect or not FarmAstroTokenEnabled
             end
             if not FarmAstroTokenEnabled then break end
-
             FarmAstroRuntimeChecks()
-
             if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
                 WaitFarmAstroRespawnAfterTimer()
                 continue
             end
-
             if IsFarmAstroTimerEnding() then
                 WaitFarmAstroRespawnAfterTimer()
                 continue
             end
-
             CreateFarmAstroTokenPart()
             FarmAstroTokenPart.CFrame = FARM_ASTRO_TOP_A
             FarmAstroSnapCharacterToPart()
-
             local topResult = TweenFarmAstroTokenTo(FARM_ASTRO_TOP_B, FARM_ASTRO_TWEEN_TIME)
             if topResult == "timer_end" then
                 WaitFarmAstroRespawnAfterTimer()
                 continue
             end
             if not topResult then break end
-
             if FarmAstroTokenPauseCollect then continue end
             if IsFarmAstroTimerEnding() then
                 WaitFarmAstroRespawnAfterTimer()
                 continue
             end
-
             FarmAstroTokenPart.CFrame = FARM_ASTRO_LOW_A
             FarmAstroSnapCharacterToPart()
-
             local lowResult = TweenFarmAstroTokenTo(FARM_ASTRO_LOW_B, FARM_ASTRO_TWEEN_TIME)
             if lowResult == "timer_end" then
                 WaitFarmAstroRespawnAfterTimer()
@@ -7496,7 +7168,6 @@ function StartFarmAstroToken()
             end
             if not lowResult then break end
         end
-
         CancelFarmAstroTween()
         StopFarmAstroNoClip()
         if FarmAstroTokenPart then pcall(function() FarmAstroTokenPart:Destroy() end) end
@@ -7801,13 +7472,10 @@ end
 function GetResetWaveLabel()
     local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
-
     local wavesGui = playerGui:FindFirstChild("WavesGui")
     if not wavesGui then return nil end
-
     local frame = wavesGui:FindFirstChild("Frame")
     if not frame then return nil end
-
     local timer = frame:FindFirstChild("Timer")
     if timer and timer:IsA("TextLabel") then
         return timer
@@ -7818,17 +7486,14 @@ end
 function GetCurrentResetWave()
     local label = GetResetWaveLabel()
     if not label then return nil end
-
     local ok, textValue = pcall(function()
         return tostring(label.Text or "")
     end)
     if not ok then return nil end
-
     local waveText = textValue:match("[Ww]ave%s*=?%s*(%d+)")
     if not waveText then
         waveText = textValue:match("(%d+)")
     end
-
     return tonumber(waveText)
 end
 
@@ -7854,12 +7519,10 @@ function IsResetWaveCharacterReady()
     if not Character or not Character.Parent or not HumanoidRootPart or not HumanoidRootPart.Parent then
         return false
     end
-
     local humanoid = Character:FindFirstChildOfClass("Humanoid") or Character:FindFirstChild("Humanoid")
     if humanoid and humanoid.Health <= 0 then
         return false
     end
-
     return true
 end
 
@@ -7871,7 +7534,6 @@ function BreakFarmLockForResetWave()
     _interruptSignal = true
     WaitingRespawn = false
     _currentTargetPriority = 0
-
     pcall(function()
         RefreshCombatCharacter()
         if Character then
@@ -7887,17 +7549,14 @@ function BreakFarmLockForResetWave()
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
-
     pcall(function() RunService.Heartbeat:Wait() end)
 end
 
 function HoldResetWavePosition(token)
     local holdUntil = tick() + (ResetWaveHoldTime or 2)
-
     while ResetWaveEnabled and ResetWaveTeleporting and token == ResetWaveToken and tick() < holdUntil do
         if not IsMiscFarmAllowed() then return false end
         if not IsResetWaveCharacterReady() then return false end
-
         pcall(function()
             local humanoid = Character:FindFirstChildOfClass("Humanoid") or Character:FindFirstChild("Humanoid")
             if humanoid then
@@ -7905,25 +7564,20 @@ function HoldResetWavePosition(token)
                 humanoid.PlatformStand = false
                 humanoid.AutoRotate = true
             end
-
             NeedNoClip = true
             Character:PivotTo(ResetWaveTargetCF)
             HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
             StabilizeFarmCamera()
         end)
-
         task.wait(0.1)
     end
-
     return ResetWaveEnabled and token == ResetWaveToken and IsResetWaveCharacterReady()
 end
 
 function FinishResetWaveTeleport(token, completed, currentWave, targetWave)
     if token ~= ResetWaveToken then return end
-
     ResetWaveTeleporting = false
-
     if completed then
         ResetWaveLastTriggeredWave = currentWave
         ResetWaveLastTriggeredKey = GetResetWaveTriggerKey(currentWave, targetWave)
@@ -7931,11 +7585,9 @@ function FinishResetWaveTeleport(token, completed, currentWave, targetWave)
     else
         ClearResetWaveTrigger("传送中断")
     end
-
     FarmForceRetarget = false
     _interruptSignal = false
     LockActive = false
-
     if completed and ResetWaveEnabled and AutoFarmEnabled and StartFarmLoop then
         task.defer(function()
             if ResetWaveEnabled and AutoFarmEnabled and not ResetWaveTeleporting then
@@ -7947,45 +7599,34 @@ end
 
 function TeleportResetWave(currentWave, targetWave, force, reason)
     if ResetWaveTeleporting then return false end
-
     local now = tick()
     if not force and now - (ResetWaveLastTeleportAt or 0) < 0.6 then return false end
     ResetWaveLastTeleportAt = now
-
     currentWave = tonumber(currentWave) or GetCurrentResetWave()
     targetWave = tonumber(targetWave) or GetResetWaveTargetValue()
     if not currentWave or currentWave < targetWave then return false end
-
     ResetWaveToken = (ResetWaveToken or 0) + 1
     local token = ResetWaveToken
-
     BreakFarmLockForResetWave()
-
     local ok, completed = pcall(function()
         if not IsResetWaveCharacterReady() then return false end
-
         pcall(function()
             NeedNoClip = true
             Character:PivotTo(ResetWaveTargetCF)
             HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
             HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
         end)
-
         return HoldResetWavePosition(token)
     end)
-
     FinishResetWaveTeleport(token, ok and completed == true, currentWave, targetWave)
     return ok and completed == true
 end
 
 function EvaluateResetWaveNow(reason, force)
     if not ResetWaveEnabled or not IsMiscFarmAllowed() or ResetWaveTeleporting then return false end
-
     local currentWave = GetCurrentResetWave()
     local targetWave = GetResetWaveTargetValue()
-
     if currentWave == nil then return false end
-
     if currentWave >= targetWave then
         local key = GetResetWaveTriggerKey(currentWave, targetWave)
         if force or ResetWaveLastTriggeredKey ~= key then
@@ -7994,23 +7635,19 @@ function EvaluateResetWaveNow(reason, force)
     else
         ClearResetWaveTrigger("波次低于目标")
     end
-
     return false
 end
 
 function StartResetWaveLoop()
     if ResetWaveLoopRunning then return end
     ResetWaveLoopRunning = true
-
     task.spawn(function()
         while ResetWaveEnabled do
             pcall(function()
                 EvaluateResetWaveNow("循环", false)
             end)
-
             task.wait(ResetWaveTeleporting and 0.1 or 0.25)
         end
-
         ResetWaveLoopRunning = false
     end)
 end
@@ -8229,9 +7866,7 @@ function ApplySavedConfigOnStartup()
     if FullBrightEnabled then ApplyFullBright() end
     if NoFogEnabled then ApplyNoFog() end
 
-    -- ★ 重置环形走位状态
-    circleDirectionIndex = 0
-    circleAttackCount = 0
+    -- ★ 随机传送状态由配置加载，无需额外重置
 
     if FarmAstroTokenEnabled and AutoFarmEnabled then
         FarmAstroTokenEnabled = false
@@ -8274,7 +7909,6 @@ end
 -- ============================================================
 -- ====================== 调用商店系统 ======================
 -- ============================================================
--- 移到 ApplySavedConfigOnStartup 之后确保 pg 和 CoreGui 已就绪
 _G.__YYA_ShopSystems()
 _G.__YYA_ShopSystems = nil
 
@@ -8296,3 +7930,4 @@ print("[YYa] 至尊版 - Astro令牌刷怪系统已完整集成")
 print("[YYa] 至尊版 - 丧失V2模式已移除")
 print("[YYa] 至尊版 - ESP、商店系统、自动收集全部完整保留")
 print("[YYa] 至尊版 - 投票UI已汉化")
+print("[YYa] 至尊版 - 新增：随机方向传送（普通模式）")
