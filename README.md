@@ -6,8 +6,17 @@ ver = "v023.92"
 -- =========================
 
 -- ====================== LOAD UI ======================
-WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local WindUISource, WindUILoadFunc
+local Success, Error = pcall(function()
+    WindUISource = game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua", true)
+    WindUILoadFunc = loadstring(WindUISource)
+end)
 
+if not Success or type(WindUILoadFunc) ~= "function" then
+    warn("[YYa] 关键错误：WindUI 加载失败，脚本将停止运行！")
+    return
+end
+WindUI = WindUILoadFunc()
 -- ====================== GameLoad ======================
 repeat task.wait() until game:IsLoaded()
 
