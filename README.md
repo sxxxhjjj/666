@@ -1,5 +1,5 @@
 -- v190 | [Local Register Fix] | 完整融合版（基于原版UI渲染顺序）
--- 版本: 完整版 | 包含: Astro令牌 + 完整收集 + 汉化投票 + 环绕模式（随机瞬移，面向怪物）
+-- 版本: 完整版 | 包含: Astro令牌 + 完整收集 + 汉化投票 + 环绕模式（固定式）
 -- =========================
 version = "Rework"
 ver = "v023.92"
@@ -287,7 +287,7 @@ GachaMap = {
     ["10次幸运抽奖"] = "10SpinLucky",
 }
 
-CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心", "特殊请求" }
+CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" }  -- 已移除 "特殊请求"
 CollectMap = {
     ["时钟蜘蛛"] = "Clock Spider",
     ["X-18 核心"] = "X-18 Core",
@@ -300,7 +300,7 @@ CollectMap = {
     ["闪存驱动器"] = "Flash Drives",
     ["礼物"] = "Presents",
     ["创世纪核心"] = "Genesis Core",
-    ["特殊请求"] = "Special-Request",
+    -- 已删除 "特殊请求" 对应项
 }
 
 WeaponDisplayNames = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" }
@@ -345,7 +345,7 @@ FarmModeMap = {
     ["黑暗维度模式"] = "Dark Dimension Mode",
 }
 
--- ★ 位置选项新增“环绕”
+-- ★ 位置选项保留“环绕”，但逻辑改为固定式
 FarmPositionDisplayNames = { "上方", "下方", "环绕" }
 FarmPositionMap = {
     ["上方"] = "Above",
@@ -669,16 +669,17 @@ FarmCollecting         = false
 CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
--- ★ 环绕模式变量（用于普通模式）
-circleRadius = Config:Get("CircleRadius", 5)   -- 环绕半径（格）
-circleDirectionIndex = 0                       -- 0:前, 1:左, 2:右, 3:后（实际使用随机，这里保留做占位）
-circleAttackCount = 0                          -- 攻击计数（用于触发方向切换）
+-- ★ 环绕模式变量（保留，但不再用于随机切换）
+circleRadius = Config:Get("CircleRadius", 5)   -- 环绕半径（格），固定方向距离
+circleDirectionIndex = 0                       -- 不再使用
+circleAttackCount = 0                          -- 不再使用
 
 -- ====================== COLLECT VARIABLES ======================
 CollectItems = {
     "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
     "Astro Samples", "Weird Prism", "Key Card", "Zombie Core",
-    "Flash Drives", "Presents", "Genesis Core", "Special-Request",
+    "Flash Drives", "Presents", "Genesis Core",
+    -- 已删除 "Special-Request"
 }
 
 CollectGroupMap = {
@@ -2368,9 +2369,8 @@ function ResetMobOverride(mob)
 end
 
 -- ============================================================
--- ====================== ★ 修复：GetTargetCFrame =====================
--- 还原上方/下方为纯垂直偏移，移除环形水平偏移，
--- 新增“环绕”模式：随机方向瞬移，角色始终面向怪物。
+-- ====================== ★ 修改：GetTargetCFrame =====================
+-- 上方/下方保持纯垂直偏移，环绕改为固定方向（前方）+ 高度可调（使用HeightValue）
 -- ============================================================
 function GetTargetCFrame(mob, position)
     local mobRoot = GetMobRootPart(mob)
@@ -2392,7 +2392,7 @@ function GetTargetCFrame(mob, position)
         return CFrame.new(targetPos, lookAtPos) * CFrame.Angles(math.rad(10), 0, 0)
 
     elseif position == "环绕" then
-        -- 环绕模式：普通模式下可用，随机选择前、后、左、右四个方向，瞬移至怪物周围
+        -- 环绕模式：仅限普通模式，固定于怪物前方，水平距离由 circleRadius 控制，垂直偏移由 HeightValue 控制
         if FarmTargetMode ~= "Normal Mode" then
             -- 若非普通模式，回退到上方
             local safeTargetY = math.max(maxY + padding, maxY + 0.5)
@@ -2401,24 +2401,14 @@ function GetTargetCFrame(mob, position)
             return CFrame.new(targetPos, lookAtPos) * CFrame.Angles(math.rad(-10), 0, 0)
         end
 
-        -- 获取四个水平方向（前、后、左、右）
         local forward = mobRoot.CFrame.LookVector
-        local right   = mobRoot.CFrame.RightVector
-        local dirs = {
-            forward,
-            -forward,
-            -right,
-            right
-        }
-        -- 随机选取一个方向
-        local dir = dirs[math.random(1, #dirs)]
-        -- 目标位置：怪物中心 + 水平偏移 + 略高于中心（避免卡在地面）
-        local targetPos = Vector3.new(center.X, center.Y + 1, center.Z) + dir * circleRadius
+        local yOffset = HeightValue  -- 使用刷怪高度滑块控制Y轴偏移
+        local targetPos = Vector3.new(center.X + forward.X * circleRadius, center.Y + yOffset, center.Z + forward.Z * circleRadius)
         -- 始终面向怪物中心
         return CFrame.new(targetPos, center)
     end
 
-    -- fallback（理论上不会执行）
+    -- fallback
     local safeTargetY = math.max(maxY + padding, maxY + 0.5)
     local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
     local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
@@ -2866,7 +2856,7 @@ function SafeGetPriorityMob()
     return nil, nil, nil, 0
 end
 
--- ★ 修改 StartAutoAttack：增加环绕模式随机方向切换
+-- ★ 修改 StartAutoAttack：删除环绕模式切换逻辑（因固定方向）
 function StartAutoAttack()
     if AutoAttackLoopRunning then return end
     AutoAttackLoopRunning = true
@@ -2886,22 +2876,6 @@ function StartAutoAttack()
                     local remote = GetRemote("LMB")
                     if remote then
                         pcall(function() remote:FireServer() end)
-
-                        -- ★ 环绕模式：每次攻击后随机切换方向并强制重定位
-                        if FarmTargetMode == "Normal Mode" and (FarmPosition == "环绕" or FarmPosition == "Orbit") then
-                            circleAttackCount = circleAttackCount + 1
-                            if circleAttackCount >= 2 then  -- 每2次攻击切换一次（保持与之前环形走位类似频率）
-                                circleAttackCount = 0
-                                -- 随机选择新的方向（0~3）
-                                circleDirectionIndex = math.random(0, 3)
-                                FarmForceRetarget = true
-                                task.delay(0.1, function()
-                                    if not IsAntiJeffreyEscapePauseActive() then
-                                        FarmForceRetarget = false
-                                    end
-                                end)
-                            end
-                        end
                     else
                         CombatDebug("AutoAttackRemote", "LMB 远程事件缺失。", 5, true)
                     end
@@ -3482,14 +3456,14 @@ function ActivateAllFlushPrompts()
 end
 
 -- ============================================================
--- ====================== INFO TAB（已汉化） ======================
+-- ====================== INFO TAB =============================
 -- ============================================================
 
 Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 })
 Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] 特殊请求收集\n• [新增] Astro令牌刷怪完整系统\n• [新增] 环绕模式（随机瞬移，面向怪物）",
+    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] Astro令牌刷怪完整系统\n• [新增] 环绕模式（固定方向，高度可调）",
     Image = "rbxassetid://103720636367587",
     ImageSize = 26,
 })
@@ -3559,7 +3533,6 @@ FarmTargetModeDropdown = Main:Dropdown({
 
 Main:Section({ Title = "刷怪设置", Icon = "settings" })
 
--- ★ 位置下拉新增“环绕”
 PositionDropdown = Main:Dropdown({
     Title = "刷怪位置",
     Desc = "选择角色在目标周围停留的位置。",
@@ -3571,7 +3544,6 @@ PositionDropdown = Main:Dropdown({
         FarmPosition = english
         Config:Set("FarmPosition", english)
         Config:Save()
-        -- 若选择环绕但不是普通模式，则提示并改回上方
         if (english == "环绕" or english == "Orbit") and FarmTargetMode ~= "Normal Mode" then
             WindUI:Notify({
                 Title = "环绕模式",
@@ -3606,10 +3578,9 @@ ModeDropdown = Main:Dropdown({
     end
 })
 
--- ★ 环绕半径滑块（与之前的环形走位共用）
 Main:Slider({
     Title = "环绕半径（格）",
-    Desc = "设置环绕模式下的水平偏移距离。",
+    Desc = "设置环绕模式下角色与怪物的水平距离。",
     Value = { Min = 2, Max = 10, Default = circleRadius },
     Step = 0.5,
     Callback = function(value)
@@ -3720,7 +3691,7 @@ SkillDelaySlider = Main:Slider({
 
 FarmHeightSlider = Main:Slider({
     Title = "刷怪高度（+/-Y）",
-    Desc = "调整在怪物上方或下方刷怪时使用的垂直偏移量。",
+    Desc = "调整在怪物上方或下方刷怪时使用的垂直偏移量。对于环绕模式，此值控制Y轴偏移。",
     Value = { Min = -150, Max = 150, Default = HeightValue },
     Step = 1,
     Callback = function(value)
@@ -4023,7 +3994,7 @@ EspItemDropdown = Main4:Dropdown({
     Title = "透视物品",
     Desc = "选择哪些可收集物品名称应接收物品透视。",
     Multi = true,
-    Values = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心", "特殊请求" },
+    Values = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" },  -- 已删除 "特殊请求"
     Value = ESP.SelectedItems,
     Callback = function(value)
         ESP.SelectedItems = value or {}
@@ -4514,6 +4485,7 @@ _G.__YYA_ShopSystems = function()
     local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
     local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
 
+    -- ★ 移除增强功能，改为纯循环（与原版一致）
     local function EnsureList(value, fallback)
         if type(value) == "table" then return value end
         if value ~= nil then return { value } end
@@ -4581,8 +4553,6 @@ _G.__YYA_ShopSystems = function()
     local function StartAutoGachaCharacter()
         if characterGachaRunning then return end
         characterGachaRunning = true
-        StartGachaEnhancement()
-
         task.spawn(function()
             while autoGachaCharacterEnabled do
                 local english = GachaMap[selectedGachaCharacterArg] or selectedGachaCharacterArg
@@ -4590,17 +4560,12 @@ _G.__YYA_ShopSystems = function()
                 task.wait(1)
             end
             characterGachaRunning = false
-            if not skinGachaRunning then
-                StopGachaEnhancement()
-            end
         end)
     end
 
     local function StartAutoGachaSkin()
         if skinGachaRunning then return end
         skinGachaRunning = true
-        StartGachaEnhancement()
-
         task.spawn(function()
             while autoGachaSkinEnabled do
                 local english = GachaMap[selectedGachaSkinArg] or selectedGachaSkinArg
@@ -4608,9 +4573,6 @@ _G.__YYA_ShopSystems = function()
                 task.wait(1)
             end
             skinGachaRunning = false
-            if not characterGachaRunning then
-                StopGachaEnhancement()
-            end
         end)
     end
 
@@ -4647,7 +4609,6 @@ _G.__YYA_ShopSystems = function()
         Value = autoGachaCharacterEnabled,
         Desc = "使用所选选项自动进行角色扭蛋。",
         Callback = function(enabled)
-            -- ★ 移除互斥检查，允许与皮肤扭蛋同时开启
             autoGachaCharacterEnabled = enabled
             Config:Set("AutoGachaCharacterEnabled", enabled)
             Config:Save()
@@ -4675,7 +4636,6 @@ _G.__YYA_ShopSystems = function()
         Value = autoGachaSkinEnabled,
         Desc = "使用所选选项自动进行皮肤扭蛋。",
         Callback = function(enabled)
-            -- ★ 移除互斥检查，允许与角色扭蛋同时开启
             autoGachaSkinEnabled = enabled
             Config:Set("AutoGachaSkinEnabled", enabled)
             Config:Save()
@@ -5153,273 +5113,6 @@ _G.__YYA_ShopSystems = function()
             end
 
             buyItemHourlyRunning = false
-        end)
-    end
-
-    -- 这些增强功能用 pcall 保护，防止因 pg 未就绪导致整个商店渲染中断
-    local MoneyUIExists = false
-    local GachaHeartbeatConnection = nil
-    local GachaEnhancementActive = false
-
-    local function GetMoney()
-        local money = 0
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-        if leaderstats then
-            for _, child in ipairs(leaderstats:GetChildren()) do
-                if child:IsA("IntValue") or child:IsA("NumberValue") then
-                    local name = child.Name:lower()
-                    if name:find("cash") or name:find("coin") or name:find("money") or name:find("gold") or name:find("point") then
-                        money = child.Value
-                        break
-                    end
-                end
-            end
-        end
-        if money == 0 then
-            local data = LocalPlayer:FindFirstChild("PlayerData") or LocalPlayer:FindFirstChild("Data")
-            if data then
-                for _, child in ipairs(data:GetChildren()) do
-                    if child:IsA("IntValue") or child:IsA("NumberValue") then
-                        local name = child.Name:lower()
-                        if name:find("cash") or name:find("coin") or name:find("money") or name:find("gold") or name:find("point") then
-                            money = child.Value
-                            break
-                        end
-                    end
-                end
-            end
-        end
-        return money
-    end
-
-    local function CreateMoneyUI()
-        if MoneyUIExists then return end
-        local success = pcall(function()
-            local parent = CoreGui or pg
-            if not parent then return end
-
-            local old = parent:FindFirstChild("MoneyUI")
-            if old then old:Destroy() end
-
-            local screenGui = Instance.new("ScreenGui")
-            screenGui.Name = "MoneyUI"
-            screenGui.Parent = parent
-            screenGui.ResetOnSpawn = false
-            screenGui.DisplayOrder = 9999
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(0, 200, 0, 50)
-            frame.Position = UDim2.new(0, 10, 0, 10)
-            frame.BackgroundTransparency = 1
-            frame.BorderSizePixel = 0
-            frame.Parent = screenGui
-            frame.ZIndex = 999
-
-            local icon = Instance.new("TextLabel")
-            icon.Size = UDim2.new(0, 30, 0, 30)
-            icon.Position = UDim2.new(0, 0, 0, 10)
-            icon.BackgroundTransparency = 1
-            icon.Text = "💰"
-            icon.TextSize = 22
-            icon.TextColor3 = Color3.fromRGB(255, 215, 0)
-            icon.Font = Enum.Font.GothamBold
-            icon.Parent = frame
-
-            local moneyLabel = Instance.new("TextLabel")
-            moneyLabel.Size = UDim2.new(0, 120, 0, 30)
-            moneyLabel.Position = UDim2.new(0, 35, 0, 10)
-            moneyLabel.BackgroundTransparency = 1
-            moneyLabel.Text = "0"
-            moneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            moneyLabel.TextSize = 22
-            moneyLabel.Font = Enum.Font.GothamBold
-            moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
-            moneyLabel.Parent = frame
-
-            local nameLabel = Instance.new("TextLabel")
-            nameLabel.Size = UDim2.new(0, 60, 0, 16)
-            nameLabel.Position = UDim2.new(0, 35, 1, -20)
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.Text = "Coins"
-            nameLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
-            nameLabel.TextSize = 11
-            nameLabel.Font = Enum.Font.Gotham
-            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-            nameLabel.Parent = frame
-
-            local function UpdateMoney()
-                moneyLabel.Text = tostring(GetMoney())
-            end
-
-            UpdateMoney()
-            task.spawn(function()
-                while true do
-                    UpdateMoney()
-                    task.wait(1)
-                end
-            end)
-
-            local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-            if leaderstats then
-                for _, child in ipairs(leaderstats:GetChildren()) do
-                    if child:IsA("IntValue") or child:IsA("NumberValue") then
-                        child.Changed:Connect(UpdateMoney)
-                    end
-                end
-            end
-
-            MoneyUIExists = true
-        end)
-        if not success then
-            warn("[YYa] CreateMoneyUI 失败，但不影响商店主渲染")
-        end
-    end
-
-    local function ForceShowGacha()
-        pcall(function()
-            if not pg then return end
-            local gacha = pg:FindFirstChild("Gacha")
-            if gacha and gacha:IsA("ScreenGui") then
-                if not gacha.Enabled then
-                    gacha.Enabled = true
-                end
-                for _, sub in ipairs(gacha:GetDescendants()) do
-                    if sub:IsA("Frame") or sub:IsA("ImageLabel") or sub:IsA("TextLabel") or sub:IsA("TextButton") then
-                        if not sub.Visible then
-                            sub.Visible = true
-                        end
-                    end
-                end
-            end
-        end)
-    end
-
-    local function RemoveBlackScreens()
-        pcall(function()
-            for _, guiParent in ipairs({pg, CoreGui}) do
-                if guiParent then
-                    for _, child in ipairs(guiParent:GetChildren()) do
-                        if child:IsA("ScreenGui") then
-                            local name = child.Name:lower()
-                            if name:find("black") or name:find("loading") or name:find("fade") or name:find("white") then
-                                pcall(function() child:Destroy() end)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end
-
-    local function RemoveGachaVisuals()
-        pcall(function()
-            if pg then
-                local gachaUI = pg:FindFirstChild("GachaUI")
-                if gachaUI then
-                    local frame = gachaUI:FindFirstChild("Frame")
-                    if frame then
-                        local viewport = frame:FindFirstChild("ViewportFrame")
-                        if viewport then
-                            local wm = viewport:FindFirstChild("WorldModel")
-                            if wm then
-                                pcall(function() wm:Destroy() end)
-                            end
-                        end
-                    end
-                end
-            end
-
-            local room = workspace:FindFirstChild("GachaRoom")
-            if room then
-                for _, obj in ipairs(room:GetDescendants()) do
-                    if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
-                        pcall(function()
-                            obj.Transparency = 1
-                            obj.CanCollide = false
-                        end)
-                    end
-                    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-                        pcall(function() obj.Enabled = false end)
-                    end
-                end
-            end
-
-            local effects = workspace:FindFirstChild("Effects")
-            if effects then
-                for _, child in ipairs(effects:GetChildren()) do
-                    if child:IsA("Part") or child:IsA("MeshPart") or child:IsA("Model") then
-                        pcall(function() child:Destroy() end)
-                    end
-                end
-            end
-        end)
-    end
-
-    local function ResetCamera()
-        pcall(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            local cam = workspace.CurrentCamera
-            if not cam then return end
-            cam.CameraSubject = hrp
-            cam.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 5), hrp.Position)
-        end)
-    end
-
-    function StartGachaEnhancement()
-        if GachaEnhancementActive then return end
-        GachaEnhancementActive = true
-        pcall(function() CreateMoneyUI() end)
-
-        if GachaHeartbeatConnection then return end
-        GachaHeartbeatConnection = RunService.Heartbeat:Connect(function()
-            if not GachaEnhancementActive then return end
-            pcall(function()
-                ForceShowGacha()
-                RemoveBlackScreens()
-                RemoveGachaVisuals()
-                ResetCamera()
-            end)
-        end)
-    end
-
-    function StopGachaEnhancement()
-        GachaEnhancementActive = false
-        if GachaHeartbeatConnection then
-            GachaHeartbeatConnection:Disconnect()
-            GachaHeartbeatConnection = nil
-        end
-
-        pcall(function()
-            local parent = CoreGui or pg
-            if parent then
-                local moneyUI = parent:FindFirstChild("MoneyUI")
-                if moneyUI then moneyUI:Destroy() end
-            end
-        end)
-        MoneyUIExists = false
-
-        pcall(function()
-            ApplyCameraMode(true)
-            local cam = workspace.CurrentCamera
-            local char = LocalPlayer.Character
-            if cam and char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    cam.CameraSubject = hrp
-                end
-            end
-        end)
-
-        pcall(function()
-            local readyRemote = GetRemote("GetReadyRemote")
-            if readyRemote then
-                readyRemote:FireServer("1", true)
-                task.wait(0.1)
-                readyRemote:FireServer("1", false)
-            end
         end)
     end
 
@@ -6610,15 +6303,8 @@ end)
 -- ====================== COLLECT SYSTEM ======================
 -- ============================================================
 
--- ★ 修改后的 MatchesPattern：只针对 Special-Request 使用子串匹配
 function MatchesPattern(objectName, pattern)
     local objL, patL = tostring(objectName or ""):lower(), tostring(pattern or ""):lower()
-    
-    -- ★ 特殊处理：Special-Request 只要包含 "request" 就匹配（不区分大小写）
-    if pattern == "Special-Request" then
-        return objL:find("request", 1, true) ~= nil
-    end
-    
     if objL == patL then return true end
     if #objL > #patL and objL:sub(1, #patL) == patL then
         local nc = objL:sub(#patL + 1, #patL + 1)
@@ -8229,7 +7915,6 @@ end
 -- ============================================================
 -- ====================== 调用商店系统 ======================
 -- ============================================================
--- 移到 ApplySavedConfigOnStartup 之后确保 pg 和 CoreGui 已就绪
 _G.__YYA_ShopSystems()
 _G.__YYA_ShopSystems = nil
 
@@ -8246,11 +7931,10 @@ print("[YYa] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成�
 print("[YYa] 配置系统已激活 | 自动保存间隔 " .. tostring(AutoSaveDelay) .. " 秒")
 print("[YYa] 至尊版 - 完整普通模式已集成")
 print("[YYa] 至尊版 - 创世纪核心已添加到收集列表")
-print("[YYa] 至尊版 - 特殊请求已添加到收集列表")
 print("[YYa] 至尊版 - Astro令牌刷怪系统已完整集成")
 print("[YYa] 至尊版 - 丧失V2模式已移除")
 print("[YYa] 至尊版 - ESP、商店系统、自动收集全部完整保留")
 print("[YYa] 至尊版 - 投票UI已汉化")
-print("[YYa] 至尊版 - 新增：环绕模式（随机瞬移，面向怪物）")
+print("[YYa] 至尊版 - 新增：环绕模式（固定方向，高度可调）")
 print("[YYa] 至尊版 - 上方/下方已还原（纯垂直偏移）")
-
+print("[YYa] 至尊版 - 已移除收集列表中的“特殊请求”")
