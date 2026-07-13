@@ -287,7 +287,7 @@ GachaMap = {
     ["10次幸运抽奖"] = "10SpinLucky",
 }
 
-CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" }  -- 已移除 "特殊请求"
+CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" }
 CollectMap = {
     ["时钟蜘蛛"] = "Clock Spider",
     ["X-18 核心"] = "X-18 Core",
@@ -300,7 +300,6 @@ CollectMap = {
     ["闪存驱动器"] = "Flash Drives",
     ["礼物"] = "Presents",
     ["创世纪核心"] = "Genesis Core",
-    -- 已删除 "特殊请求" 对应项
 }
 
 WeaponDisplayNames = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" }
@@ -345,7 +344,6 @@ FarmModeMap = {
     ["黑暗维度模式"] = "Dark Dimension Mode",
 }
 
--- ★ 位置选项保留“环绕”，但逻辑改为固定式
 FarmPositionDisplayNames = { "上方", "下方", "环绕" }
 FarmPositionMap = {
     ["上方"] = "Above",
@@ -624,9 +622,8 @@ BoostFPS_Active_dummy  = false
 AutoStartEnabled       = Config:Get("AutoStartEnabled", table.find(MiscOptions, "自动开始") ~= nil)
 AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
 AutoVoteValue         = Config:Get("AutoVoteValue", "普通")
--- ★ 补充缺失变量
-AutoVoteEnabled       = Config:Get("AutoVoteEnabled", false)   -- 大厅自动游戏模式
-AutoGameValue         = Config:Get("AutoGameValue", "普通")     -- 自动创建游戏模式
+AutoVoteEnabled       = Config:Get("AutoVoteEnabled", false)
+AutoGameValue         = Config:Get("AutoGameValue", "普通")
 AutoVoteLoopRunning   = false
 AutoVoteLastFireAt    = 0
 AutoStartLastReadyAt  = 0
@@ -672,17 +669,15 @@ FarmCollecting         = false
 CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
--- ★ 环绕模式变量（保留，但不再用于随机切换）
-circleRadius = Config:Get("CircleRadius", 5)   -- 环绕半径（格），固定方向距离
-circleDirectionIndex = 0                       -- 不再使用
-circleAttackCount = 0                          -- 不再使用
+circleRadius = Config:Get("CircleRadius", 5)
+circleDirectionIndex = 0
+circleAttackCount = 0
 
 -- ====================== COLLECT VARIABLES ======================
 CollectItems = {
     "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
     "Astro Samples", "Weird Prism", "Key Card", "Zombie Core",
     "Flash Drives", "Presents", "Genesis Core",
-    -- 已删除 "Special-Request"
 }
 
 CollectGroupMap = {
@@ -3467,7 +3462,7 @@ Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
     Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 普通模式回归，使用完整优先级系统\n• [修复] 移动改为活物检测，不再依赖特定零件\n• [优化] 普通模式与Astro/黑暗模式共存\n• [新增] 创世纪核心收集\n• [新增] Astro令牌刷怪完整系统\n• [新增] 环绕模式（固定方向，高度可调）",
-    Image = "rbxassetid://ImageLabel.Image = "rbxassetid://103789103251622"",
+    Image = "rbxassetid://103789103251622",
     ImageSize = 26,
 })
 Info:Divider()
@@ -3997,7 +3992,7 @@ EspItemDropdown = Main4:Dropdown({
     Title = "透视物品",
     Desc = "选择哪些可收集物品名称应接收物品透视。",
     Multi = true,
-    Values = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" },  -- 已删除 "特殊请求"
+    Values = { "时钟蜘蛛", "X-18 核心", "绿色能量核心", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" },
     Value = ESP.SelectedItems,
     Callback = function(value)
         ESP.SelectedItems = value or {}
@@ -4488,7 +4483,6 @@ _G.__YYA_ShopSystems = function()
     local autoRequestEnabled        = Config:Get("AutoRequestEnabled", false)
     local autoSkillTreeEnabled      = Config:Get("AutoSkillTreeEnabled", false)
 
-    -- ★ 移除增强功能，改为纯循环（与原版一致）
     local function EnsureList(value, fallback)
         if type(value) == "table" then return value end
         if value ~= nil then return { value } end
@@ -7873,7 +7867,6 @@ function ApplySavedConfigOnStartup()
     if FullBrightEnabled then ApplyFullBright() end
     if NoFogEnabled then ApplyNoFog() end
 
-    -- ★ 重置环绕状态
     circleDirectionIndex = 0
     circleAttackCount = 0
 
