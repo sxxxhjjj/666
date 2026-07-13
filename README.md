@@ -5,18 +5,9 @@ version = "Rework"
 ver = "v023.92"
 -- =========================
 
--- ====================== LOAD UI ======================
-local WindUISource, WindUILoadFunc
-local Success, Error = pcall(function()
-    WindUISource = game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua", true)
-    WindUILoadFunc = loadstring(WindUISource)
-end)
+-- ====================== LOAD UI (原版加载方式) ======================
+WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-if not Success or type(WindUILoadFunc) ~= "function" then
-    warn("[YYa] 关键错误：WindUI 加载失败，脚本将停止运行！")
-    return
-end
-WindUI = WindUILoadFunc()
 -- ====================== GameLoad ======================
 repeat task.wait() until game:IsLoaded()
 
@@ -633,6 +624,9 @@ BoostFPS_Active_dummy  = false
 AutoStartEnabled       = Config:Get("AutoStartEnabled", table.find(MiscOptions, "自动开始") ~= nil)
 AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
 AutoVoteValue         = Config:Get("AutoVoteValue", "普通")
+-- ★ 补充缺失变量
+AutoVoteEnabled       = Config:Get("AutoVoteEnabled", false)   -- 大厅自动游戏模式
+AutoGameValue         = Config:Get("AutoGameValue", "普通")     -- 自动创建游戏模式
 AutoVoteLoopRunning   = false
 AutoVoteLastFireAt    = 0
 AutoStartLastReadyAt  = 0
