@@ -1,4 +1,4 @@
--- v191 | [Local Register Fix] | 完整中文版（无付费/卡密，去除互斥限制）
+-- v191 | [Local Register Fix] | 完整中文版（无付费/卡密，去除互斥限制，标识符纯英文）
 -- =========================
 version = "Rework"
 ver = "v023.93"
@@ -27,7 +27,7 @@ function waitLoadingGone(maxWait)
     end
 
     if gui and gui.Parent then
-        warn("[至尊版] 加载界面未及时消失，继续安全执行。")
+        warn("[Rework] 加载界面未及时消失，继续安全执行。")
         return false
     end
 
@@ -40,24 +40,24 @@ WindUI:Notify({ Title = "初始化", Content = "加载完成，2 秒后启动。
 task.wait(2)
 
 -- ====================== WAITING PART / FPS UNLOCK ======================
-至尊版_WAITING_PART_NAME = "至尊版_WAITING_PART"
-iddyhub = "rbxassetid://103789103251622"  -- 使用第一版本的图片
-至尊版_WAITING_STAND_CF = CFrame.new(-23.3435822, 67, 0.341766357)
-至尊版_WAITING_PART_CF = CFrame.new(-23.3435822, 63.95, 0.341766357)
-至尊版_WAITING_PART_SIZE = Vector3.new(16, 1, 16)
-至尊版_WAITING_PART_VISIBLE_TRANSPARENCY = 1
+REWORK_WAITING_PART_NAME = "REWORK_WAITING_PART"
+iddyhub = "rbxassetid://104487529937663"
+REWORK_WAITING_STAND_CF = CFrame.new(-23.3435822, 67, 0.341766357)
+REWORK_WAITING_PART_CF = CFrame.new(-23.3435822, 63.95, 0.341766357)
+REWORK_WAITING_PART_SIZE = Vector3.new(16, 1, 16)
+REWORK_WAITING_PART_VISIBLE_TRANSPARENCY = 1
 
-function Get至尊版WaitingStandCFrame()
-    return 至尊版_WAITING_STAND_CF
+function GetReworkWaitingStandCFrame()
+    return REWORK_WAITING_STAND_CF
 end
 
-function Ensure至尊版WaitingPartImages(waitingPart)
+function EnsureReworkWaitingPartImages(waitingPart)
     if not waitingPart or not waitingPart:IsA("BasePart") then return end
 
     local usedFaces = {}
 
     for _, obj in ipairs(waitingPart:GetChildren()) do
-        if obj:IsA("Decal") and obj.Name == "至尊版_image" then
+        if obj:IsA("Decal") and obj.Name == "rework_image" then
             if usedFaces[obj.Face] then
                 obj:Destroy()
             else
@@ -71,7 +71,7 @@ function Ensure至尊版WaitingPartImages(waitingPart)
     for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
         if not usedFaces[face] then
             local decal = Instance.new("Decal")
-            decal.Name = "至尊版_image"
+            decal.Name = "rework_image"
             decal.Texture = iddyhub
             decal.Face = face
             decal.Transparency = 0
@@ -80,12 +80,12 @@ function Ensure至尊版WaitingPartImages(waitingPart)
     end
 end
 
-function Configure至尊版WaitingPart(waitingPart)
+function ConfigureReworkWaitingPart(waitingPart)
     if not waitingPart or not waitingPart:IsA("BasePart") then return nil end
 
-    waitingPart.Name = 至尊版_WAITING_PART_NAME
-    waitingPart.Size = 至尊版_WAITING_PART_SIZE
-    waitingPart.CFrame = 至尊版_WAITING_PART_CF
+    waitingPart.Name = REWORK_WAITING_PART_NAME
+    waitingPart.Size = REWORK_WAITING_PART_SIZE
+    waitingPart.CFrame = REWORK_WAITING_PART_CF
     waitingPart.Anchored = true
     waitingPart.CanTouch = false
     waitingPart.CanQuery = false
@@ -97,17 +97,17 @@ function Configure至尊版WaitingPart(waitingPart)
 
     local active = AutoFarmEnabled == true
     waitingPart.CanCollide = active
-    waitingPart.Transparency = active and 至尊版_WAITING_PART_VISIBLE_TRANSPARENCY or 1
+    waitingPart.Transparency = active and REWORK_WAITING_PART_VISIBLE_TRANSPARENCY or 1
 
-    Ensure至尊版WaitingPartImages(waitingPart)
+    EnsureReworkWaitingPartImages(waitingPart)
 
     return waitingPart
 end
 
-function Get至尊版WaitingPart()
+function GetReworkWaitingPart()
     local keep = nil
     for _, obj in ipairs(workspace:GetChildren()) do
-        if obj.Name == 至尊版_WAITING_PART_NAME and obj:IsA("BasePart") then
+        if obj.Name == REWORK_WAITING_PART_NAME and obj:IsA("BasePart") then
             if not keep then
                 keep = obj
             else
@@ -118,22 +118,22 @@ function Get至尊版WaitingPart()
     return keep
 end
 
-function Destroy至尊版WaitingPart()
+function DestroyReworkWaitingPart()
     for _, obj in ipairs(workspace:GetChildren()) do
-        if obj.Name == 至尊版_WAITING_PART_NAME and obj:IsA("BasePart") then
+        if obj.Name == REWORK_WAITING_PART_NAME and obj:IsA("BasePart") then
             pcall(function() obj:Destroy() end)
         end
     end
 end
 
-function Ensure至尊版WaitingPart()
-    local waitingPart = Get至尊版WaitingPart()
+function EnsureReworkWaitingPart()
+    local waitingPart = GetReworkWaitingPart()
     if not waitingPart then
         waitingPart = Instance.new("Part")
-        waitingPart.Name = 至尊版_WAITING_PART_NAME
+        waitingPart.Name = REWORK_WAITING_PART_NAME
         waitingPart.Parent = workspace
     end
-    return Configure至尊版WaitingPart(waitingPart)
+    return ConfigureReworkWaitingPart(waitingPart)
 end
 
 if setfpscap then
@@ -146,7 +146,7 @@ end
 
 -- ====================== CUSTOM CONFIG SYSTEM ======================
 HttpService = game:GetService("HttpService")
-ConfigFolder = "至尊版_STBB"
+ConfigFolder = "Rework_STBB"
 
 CustomConfig = {}
 CustomConfig.__index = CustomConfig
@@ -192,7 +192,7 @@ function CustomConfig:Save(force)
         self._LastSaveAt = now
         return true
     else
-        warn("[至尊版] 保存失败:", err)
+        warn("[Rework] 保存失败:", err)
         return false
     end
 end
@@ -205,7 +205,7 @@ function CustomConfig:Load()
         if success and type(result) == "table" then
             self.ConfigData = result
         else
-            warn("[至尊版] 加载配置失败，使用默认值")
+            warn("[Rework] 加载配置失败，使用默认值")
             self.ConfigData = {}
         end
     else
@@ -228,189 +228,6 @@ end
 
 Config = CustomConfig.new()
 
--- ====================== UI DISPLAY NAME MAPPING ======================
--- 从第一版本完整恢复，保持全中文界面
-GachaDisplayNames = { "1次抽奖", "10次抽奖", "100次抽奖", "1次幸运抽奖", "10次幸运抽奖" }
-GachaMap = {
-    ["1次抽奖"] = "1Spin",
-    ["10次抽奖"] = "10Spins",
-    ["100次抽奖"] = "100Spins",
-    ["1次幸运抽奖"] = "1SpinLucky",
-    ["10次幸运抽奖"] = "10SpinLucky",
-}
-
-CollectDisplayNames = { "时钟蜘蛛", "X-18 核心", "绿色核心能量", "奇怪发射器", "Astro 样本", "奇怪棱镜", "钥匙卡", "僵尸核心", "闪存驱动器", "礼物", "创世纪核心" }
-CollectMap = {
-    ["时钟蜘蛛"] = "Clock Spider",
-    ["X-18 核心"] = "X-18 Core",
-    ["绿色核心能量"] = "Green Core Energy",   -- 第二版本新增物品
-    ["奇怪发射器"] = "Weird Transmitter",
-    ["Astro 样本"] = "Astro Samples",
-    ["奇怪棱镜"] = "Weird Prism",
-    ["钥匙卡"] = "Key Card",
-    ["僵尸核心"] = "Zombie Core",
-    ["闪存驱动器"] = "Flash Drives",
-    ["礼物"] = "Presents",
-    ["创世纪核心"] = "Genesis Core",
-}
-
-WeaponDisplayNames = { "电击枪", "火焰喷射器", "鱼叉枪", "霰弹枪", "脉冲步枪", "鱼叉霰弹枪", "EPD", "小型激光枪" }
-WeaponMap = {
-    ["电击枪"] = "Stungun",
-    ["火焰喷射器"] = "Flamethrower",
-    ["鱼叉枪"] = "Harpoon Gun",
-    ["霰弹枪"] = "Shot Gun",
-    ["脉冲步枪"] = "Pulse Rifle",
-    ["鱼叉霰弹枪"] = "Shot Harpoon Gun",
-    ["EPD"] = "EPD",
-    ["小型激光枪"] = "Small Laser Gun",
-}
-
-MiscDisplayNames = { "头戴式耳机", "手雷", "喷气背包", "透镜" }
-MiscMap = {
-    ["头戴式耳机"] = "HeadPhone",
-    ["手雷"] = "Grenade",
-    ["喷气背包"] = "Jetpack",
-    ["透镜"] = "Lens",
-}
-
-RequestDisplayNames = { "泰坦请求", "特殊泰坦请求", "扬声器请求" }
-RequestMap = {
-    ["泰坦请求"] = "Titan-Request",
-    ["特殊泰坦请求"] = "SpecialTitan-Request",
-    ["扬声器请求"] = "Speaker-Request",
-}
-
-GamepassDisplayNames = { "全部", "幸运加成", "稀有幸运加成", "传奇幸运加成" }
-GamepassMap = {
-    ["全部"] = "All",
-    ["幸运加成"] = "LuckyBoost",
-    ["稀有幸运加成"] = "RareLuckyBoost",
-    ["传奇幸运加成"] = "LegendaryLuckyBoost",
-}
-
-FarmModeDisplayNames = { "普通模式", "Astro 坚守模式", "黑暗维度模式" }
-FarmModeMap = {
-    ["普通模式"] = "Normal Mode",
-    ["Astro 坚守模式"] = "Astro Holdout Mode",
-    ["黑暗维度模式"] = "Dark Dimension Mode",
-}
-
-FarmPositionDisplayNames = { "上方", "下方" }   -- 移除环绕
-FarmPositionMap = {
-    ["上方"] = "Above",
-    ["下方"] = "Under",
-}
-
-MovementDisplayNames = { "传送", "补间" }
-MovementMap = {
-    ["传送"] = "Teleport",
-    ["补间"] = "Tween",
-}
-
-CollectModeDisplayNames = { "清洁", "IDGF" }
-CollectModeMap = {
-    ["清洁"] = "Clean",
-    ["IDGF"] = "IDGF",
-}
-
-CameraModeDisplayNames = { "经典", "手动" }
-CameraModeMap = {
-    ["经典"] = "Classic",
-    ["手动"] = "Manual",
-}
-
-VoteDisplayNames = { "普通", "非常困难", "困难", "疯狂", "噩梦", "Boss Rush", "黑暗维度", "地狱", "雷暴", "圣诞节", "僵尸", "Astro V2", "Astro", "1亿访问", "僵尸V2" }
-VoteMap = {
-    ["普通"] = "Normal",
-    ["非常困难"] = "VeryHard",
-    ["困难"] = "Hard",
-    ["疯狂"] = "Insane",
-    ["噩梦"] = "Nightmare",
-    ["Boss Rush"] = "BossRush",
-    ["黑暗维度"] = "DarkDimension",
-    ["地狱"] = "Hell",
-    ["雷暴"] = "ThunderStorm",
-    ["圣诞节"] = "Christmas",
-    ["僵尸"] = "Zombie",
-    ["Astro V2"] = "AstroV2",
-    ["Astro"] = "Astro",
-    ["1亿访问"] = "100MVisit",
-    ["僵尸V2"] = "ZombieV2",  -- 新增丧尸模式
-}
-
-GameModeDisplayNames = VoteDisplayNames  -- 复用
-GameModeMap = VoteMap                    -- 复用
-
-TitanSpeakerUpgradeDisplayNames = { "喷气背包", "过载", "音波增幅器", "核心", "升级" }
-TitanSpeakerUpgradeMap = {
-    ["喷气背包"] = "Jetpack",
-    ["过载"] = "OverCharge",
-    ["音波增幅器"] = "SoundBooster",
-    ["核心"] = "Core",
-    ["升级"] = "Upgrade",
-}
-
-UTCMUpgradeDisplayNames = { "护盾", "冲击波", "透镜", "热度", "护甲" }
-UTCMUpgradeMap = {
-    ["护盾"] = "Shield",
-    ["冲击波"] = "Blaster",
-    ["透镜"] = "Lens",
-    ["热度"] = "Heat",
-    ["护甲"] = "Armor",
-}
-
-TVUpgradeDisplayNames = { "吸收", "共享过载", "护盾", "Astro 臂" }
-TVUpgradeMap = {
-    ["吸收"] = "Absorb",
-    ["共享过载"] = "ShareOverCharge",
-    ["护盾"] = "Shield",
-    ["Astro 臂"] = "AstroArm",
-}
-
-ShopHourlyDisplayNames = {
-    "幸运药水 I", "幸运药水 II", "幸运药水 III", "S-余烬",
-    "BSX2:30", "BSX2:60", "BSX2:360",
-    "闪存驱动器#1", "闪存驱动器#2", "闪存驱动器#3", "闪存驱动器#4", "闪存驱动器#5", "闪存驱动器#6",
-    "大师卡：普通", "大师卡：普通泰坦", "大师卡：特殊泰坦",
-}
-ShopHourlyMap = {
-    ["幸运药水 I"] = "LuckPotionI",
-    ["幸运药水 II"] = "LuckPotionII",
-    ["幸运药水 III"] = "LuckPotionIII",
-    ["S-余烬"] = "S-Ember",
-    ["BSX2:30"] = "BSX2:30",
-    ["BSX2:60"] = "BSX2:60",
-    ["BSX2:360"] = "BSX2:360",
-    ["闪存驱动器#1"] = "FlashDrive#1",
-    ["闪存驱动器#2"] = "FlashDrive#2",
-    ["闪存驱动器#3"] = "FlashDrive#3",
-    ["闪存驱动器#4"] = "FlashDrive#4",
-    ["闪存驱动器#5"] = "FlashDrive#5",
-    ["闪存驱动器#6"] = "FlashDrive#6",
-    ["大师卡：普通"] = "MasterCard:Normal",
-    ["大师卡：普通泰坦"] = "MasterCard:NormalTitan",
-    ["大师卡：特殊泰坦"] = "MasterCard:SpecialTitan",
-}
-
-UseItemDisplayNames = { "礼物" }
-UseItemMap = {
-    ["礼物"] = "Presents",
-}
-
-function GetEnglishValue(map, displayName)
-    return map[displayName] or displayName
-end
-
-function GetDisplayName(map, englishValue)
-    for k, v in pairs(map) do
-        if v == englishValue then
-            return k
-        end
-    end
-    return englishValue
-end
-
 -- ====================== WINDOW ======================
 Players = game:GetService("Players")
 LocalPlayer = Players.LocalPlayer
@@ -419,9 +236,9 @@ CoreGui = game:GetService("CoreGui")
 Window = WindUI:CreateWindow({
     Title = "至尊版",
     IconThemed = true,
-    Icon = "rbxassetid://103789103251622",  -- 使用第一版本图标
+    Icon = "rbxassetid://104487529937663",
     Author = "至尊版 | 全功能",
-    Folder = "至尊版",
+    Folder = "Rework",
     Size = UDim2.fromOffset(550, 380),
     Transparent = true,
     Theme = "Dark",
@@ -465,7 +282,7 @@ Info:Divider()
 Info:Paragraph({
     Title = "更新日志 | " .. ver,
     Desc = "更新日期: 07/03/2026\n• 自动刷怪支持僵尸第二幕\n• 新增模式与物品收集\n• 修复自动收集失败问题\n• 优化收集扫描性能",
-    Image = "rbxassetid://103789103251622",
+    Image = "rbxassetid://104487529937663",
     ImageSize = 26,
 })
 Info:Divider()
@@ -530,7 +347,7 @@ end
 
 -- ====================== STATE VARIABLES ======================
 AutoFarmEnabled        = Config:Get("AutoFarmEnabled", false)
-FarmPosition           = Config:Get("FarmPosition", "上方")   -- 存储中文，但逻辑使用英文映射
+FarmPosition           = Config:Get("FarmPosition", "上方")
 FarmMode               = NormalizeFarmMode(Config:Get("FarmMode", "补间"))
 FarmTargetMode         = NormalizeFarmTargetMode(Config:Get("FarmTargetMode", "普通模式"))
 DarkDimensionCollecting = false
@@ -598,7 +415,7 @@ AutoSkipHeliEnabled    = false
 BoostFPS_Active_dummy  = false
 AutoStartEnabled       = Config:Get("AutoStartEnabled", table.find(MiscOptions, "自动开始") ~= nil)
 AutoVoteinGameEnabled = Config:Get("AutoVoteinGameEnabled", false)
-AutoVoteValue         = Config:Get("AutoVoteValue", "Christmas")  -- 默认英文，但读取时转为中文显示
+AutoVoteValue         = Config:Get("AutoVoteValue", "Christmas")
 AutoVoteLoopRunning   = false
 AutoVoteLastFireAt    = 0
 AutoStartLastReadyAt  = 0
@@ -620,7 +437,7 @@ ResetWaveLastTriggeredWave = nil
 ResetWaveLastTriggeredKey  = nil
 ResetWaveLastTeleportAt = 0
 WaitingRespawn         = false
-IdlePosition           = Get至尊版WaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
+IdlePosition           = GetReworkWaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
 IdleHoldDistance       = 12
 IdleTeleportCooldown   = 1.25
 LastIdleTeleportAt     = 0
@@ -644,25 +461,25 @@ FarmCollecting         = false
 CombatDebugEnabled     = Config:Get("CombatDebugEnabled", false)
 CombatDebugCooldowns   = {}
 
-function Update至尊版WaitingPartCollision()
+function UpdateReworkWaitingPartCollision()
     if AutoFarmEnabled ~= true then
-        if Destroy至尊版WaitingPart then Destroy至尊版WaitingPart() end
+        if DestroyReworkWaitingPart then DestroyReworkWaitingPart() end
         part = nil
         return
     end
 
-    local waitingPart = Ensure至尊版WaitingPart and Ensure至尊版WaitingPart() or Get至尊版WaitingPart()
+    local waitingPart = EnsureReworkWaitingPart and EnsureReworkWaitingPart() or GetReworkWaitingPart()
     if not waitingPart then return end
 
     part = waitingPart
-    pcall(function() Configure至尊版WaitingPart(waitingPart) end)
+    pcall(function() ConfigureReworkWaitingPart(waitingPart) end)
 end
 
-Update至尊版WaitingPartCollision()
+UpdateReworkWaitingPartCollision()
 
 workspace.ChildRemoved:Connect(function(obj)
-    if obj and obj.Name == 至尊版_WAITING_PART_NAME and AutoFarmEnabled == true then
-        task.defer(function() Update至尊版WaitingPartCollision() end)
+    if obj and obj.Name == REWORK_WAITING_PART_NAME and AutoFarmEnabled == true then
+        task.defer(function() UpdateReworkWaitingPartCollision() end)
     end
 end)
 
@@ -675,7 +492,7 @@ function CombatDebug(tag, message, cooldown, showNotify)
     if CombatDebugCooldowns[key] and now - CombatDebugCooldowns[key] < cooldown then return end
     CombatDebugCooldowns[key] = now
 
-    local text = "[至尊版][" .. key .. "] " .. tostring(message or "")
+    local text = "[Rework][" .. key .. "] " .. tostring(message or "")
     print(text)
 
     if showNotify and WindUI then
@@ -803,7 +620,7 @@ function GetRemote(name)
         local now = tick()
         if not MissingRemoteWarnAt[name] or now - MissingRemoteWarnAt[name] >= 10 then
             MissingRemoteWarnAt[name] = now
-            warn("[至尊版] 找不到远程事件: " .. tostring(name))
+            warn("[Rework] 找不到远程事件: " .. tostring(name))
         end
         return nil
     end
@@ -842,19 +659,16 @@ function FireAutoVote(force)
     if not remote then pcall(function() remote = ReplicatedStorage:WaitForChild("Vote", 3) end) end
     if not remote then return false end
 
-    -- 使用映射表转换为英文
-    local englishValue = GetEnglishValue(VoteMap, AutoVoteValue) or AutoVoteValue
-
     local ok, err = pcall(function()
-        remote:FireServer(englishValue)
+        remote:FireServer(AutoVoteValue)
     end)
 
     if ok then
         HideVoteUI()
-        print("[至尊版] 自动投票已触发:", AutoVoteValue, "->", englishValue)
+        print("[Rework] 自动投票已触发:", AutoVoteValue)
         return true
     else
-        warn("[至尊版] 自动投票失败:", err)
+        warn("[Rework] 自动投票失败:", err)
         return false
     end
 end
@@ -2734,7 +2548,7 @@ function SafeGetPriorityMob()
     end
 
     CombatDebug("PriorityError", "GetPriorityMob 失败: " .. tostring(mob), 3, true)
-    warn("[至尊版] GetPriorityMob 失败:", tostring(mob))
+    warn("[Rework] GetPriorityMob 失败:", tostring(mob))
     InvalidateMobCache("优先级错误")
     return nil, nil, nil, 0
 end
@@ -2938,7 +2752,7 @@ function SaveAndBoostFPS()
         end)
     end)
 
-    print("[至尊版] 删除地图: ON")
+    print("[Rework] 删除地图: ON")
 end
 
 function RestoreBoostFPS()
@@ -2980,7 +2794,7 @@ function RestoreBoostFPS()
 
     BoostFPS_OriginalData = {}
     BoostFPS_LightingData = {}
-    print("[至尊版] 删除地图: OFF (已恢复)")
+    print("[Rework] 删除地图: OFF (已恢复)")
 end
 
 task.spawn(function()
@@ -3181,7 +2995,7 @@ function FireGetReady(delayBefore)
         remote:FireServer("1", true)
     end)
 
-    if not ok then warn("[至尊版] GetReadyRemote 失败:", err) end
+    if not ok then warn("[Rework] GetReadyRemote 失败:", err) end
     return ok
 end
 
@@ -3231,8 +3045,8 @@ end
 function TeleportToIdle(force)
     LockActive = false
     WaitingRespawn = true
-    IdlePosition = Get至尊版WaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
-    Update至尊版WaitingPartCollision()
+    IdlePosition = GetReworkWaitingStandCFrame() * CFrame.Angles(math.rad(0), 0, 0)
+    UpdateReworkWaitingPartCollision()
 
     if not Character or not Character.Parent or not HumanoidRootPart then return end
 
@@ -3342,9 +3156,9 @@ end
 -- ============================================================
 
 CollectItems = {
-    "Clock Spider", "X-18 Core", "Green Core Energy", "Weird Transmitter",
+    "Clock Spider", "X-18 Core", "Weird Transmitter",
     "Astro Samples", "Weird Prism", "Key Card", "Zombie Core",
-    "Flash Drives", "Presents", "Genesis Core",
+    "Flash Drives", "Presents","Genesis Core","Green Core Energy",
 }
 
 CollectGroupMap = {
@@ -3361,7 +3175,7 @@ CollectGroupMap = {
 }
 
 AutoCollectEnabled   = Config:Get("AutoCollectEnabled", false)
-SelectedCollectItems = Config:Get("SelectedCollectItems", {})  -- 存储英文
+SelectedCollectItems = Config:Get("SelectedCollectItems", {})
 CollectMode          = Config:Get("CollectMode", "清洁")
 CollectMovementMode  = NormalizeCollectMovement(Config:Get("CollectMovementMode", "补间"))
 
@@ -3374,7 +3188,7 @@ CollectLastFullScan = 0
 -- ============================================================
 -- ====================== FARM ASTRO TOKEN ====================
 -- ============================================================
-FARM_ASTRO_TOKEN_IMAGE = "rbxassetid://103789103251622"  -- 使用第一版本图片
+FARM_ASTRO_TOKEN_IMAGE = "rbxassetid://104487529937663"
 FARM_ASTRO_TOP_A       = CFrame.new(-680, 167, 505)
 FARM_ASTRO_TOP_B       = CFrame.new(495, 167, 505)
 
@@ -3393,9 +3207,9 @@ function NotifyFarmAstroAutoFarm()
     FarmAstroTokenLastAutoFarmNotify = now
     WindUI:Notify({
         Title = "Farm Astro Token",
-        Content = "自动刷怪与 Farm Astro Token 同时开启，请注意生存策略。",
-        Duration = 3,
-        Icon = "info"
+        Content = "请先关闭自动刷怪再使用 Farm Astro Token。",
+        Duration = 4,
+        Icon = "triangle-alert"
     })
 end
 
@@ -3894,7 +3708,14 @@ end
 
 function StartFarmAstroToken()
     if FarmAstroTokenRunning then return end
-    -- 移除互斥限制，允许与 AutoFarm 同时运行
+    if AutoFarmEnabled then
+        FarmAstroTokenEnabled = false
+        Config:Set("FarmAstroTokenEnabled", false)
+        Config:Save()
+        NotifyFarmAstroAutoFarm()
+        return
+    end
+
     FarmAstroTokenRunning = true
     NeedNoClip = true
     LockActive = false
@@ -4278,7 +4099,7 @@ function StartFarmLoop()
                     if WaitingRespawn and not LockActive and not FarmCollecting then
                         pcall(function()
                             RefreshCombatCharacter()
-                            Update至尊版WaitingPartCollision()
+                            UpdateReworkWaitingPartCollision()
                             if Character and HumanoidRootPart then
                                 if IsNearIdlePosition() then
                                     IdlePositionReached = true
@@ -4483,7 +4304,7 @@ function StartFarmLoop()
         end)
 
         if not ok then
-            warn("[至尊版] 农场循环错误:", tostring(err))
+            warn("[Rework] 农场循环错误:", tostring(err))
             CombatDebug("FarmLoopError", tostring(err), 3, true)
         end
 
@@ -4846,7 +4667,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
 
     JeffreyCacheAt = 0
-    Update至尊版WaitingPartCollision()
+    UpdateReworkWaitingPartCollision()
     MobHeightOverride   = {}
     MobConfirmedPadding = {}
     MobLastHealth       = {}
@@ -4887,7 +4708,7 @@ AutoFarmToggle = Main:Toggle({
     Value = AutoFarmEnabled,
     Callback = function(state)
         AutoFarmEnabled = state
-        Update至尊版WaitingPartCollision()
+        UpdateReworkWaitingPartCollision()
         if state then
             StartFarmLoop()
             StartJeffreyGuardLoop()
@@ -4898,7 +4719,7 @@ AutoFarmToggle = Main:Toggle({
             WaitingRespawn = false
             LockActive = false
             RestoreFarmCameraAndMovement()
-            Update至尊版WaitingPartCollision()
+            UpdateReworkWaitingPartCollision()
             if SyncFarmOnly then
                 StopMiscFarmRuntime("自动刷怪已关闭，同步农场仅开启")
                 WindUI:Notify({ Title = "自动刷怪", Content = "自动刷怪已关闭：杂项功能停止工作（同步农场仅开启）", Duration = 3, Icon = "square" })
@@ -4914,9 +4735,9 @@ AutoFarmToggle = Main:Toggle({
 FarmTargetModeDropdown = Main:Dropdown({
     Title = "刷怪模式",
     Desc = "不同的刷怪模式。",
-    Values = FarmModeDisplayNames,
+    Values = { "普通模式", "Astro 坚守模式", "黑暗维度模式" },
     Multi = false,
-    Value = GetDisplayName(FarmModeMap, FarmTargetMode) or FarmTargetMode,
+    Value = FarmTargetMode,
     Callback = function(value)
         FarmTargetMode = NormalizeFarmTargetMode(value)
         Config:Set("FarmTargetMode", FarmTargetMode)
@@ -4934,22 +4755,18 @@ Main:Section({ Title = "刷怪设置", Icon = "settings" })
 PositionDropdown = Main:Dropdown({
     Title = "刷怪位置",
     Desc = "选择角色在目标周围停留的位置。",
-    Values = FarmPositionDisplayNames,
+    Values = { "上方", "下方" },
     Multi = false,
-    Value = GetDisplayName(FarmPositionMap, FarmPosition) or FarmPosition,
-    Callback = function(value)
-        FarmPosition = value
-        Config:Set("FarmPosition", value)
-        Config:Save()
-    end
+    Value = FarmPosition,
+    Callback = function(value) FarmPosition = value; Config:Set("FarmPosition", value); Config:Save() end
 })
 
 ModeDropdown = Main:Dropdown({
     Title = "移动方式",
     Desc = "选择角色移动到每个目标的方式。",
-    Values = MovementDisplayNames,
+    Values = { "传送", "补间" },
     Multi = false,
-    Value = GetDisplayName(MovementMap, FarmMode) or FarmMode,
+    Value = FarmMode,
     Callback = function(value)
         FarmMode = NormalizeFarmMode(value)
         Config:Set("FarmMode", FarmMode)
@@ -5146,7 +4963,7 @@ Main:Section({ Title = "优先级设置", Icon = "list-ordered" })
 Main:Paragraph({
     Title = "优先级顺序",
     Desc = "中断：如果正在攻击低最大生命值怪物时出现更高最大生命值的怪物，立即切换目标",
-    Image = "rbxassetid://103789103251622",
+    Image = "rbxassetid://104487529937663",
     ImageSize = 26,
 })
 
@@ -5159,7 +4976,7 @@ Main:Slider({
         HighHPThreshold = value
         Config:Set("HighHPThreshold", value)
         Config:Save()
-        print("[至尊版] 高血量阈值设置为 " .. value)
+        print("[Rework] 高血量阈值设置为 " .. value)
     end
 })
 
@@ -5276,24 +5093,29 @@ ESP = {
     PlayerEnabled = Config:Get("EspPlayerEnabled", true),
     ItemEnabled   = Config:Get("EspItemEnabled", true),
     Settings      = Config:Get("EspSettings", { "高亮", "距离", "血量", "名称" }),
-    SelectedItems = Config:Get("EspSelectedItems", {}),  -- 存储英文
+    SelectedItems = Config:Get("EspSelectedItems", {}),
     MaxDistance   = 1500,
     _mobHighlights    = {},
     _playerHighlights = {},
     _itemHighlights   = {},
+    ItemList = {
+        "Clock Spider","X-18 Core","Green Core Energy","Weird Transmitter",
+        "Presents","Weird Prism","Key Card","Zombie Core","Flash Drives","Astro Samples","Genesis Core",
+    },
 }
 
 function IsESPItemTarget(objectName, selectedList)
     for _, pattern in ipairs(selectedList) do
-        -- 直接匹配英文
-        if objectName == pattern then return true end
-        -- 尝试通过收集映射匹配中文显示名（如果用户选择的是中文，但存储的是英文）
-        local displayName = GetDisplayName(CollectMap, pattern)
-        if displayName and objectName == displayName then return true end
-        -- 群组匹配（使用英文pattern）
+        if objectName:lower() == pattern:lower() then return true end
+        if #objectName > #pattern then
+            if objectName:lower():sub(1, #pattern) == pattern:lower() then
+                local nc = objectName:lower():sub(#pattern + 1, #pattern + 1)
+                if nc == " " or nc == "#" or nc == "_" or nc == "-" then return true end
+            end
+        end
         if CollectGroupMap[pattern] then
             for _, gName in ipairs(CollectGroupMap[pattern]) do
-                if objectName == gName then return true end
+                if objectName:lower() == gName:lower() then return true end
             end
         end
     end
@@ -5301,10 +5123,10 @@ function IsESPItemTarget(objectName, selectedList)
 end
 
 function CreateESPLabel(parent, labelText)
-    local existing = parent:FindFirstChild("至尊版_ESP_LABEL")
+    local existing = parent:FindFirstChild("Rework_ESP_LABEL")
     if existing then existing:Destroy() end
     local billboard = Instance.new("BillboardGui")
-    billboard.Name = "至尊版_ESP_LABEL"
+    billboard.Name = "Rework_ESP_LABEL"
     billboard.Size = UDim2.new(0, 120, 0, 40)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.AlwaysOnTop = true
@@ -5329,10 +5151,10 @@ function CreateESPLabel(parent, labelText)
 end
 
 function CreateHighlight(model, outlineColor, fillColor, fillTransparency)
-    local existing = model:FindFirstChild("至尊版_ESP_HIGHLIGHT")
+    local existing = model:FindFirstChild("Rework_ESP_HIGHLIGHT")
     if existing then existing:Destroy() end
     local hl = Instance.new("Highlight")
-    hl.Name = "至尊版_ESP_HIGHLIGHT"
+    hl.Name = "Rework_ESP_HIGHLIGHT"
     hl.OutlineColor = outlineColor
     hl.FillColor = fillColor
     hl.FillTransparency = fillTransparency or 0.9
@@ -5345,13 +5167,13 @@ end
 
 function RemoveESP(model)
     pcall(function()
-        local hl = model:FindFirstChild("至尊版_ESP_HIGHLIGHT")
+        local hl = model:FindFirstChild("Rework_ESP_HIGHLIGHT")
         if hl then hl:Destroy() end
-        local hb = model:FindFirstChild("至尊版_ESP_LABEL")
+        local hb = model:FindFirstChild("Rework_ESP_LABEL")
         if hb then hb:Destroy() end
         local hrp = model:FindFirstChild("HumanoidRootPart")
         if hrp then
-            local lb = hrp:FindFirstChild("至尊版_ESP_LABEL")
+            local lb = hrp:FindFirstChild("Rework_ESP_LABEL")
             if lb then lb:Destroy() end
         end
     end)
@@ -5702,25 +5524,11 @@ EspItemDropdown = Main4:Dropdown({
     Title = "透视物品",
     Desc = "选择哪些可收集物品名称应接收物品透视。",
     Multi = true,
-    Values = CollectDisplayNames,  -- 使用中文显示名
-    Value = function()
-        -- 将存储的英文转换为中文显示
-        local displayValues = {}
-        for _, eng in ipairs(ESP.SelectedItems or {}) do
-            local display = GetDisplayName(CollectMap, eng)
-            if display then table.insert(displayValues, display) end
-        end
-        return displayValues
-    end,
-    Callback = function(values)
-        -- 将中文选择转换为英文存储
-        local englishValues = {}
-        for _, display in ipairs(values or {}) do
-            local eng = GetEnglishValue(CollectMap, display)
-            if eng then table.insert(englishValues, eng) end
-        end
-        ESP.SelectedItems = englishValues
-        Config:Set("EspSelectedItems", englishValues)
+    Values = ESP.ItemList,
+    Value = ESP.SelectedItems,
+    Callback = function(value)
+        ESP.SelectedItems = value or {}
+        Config:Set("EspSelectedItems", value)
         Config:Save()
         for obj, _ in pairs(ESP._itemHighlights) do RemoveESP(obj) end
         ESP._itemHighlights = {}
@@ -5828,13 +5636,13 @@ function StartFly()
     CleanupFlyForces()
 
     FlyBodyVelocity = Instance.new("BodyVelocity")
-    FlyBodyVelocity.Name = "至尊版_FlyVelocity"
+    FlyBodyVelocity.Name = "Rework_FlyVelocity"
     FlyBodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
     FlyBodyVelocity.Velocity = Vector3.zero
     FlyBodyVelocity.Parent = root
 
     FlyBodyGyro = Instance.new("BodyGyro")
-    FlyBodyGyro.Name = "至尊版_FlyGyro"
+    FlyBodyGyro.Name = "Rework_FlyGyro"
     FlyBodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
     FlyBodyGyro.P = 10000
     FlyBodyGyro.CFrame = root.CFrame
@@ -6191,24 +5999,12 @@ GamepassDropdown = Main2:Dropdown({
     Title = "选择通行证",
     Desc = "选择要本地解锁的通行证。",
     Multi = true,
-    Values = GamepassDisplayNames,
-    Value = function()
-        local displayValues = {}
-        for _, eng in ipairs(SelectedGamepass) do
-            local display = GetDisplayName(GamepassMap, eng)
-            if display then table.insert(displayValues, display) end
-        end
-        return displayValues
-    end,
-    Callback = function(values)
-        local englishValues = {}
-        for _, display in ipairs(values or {}) do
-            local eng = GetEnglishValue(GamepassMap, display)
-            if eng then table.insert(englishValues, eng) end
-        end
-        GlobalTables.Gamepassts = englishValues
-        SelectedGamepass = englishValues
-        Config:Set("SelectedGamepass", englishValues)
+    Values = GlobalTables.Gamepasst,
+    Value = SelectedGamepass,
+    Callback = function(value)
+        GlobalTables.Gamepassts = value or {}
+        SelectedGamepass = value or {}
+        Config:Set("SelectedGamepass", value)
         Config:Save()
     end,
 })
@@ -6270,7 +6066,7 @@ Main2:Button({
 
 Main5:Section({ Title = "自动扭蛋", Icon = "sparkles" })
 
-_G.__至尊版_ShopSystems = function()
+_G.__Rework_ShopSystems = function()
     local gachaArgs = { "1Spin", "10Spins", "100Spins", "1SpinLucky", "10SpinLucky" }
 
     local autoGachaCharacterEnabled = Config:Get("AutoGachaCharacterEnabled", false)
@@ -6309,7 +6105,7 @@ _G.__至尊版_ShopSystems = function()
         if not remote then return false end
         local args = { ... }
         local ok, err = pcall(function() remote:FireServer(unpack(args)) end)
-        if not ok then warn("[至尊版] 商店远程失败:", tostring(remoteName), err) end
+        if not ok then warn("[Rework] 商店远程失败:", tostring(remoteName), err) end
         return ok
     end
 
@@ -6410,11 +6206,11 @@ _G.__至尊版_ShopSystems = function()
     Main5:Dropdown({
         Title = "使用物品",
         Desc = "选择自动使用物品将激活的物品。",
-        Values = UseItemDisplayNames,
+        Values = { "Presents" },
         Multi = false,
-        Value = GetDisplayName(UseItemMap, selectedUseItem) or selectedUseItem,
+        Value = selectedUseItem,
         Callback = function(value)
-            selectedUseItem = GetEnglishValue(UseItemMap, value) or value
+            selectedUseItem = value or "Presents"
             Config:Set("SelectedUseItem", selectedUseItem)
             Config:Save()
         end
@@ -6434,6 +6230,10 @@ _G.__至尊版_ShopSystems = function()
 
     Main5:Section({ Title = "商店升级", Icon = "arrow-big-up-dash" })
 
+    local titanSpeakerUpgradeValues = { "Jetpack", "OverCharge", "SoundBooster", "Core", "Upgrade" }
+    local utcmUpgradeValues         = { "Shield", "Blaster", "Lens", "Heat", "Armor" }
+    local tvUpgradeValues           = { "Absorb", "ShareOverCharge", "Shield", "AstroArm" }
+
     local selectedTitanSpeakerUpgrades = EnsureList(Config:Get("SelectedTitanSpeakerUpgrades", { "Jetpack" }), { "Jetpack" })
     local selectedUTCMUpgrades         = EnsureList(Config:Get("SelectedUTCMUpgrades", { "Shield" }), { "Shield" })
     local selectedTVUpgrades           = EnsureList(Config:Get("SelectedTVUpgrades", { "Absorb" }), { "Absorb" })
@@ -6447,24 +6247,12 @@ _G.__至尊版_ShopSystems = function()
     Main5:Dropdown({
         Title = "选择泰坦扬声器升级",
         Desc = "选择将请求的泰坦扬声器升级。",
-        Values = TitanSpeakerUpgradeDisplayNames,
+        Values = titanSpeakerUpgradeValues,
         Multi = true,
-        Value = function()
-            local displayValues = {}
-            for _, eng in ipairs(selectedTitanSpeakerUpgrades) do
-                local display = GetDisplayName(TitanSpeakerUpgradeMap, eng)
-                if display then table.insert(displayValues, display) end
-            end
-            return displayValues
-        end,
+        Value = selectedTitanSpeakerUpgrades,
         Callback = function(values)
-            local englishValues = {}
-            for _, display in ipairs(values or {}) do
-                local eng = GetEnglishValue(TitanSpeakerUpgradeMap, display)
-                if eng then table.insert(englishValues, eng) end
-            end
-            selectedTitanSpeakerUpgrades = englishValues
-            Config:Set("SelectedTitanSpeakerUpgrades", englishValues)
+            selectedTitanSpeakerUpgrades = values or {}
+            Config:Set("SelectedTitanSpeakerUpgrades", selectedTitanSpeakerUpgrades)
             Config:Save()
         end
     })
@@ -6484,24 +6272,12 @@ _G.__至尊版_ShopSystems = function()
     Main5:Dropdown({
         Title = "选择 UTCM 升级",
         Desc = "选择将请求的 UTCM 升级。",
-        Values = UTCMUpgradeDisplayNames,
+        Values = utcmUpgradeValues,
         Multi = true,
-        Value = function()
-            local displayValues = {}
-            for _, eng in ipairs(selectedUTCMUpgrades) do
-                local display = GetDisplayName(UTCMUpgradeMap, eng)
-                if display then table.insert(displayValues, display) end
-            end
-            return displayValues
-        end,
+        Value = selectedUTCMUpgrades,
         Callback = function(values)
-            local englishValues = {}
-            for _, display in ipairs(values or {}) do
-                local eng = GetEnglishValue(UTCMUpgradeMap, display)
-                if eng then table.insert(englishValues, eng) end
-            end
-            selectedUTCMUpgrades = englishValues
-            Config:Set("SelectedUTCMUpgrades", englishValues)
+            selectedUTCMUpgrades = values or {}
+            Config:Set("SelectedUTCMUpgrades", selectedUTCMUpgrades)
             Config:Save()
         end
     })
@@ -6521,24 +6297,12 @@ _G.__至尊版_ShopSystems = function()
     Main5:Dropdown({
         Title = "选择 TV 升级",
         Desc = "选择将请求的 TV 升级。",
-        Values = TVUpgradeDisplayNames,
+        Values = tvUpgradeValues,
         Multi = true,
-        Value = function()
-            local displayValues = {}
-            for _, eng in ipairs(selectedTVUpgrades) do
-                local display = GetDisplayName(TVUpgradeMap, eng)
-                if display then table.insert(displayValues, display) end
-            end
-            return displayValues
-        end,
+        Value = selectedTVUpgrades,
         Callback = function(values)
-            local englishValues = {}
-            for _, display in ipairs(values or {}) do
-                local eng = GetEnglishValue(TVUpgradeMap, display)
-                if eng then table.insert(englishValues, eng) end
-            end
-            selectedTVUpgrades = englishValues
-            Config:Set("SelectedTVUpgrades", englishValues)
+            selectedTVUpgrades = values or {}
+            Config:Set("SelectedTVUpgrades", selectedTVUpgrades)
             Config:Save()
         end
     })
@@ -6563,12 +6327,12 @@ _G.__至尊版_ShopSystems = function()
     WeaponDropdown = Main5:Dropdown({
         Title = "选择武器",
         Desc = "选择将自动购买的武器。",
-        Values = WeaponDisplayNames,
+        Values = GlobalTables.Weapon,
         Multi = false,
-        Value = GetDisplayName(WeaponMap, autoBuyWeaponValue) or autoBuyWeaponValue,
+        Value = autoBuyWeaponValue,
         Callback = function(value)
-            autoBuyWeaponValue = GetEnglishValue(WeaponMap, value) or value
-            Config:Set("AutoBuyWeaponValue", autoBuyWeaponValue)
+            autoBuyWeaponValue = value
+            Config:Set("AutoBuyWeaponValue", value)
             Config:Save()
         end
     })
@@ -6615,12 +6379,12 @@ _G.__至尊版_ShopSystems = function()
     MiscShopDropdown = Main5:Dropdown({
         Title = "选择杂项",
         Desc = "选择将自动购买的杂项物品。",
-        Values = MiscDisplayNames,
+        Values = GlobalTables.MiscShop,
         Multi = false,
-        Value = GetDisplayName(MiscMap, autoBuyMiscValue) or autoBuyMiscValue,
+        Value = autoBuyMiscValue,
         Callback = function(value)
-            autoBuyMiscValue = GetEnglishValue(MiscMap, value) or value
-            Config:Set("AutoBuyMiscValue", autoBuyMiscValue)
+            autoBuyMiscValue = value
+            Config:Set("AutoBuyMiscValue", value)
             Config:Save()
         end
     })
@@ -6652,11 +6416,11 @@ _G.__至尊版_ShopSystems = function()
     RequestTitanSpeakerDropdown = Main5:Dropdown({
         Title = "选择请求",
         Desc = "选择将自动购买的泰坦/扬声器请求。",
-        Values = RequestDisplayNames,
+        Values = GlobalTables.RequestTitanSpeaker,
         Multi = false,
-        Value = GetDisplayName(RequestMap, selectedRequestItem) or selectedRequestItem,
+        Value = selectedRequestItem,
         Callback = function(value)
-            selectedRequestItem = GetEnglishValue(RequestMap, value) or value
+            selectedRequestItem = value or "Titan-Request"
             Config:Set("SelectedRequestItem", selectedRequestItem)
             Config:Save()
         end
@@ -6909,23 +6673,11 @@ _G.__至尊版_ShopSystems = function()
     Main5:Dropdown({
         Title = "选择商店小时购",
         Desc = "选择固定的小时购商店物品。",
-        Values = ShopHourlyDisplayNames,
+        Values = shopHourlyValues,
         Multi = true,
-        Value = function()
-            local displayValues = {}
-            for _, eng in ipairs(selectedShopHourlyItems) do
-                local display = GetDisplayName(ShopHourlyMap, eng)
-                if display then table.insert(displayValues, display) end
-            end
-            return displayValues
-        end,
+        Value = selectedShopHourlyItems,
         Callback = function(values)
-            local englishValues = {}
-            for _, display in ipairs(values or {}) do
-                local eng = GetEnglishValue(ShopHourlyMap, display)
-                if eng then table.insert(englishValues, eng) end
-            end
-            selectedShopHourlyItems = SanitizeShopHourlySelection(englishValues, {})
+            selectedShopHourlyItems = SanitizeShopHourlySelection(values or {}, {})
             Config:Set("SelectedShopHourlyItems", selectedShopHourlyItems)
             Config:Save()
         end
@@ -6962,8 +6714,8 @@ _G.__至尊版_ShopSystems = function()
     if buyItemHourlyEnabled then StartBuyItemHourlyLoop() end
 end
 
-_G.__至尊版_ShopSystems()
-_G.__至尊版_ShopSystems = nil
+_G.__Rework_ShopSystems()
+_G.__Rework_ShopSystems = nil
 
 -- ============================================================
 -- ====================== UI: COLLECT TAB ======================
@@ -6997,27 +6749,15 @@ Main6:Section({ Title = "收集设置", Icon = "settings" })
 CollectItemDropdown = Main6:Dropdown({
     Title = "收集物品",
     Desc = "选择自动收集将目标的收集物品。",
-    Values = CollectDisplayNames,
+    Values = CollectItems,
     Multi = true,
-    Value = function()
-        local displayValues = {}
-        for _, eng in ipairs(SelectedCollectItems) do
-            local display = GetDisplayName(CollectMap, eng)
-            if display then table.insert(displayValues, display) end
-        end
-        return displayValues
-    end,
+    Value = SelectedCollectItems,
     Callback = function(values)
-        local englishValues = {}
-        for _, display in ipairs(values or {}) do
-            local eng = GetEnglishValue(CollectMap, display)
-            if eng then table.insert(englishValues, eng) end
-        end
-        SelectedCollectItems = englishValues
+        SelectedCollectItems = values or {}
         CollectCandidateCache = {}
         CollectCacheDirty = true
         KnownCollectItems = {}
-        Config:Set("SelectedCollectItems", englishValues)
+        Config:Set("SelectedCollectItems", SelectedCollectItems)
         Config:Save()
     end
 })
@@ -7025,12 +6765,12 @@ CollectItemDropdown = Main6:Dropdown({
 CollectModeDropdown = Main6:Dropdown({
     Title = "收集模式",
     Desc = "选择自动收集何时收集物品。",
-    Values = CollectModeDisplayNames,
+    Values = { "清洁", "IDGF" },
     Multi = false,
-    Value = GetDisplayName(CollectModeMap, CollectMode) or CollectMode,
+    Value = CollectMode,
     Callback = function(value)
-        CollectMode = GetEnglishValue(CollectModeMap, value) or value
-        Config:Set("CollectMode", CollectMode)
+        CollectMode = value
+        Config:Set("CollectMode", value)
         Config:Save()
         CheckFarmAstroCollectMode()
     end
@@ -7039,9 +6779,9 @@ CollectModeDropdown = Main6:Dropdown({
 CollectMovementDropdown = Main6:Dropdown({
     Title = "收集移动方式",
     Desc = "选择角色移动到可收集物品的方式。",
-    Values = MovementDisplayNames,
+    Values = { "传送", "补间" },
     Multi = false,
-    Value = GetDisplayName(MovementMap, CollectMovementMode) or CollectMovementMode,
+    Value = CollectMovementMode,
     Callback = function(value)
         CollectMovementMode = NormalizeCollectMovement(value)
         Config:Set("CollectMovementMode", CollectMovementMode)
@@ -7059,12 +6799,20 @@ CollectMovementDropdown = Main6:Dropdown({
 -- ====================== UI: GAMEMODE TAB ======================
 -- ============================================================
 
+GlobalTables2 = {
+    Votes2 = {
+        "Normal", "VeryHard", "Hard", "Insane", "Nightmare", "BossRush",
+        "DarkDimension", "Hell", "ThunderStorm", "Christmas", "Zombie",
+        "AstroV2", "Astro", "100MVisit","ZombieV2"
+    }
+}
+
 Main7:Section({ Title = "投票信息", TextXAlignment = "Center", TextSize = 17 })
 Main7:Divider()
 Main7:Paragraph({
     Title = "自动投票：游戏模式",
     Desc = "- [步骤 1] 点击恢复投票系统\n- [步骤 2] 在大厅中（游戏内）等待\n- [步骤 3] 设置自动投票并等待",
-    Image = "rbxassetid://103789103251622",
+    Image = "rbxassetid://104487529937663",
     ImageSize = 30,
 })
 Main7:Divider()
@@ -7117,14 +6865,14 @@ Main7:Button({
 GameModeDropdown2 = Main7:Dropdown({
     Title = "设置投票模式",
     Desc = "选择自动投票将投选的游戏模式。",
-    Values = VoteDisplayNames,
+    Values = GlobalTables2.Votes2,
     Multi = false,
-    Value = GetDisplayName(VoteMap, AutoVoteValue) or AutoVoteValue,
+    Value = AutoVoteValue,
     Callback = function(value)
-        AutoVoteValue = GetEnglishValue(VoteMap, value) or value
-        Config:Set("AutoVoteValue", AutoVoteValue)
+        AutoVoteValue = value
+        Config:Set("AutoVoteValue", value)
         Config:Save()
-        print("[至尊版] 投票模式已选择:", tostring(value))
+        print("[Rework] 投票模式已选择:", tostring(value))
     end
 })
 
@@ -7144,7 +6892,7 @@ AutoVoteIGToggle = Main7:Toggle({
             end
             StartAutoVoteLoop()
         else
-            print("[至尊版] 自动投票模式已禁用")
+            print("[Rework] 自动投票模式已禁用")
         end
     end
 })
@@ -7157,7 +6905,7 @@ Main7:Divider()
 Main7:Paragraph({
     Title = "休闲模式：任务选择",
     Desc = "- [步骤 1] 在大厅中（不在游戏内）\n- [步骤 2] 按 Play 并进入经典模式选择界面\n- [步骤 3] 选择休闲模式并完成传送\n- [步骤 4] 运行脚本",
-    Image = "rbxassetid://103789103251622",
+    Image = "rbxassetid://104487529937663",
     ImageSize = 30,
 })
 Main7:Divider()
@@ -7166,14 +6914,14 @@ Main7:Section({ Title = "游戏模式", Icon = "gamepad-2" })
 GameModeDropdown = Main7:Dropdown({
     Title = "设置游戏模式",
     Desc = "选择自动创建将创建的游戏模式。",
-    Values = GameModeDisplayNames,
+    Values = GlobalTables2.Votes2,
     Multi = false,
-    Value = GetDisplayName(GameModeMap, AutoGameValue) or AutoGameValue,
+    Value = AutoGameValue,
     Callback = function(value)
-        AutoGameValue = GetEnglishValue(GameModeMap, value) or value
-        Config:Set("AutoGameValue", AutoGameValue)
+        AutoGameValue = value
+        Config:Set("AutoGameValue", value)
         Config:Save()
-        print("[至尊版] 游戏模式已选择: " .. tostring(value))
+        print("[Rework] 游戏模式已选择: " .. tostring(value))
     end
 })
 
@@ -7514,9 +7262,9 @@ function FireAutoSkillTrees()
 
             if ok then
                 fired = fired + 1
-                print("[至尊版] 自动技能树已触发:", remoteArg)
+                print("[Rework] 自动技能树已触发:", remoteArg)
             else
-                warn("[至尊版] 自动技能树失败:", remoteArg, err)
+                warn("[Rework] 自动技能树失败:", remoteArg, err)
             end
 
             task.wait(0.35)
@@ -7587,7 +7335,7 @@ Main3:Input({
             Config:Save()
             RestartAutoSave()
         else
-            warn("[至尊版] 无效延迟值！")
+            warn("[Rework] 无效延迟值！")
         end
     end
 })
@@ -7652,9 +7400,9 @@ Main3:Section({ Title = "杂项", Icon = "settings" })
 CameraDropdown = Main3:Dropdown({
     Title = "相机模式",
     Desc = "选择相机应如何跟随角色。",
-    Values = CameraModeDisplayNames,
+    Values = { "经典", "手动" },
     Multi = false,
-    Value = GetDisplayName(CameraModeMap, CameraMode) or CameraMode,
+    Value = NormalizeCameraMode(CameraMode),
     Callback = function(value)
         CameraMode = NormalizeCameraMode(value)
         Config:Set("CameraMode", CameraMode)
@@ -7809,12 +7557,11 @@ function ApplySavedConfigOnStartup()
     task.wait(1)
     updatePlayerStats()
     ApplyCameraMode(true)
-    Update至尊版WaitingPartCollision()
+    UpdateReworkWaitingPartCollision()
     if FullBrightEnabled then ApplyFullBright() end
     if NoFogEnabled then ApplyNoFog() end
     if FlyEnabled then StartFly() end
 
-    -- 移除互斥限制，仅给提示
     if FarmAstroTokenEnabled and AutoFarmEnabled then
         WindUI:Notify({
             Title = "提示",
@@ -7859,6 +7606,6 @@ end
 
 ApplySavedConfigOnStartup()
 
-print("[至尊版] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成功！")
-print("[至尊版] 配置系统已激活 | 自动保存间隔 " .. tostring(AutoSaveDelay) .. " 秒")
-print("[至尊版] 已移除 Auto Farm 与 Farm Astro Token 的互斥限制")
+print("[Rework] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成功！")
+print("[Rework] 配置系统已激活 | 自动保存间隔 " .. tostring(AutoSaveDelay) .. " 秒")
+print("[Rework] 已移除 Auto Farm 与 Farm Astro Token 的互斥限制")
