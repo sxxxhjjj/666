@@ -683,6 +683,13 @@ circleRadius = Config:Get("CircleRadius", 5)
 circleDirectionIndex = 0
 circleAttackCount = 0
 
+-- ====================== 新增：波次倒计时独立功能 ======================
+WaveTimerTeleportEnabled = true          -- 硬编码开启
+WaveTimerThreshold = 5                   -- 触发阈值（秒）
+WaveTimerArmed = false                   -- 武装状态
+WaveTimerLastTriggerKey = nil            -- 防重复
+WaveTimerGodModeCooldown = 0             -- 冷却（仅Astro模式使用）
+
 -- ====================== COLLECT VARIABLES ======================
 CollectItems = {
     "Clock Spider", "X-18 Core", "Green Energy Core", "Weird Transmitter",
@@ -725,7 +732,6 @@ FARM_ASTRO_TIMER_SAFE_CF = FARM_ASTRO_TIMER_BOTTOM_CF
 FARM_ASTRO_TIMER_PART_OFFSET = CFrame.new(0, -4, 0)
 FARM_ASTRO_TWEEN_TIME  = 0.3
 FARM_ASTRO_TIMER_DROP_TIME = 0.35
-
 function UpdateYYAWaitingPartCollision()
     if AutoFarmEnabled ~= true then
         if DestroyYYAWaitingPart then DestroyYYAWaitingPart() end
@@ -3461,6 +3467,87 @@ function ActivateAllFlushPrompts()
             end
         end
     end)
+end
+
+-- ============================================================
+-- ====================== 新增：波次倒计时独立函数 ======================
+function GetWaveTimerValue()
+    local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return nil end
+    local wavesGui = playerGui:FindFirstChild("WavesGui")
+    if not wavesGui then return nil end
+    local frame = wavesGui:FindFirstChild("Frame")
+    if not frame then return nil end
+    local timer = frame:FindFirstChild("Timer")
+    if not timer or not timer:IsA("TextLabel") then return nil end
+    local text = tostring(timer.Text or "")
+    return ExtractLastNumber(text)
+end
+
+function IsWaveTimerEnding()
+    if not WaveTimerTeleportEnabled then return false end
+    local now = tick()
+    if FarmTargetMode == "Astro Holdout Mode" and now < WaveTimerGodModeCooldown then
+        return false
+    end
+    local timerValue = GetWaveTimerValue()
+    if timerValue == nil then return false end
+    if timerValue > WaveTimerThreshold then
+        WaveTimerArmed = true
+        return false
+    end
+    if WaveTimerArmed and timerValue <= WaveTimerThreshold then
+        local key = tostring(math.floor(timerValue)) .. ":" .. tostring(os.time())
+        if WaveTimerLastTriggerKey == key then return false end
+        WaveTimerLastTriggerKey = key
+        WaveTimerArmed = false
+        return true
+    end
+    return false
+end
+
+function TriggerWaveTimerAction()
+    local char = Character
+    if not char or not HumanoidRootPart then return false end
+
+    FarmForceRetarget = true
+    LockActive = false
+    _interruptSignal = true
+    task.wait(0.1)
+
+    if FarmTargetMode == "Astro Holdout Mode" then
+        local success = ForceGodModeOnce("Astro倒计时上帝模式")
+        if success then
+            CombatDebug("WaveTimer", "Astro模式：上帝模式已触发", 2, true)
+        else
+            CombatDebug("WaveTimer", "Astro模式：上帝模式触发失败", 2, true)
+        end
+        task.wait(0.5)
+        WaveTimerGodModeCooldown = tick() + 5
+    end
+
+    local targetCF = IdlePosition
+    pcall(function()
+        char:PivotTo(targetCF)
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+    end)
+
+    CombatDebug("WaveTimer", "已传送至安全位置", 2, true)
+
+    task.wait(0.2)
+    FarmForceRetarget = false
+    _interruptSignal = false
+    return true
+end
+
+function CheckWaveTimer()
+    if not WaveTimerTeleportEnabled then return end
+    if not IsMiscFarmAllowed() then return end
+    if FarmCollecting or WaitingRespawn or ResetWaveTeleporting then return end
+    if IsWaveTimerEnding() then
+        TriggerWaveTimerAction()
+    end
 end
 
 -- ============================================================
@@ -7201,6 +7288,10 @@ function StartFarmLoop()
             end)
 
             while AutoFarmEnabled and FarmLoopToken == thisFarmLoopToken do
+                -- ========== 新增：波次倒计时独立检测 ==========
+                CheckWaveTimer()
+                -- ===========================================
+
                 RefreshCombatCharacter()
 
                 if ResetWaveTeleporting then
@@ -7896,3 +7987,4 @@ print("[YYa] 至尊版 - 上方/下方已还原（纯垂直偏移）")
 print("[YYa] 至尊版 - 已移除收集列表中的“特殊请求”")
 print("[YYa] 至尊版 - 已移除付费限制，所有功能免费")
 print("[YYa] 至尊版 - 已移除AutoFarm与Astro互斥锁，可同时启用")
+print("[YYa] 至尊版 - 新增波次倒计时独立功能：普通模式仅传送，Astro模式上帝模式+传送")
