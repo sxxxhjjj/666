@@ -6717,62 +6717,33 @@ function UpdateFarmAstroReviveTimerArmed(timerValue)
     end
 end
 
+-- ****** 以下是修改的两个核心函数 ******
 function CheckFarmAstroReviveGodModeOnce()
     if not FarmAstroTokenEnabled or not ShouldBlockFarmAstroGodModePercent() then
         FarmAstroReviveGodTriggered = false
-        FarmAstroReviveTimerArmed = false
-        FarmAstroLastReviveTimer = nil
         return
     end
 
-    local reviveTimer = GetFarmAstroReviveTimerValue()
-    UpdateFarmAstroReviveTimerArmed(reviveTimer)
+    local char, hrp, humanoid = GetFarmAstroCharacter()
+    if not humanoid then return end
+    local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
 
-    if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
-        if not FarmAstroReviveGodTriggered then
-            if ForceGodModeOnce("Farm Astro Revive Timer") then
-                FarmAstroReviveGodTriggered = true
-                FarmAstroReviveTimerArmed = false
-            end
+    if hpPercent < 10 and not FarmAstroReviveGodTriggered then
+        if ForceGodModeOnce("Farm Astro 血量过低") then
+            FarmAstroReviveGodTriggered = true
+            task.delay(5, function()
+                FarmAstroReviveGodTriggered = false
+            end)
         end
-    elseif reviveTimer == nil then
-        FarmAstroReviveGodTriggered = false
-        FarmAstroReviveTimerArmed = false
-        FarmAstroLastReviveTimer = nil
-    elseif reviveTimer > 5 then
+    elseif hpPercent >= 10 then
         FarmAstroReviveGodTriggered = false
     end
 end
 
 function CheckFarmAstroBottomGodMode()
-    if not FarmAstroTokenEnabled or not ShouldBlockFarmAstroGodModePercent() then return end
-    if not FarmAstroFinalLockActive then return end
-    if FarmAstroBottomGodTriggered then return end
-
-    local reviveTimer = GetFarmAstroReviveTimerValue()
-    UpdateFarmAstroReviveTimerArmed(reviveTimer)
-
-    if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
-        if ForceGodModeOnce("Farm Astro bottom lock Revive Timer") then
-            FarmAstroBottomGodTriggered = true
-            FarmAstroReviveGodTriggered = true
-            FarmAstroReviveTimerArmed = false
-        end
-    elseif reviveTimer == nil then
-        FarmAstroBottomGodTriggered = false
-        FarmAstroReviveTimerArmed = false
-        FarmAstroLastReviveTimer = nil
-    elseif reviveTimer > 5 then
-        FarmAstroBottomGodTriggered = false
-    end
-end
-
-function FarmAstroRuntimeChecks()
-    if not FarmAstroTokenEnabled then return end
-    PauseFarmAstroGodModeForTimer()
     CheckFarmAstroReviveGodModeOnce()
-    CheckFarmAstroBottomGodMode()
 end
+-- ****** 修改结束 ******
 
 function GetFarmAstroCharacter()
     local char = LocalPlayer.Character or Character
@@ -7044,7 +7015,6 @@ end
 
 function StartFarmAstroToken()
     if FarmAstroTokenRunning then return end
-    -- 移除与自动刷怪的冲突检测
     FarmAstroTokenRunning = true
     NeedNoClip = true
     LockActive = false
