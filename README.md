@@ -5,6 +5,16 @@ version = "Rework"
 ver = "v023.93"
 -- =========================
 
+-- ========== 纯数字提取工具（新增，不影响其他逻辑） ==========
+function ExtractLastNumber(text)
+    if not text or text == "" then return nil end
+    local numbers = {}
+    for num in string.gmatch(text, "%d+") do
+        table.insert(numbers, tonumber(num))
+    end
+    return numbers[#numbers]  -- 返回最后一个数字（倒计时通常是最后出现的）
+end
+
 -- ====================== LOAD UI (原版加载方式) ======================
 WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
@@ -6582,10 +6592,8 @@ end
 function GetFarmAstroTimerValue()
     local timerLabel = GetFarmAstroTimerLabel()
     if not timerLabel then return nil end
-    local textValue = tostring(timerLabel.Text or "")
-    local numberText = textValue:match("(%d+)%s*$") or textValue:match("(%d+)")
-    if numberText then return tonumber(numberText) end
-    return nil
+    local text = tostring(timerLabel.Text or "")
+    return ExtractLastNumber(text)  -- 使用纯数字提取
 end
 
 function UpdateFarmAstroWaveTimerArmed(timerValue)
@@ -6599,7 +6607,8 @@ function IsFarmAstroTimerEnding()
     if tick() < FarmAstroTokenTimerIgnoreUntil then return false end
     local timerValue = GetFarmAstroTimerValue()
     UpdateFarmAstroWaveTimerArmed(timerValue)
-    return timerValue ~= nil and timerValue <= 10 and FarmAstroWaveTimerArmed == true
+    -- 改为 <= 5 触发上帝模式
+    return timerValue ~= nil and timerValue <= 5 and FarmAstroWaveTimerArmed == true
 end
 
 function IsFarmAstroTimerResetForNextWave()
@@ -6700,10 +6709,8 @@ end
 function GetFarmAstroReviveTimerValue()
     local label = GetFarmAstroReviveTimerLabel()
     if not label then return nil end
-    local textValue = tostring(label.Text or "")
-    local numberText = textValue:match("^%s*[Tt][Ii][Mm][Ee][Rr]%s*:%s*(%d+)%s*$")
-    if numberText then return tonumber(numberText) end
-    return nil
+    local text = tostring(label.Text or "")
+    return ExtractLastNumber(text)  -- 使用纯数字提取
 end
 
 function UpdateFarmAstroReviveTimerArmed(timerValue)
@@ -6717,33 +6724,62 @@ function UpdateFarmAstroReviveTimerArmed(timerValue)
     end
 end
 
--- ****** 以下是修改的两个核心函数 ******
 function CheckFarmAstroReviveGodModeOnce()
     if not FarmAstroTokenEnabled or not ShouldBlockFarmAstroGodModePercent() then
         FarmAstroReviveGodTriggered = false
+        FarmAstroReviveTimerArmed = false
+        FarmAstroLastReviveTimer = nil
         return
     end
 
-    local char, hrp, humanoid = GetFarmAstroCharacter()
-    if not humanoid then return end
-    local hpPercent = (humanoid.Health / humanoid.MaxHealth) * 100
+    local reviveTimer = GetFarmAstroReviveTimerValue()
+    UpdateFarmAstroReviveTimerArmed(reviveTimer)
 
-    if hpPercent < 10 and not FarmAstroReviveGodTriggered then
-        if ForceGodModeOnce("Farm Astro 血量过低") then
-            FarmAstroReviveGodTriggered = true
-            task.delay(5, function()
-                FarmAstroReviveGodTriggered = false
-            end)
+    if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
+        if not FarmAstroReviveGodTriggered then
+            if ForceGodModeOnce("Farm Astro Revive Timer") then
+                FarmAstroReviveGodTriggered = true
+                FarmAstroReviveTimerArmed = false
+            end
         end
-    elseif hpPercent >= 10 then
+    elseif reviveTimer == nil then
+        FarmAstroReviveGodTriggered = false
+        FarmAstroReviveTimerArmed = false
+        FarmAstroLastReviveTimer = nil
+    elseif reviveTimer > 5 then
         FarmAstroReviveGodTriggered = false
     end
 end
 
 function CheckFarmAstroBottomGodMode()
-    CheckFarmAstroReviveGodModeOnce()
+    if not FarmAstroTokenEnabled or not ShouldBlockFarmAstroGodModePercent() then return end
+    if not FarmAstroFinalLockActive then return end
+    if FarmAstroBottomGodTriggered then return end
+
+    local reviveTimer = GetFarmAstroReviveTimerValue()
+    UpdateFarmAstroReviveTimerArmed(reviveTimer)
+
+    if reviveTimer == 5 and FarmAstroReviveTimerArmed == true then
+        if ForceGodModeOnce("Farm Astro bottom lock Revive Timer") then
+            FarmAstroBottomGodTriggered = true
+            FarmAstroReviveGodTriggered = true
+            FarmAstroReviveTimerArmed = false
+        end
+    elseif reviveTimer == nil then
+        FarmAstroBottomGodTriggered = false
+        FarmAstroReviveTimerArmed = false
+        FarmAstroLastReviveTimer = nil
+    elseif reviveTimer > 5 then
+        FarmAstroBottomGodTriggered = false
+    end
 end
--- ****** 修改结束 ******
+
+function FarmAstroRuntimeChecks()
+    if not FarmAstroTokenEnabled then return end
+    PauseFarmAstroGodModeForTimer()
+    CheckFarmAstroReviveGodModeOnce()
+    CheckFarmAstroBottomGodMode()
+end
 
 function GetFarmAstroCharacter()
     local char = LocalPlayer.Character or Character
@@ -7015,6 +7051,7 @@ end
 
 function StartFarmAstroToken()
     if FarmAstroTokenRunning then return end
+    -- 移除与自动刷怪的冲突检测
     FarmAstroTokenRunning = true
     NeedNoClip = true
     LockActive = false
@@ -7396,18 +7433,8 @@ end
 function GetCurrentResetWave()
     local label = GetResetWaveLabel()
     if not label then return nil end
-
-    local ok, textValue = pcall(function()
-        return tostring(label.Text or "")
-    end)
-    if not ok then return nil end
-
-    local waveText = textValue:match("[Ww]ave%s*=?%s*(%d+)")
-    if not waveText then
-        waveText = textValue:match("(%d+)")
-    end
-
-    return tonumber(waveText)
+    local text = tostring(label.Text or "")
+    return ExtractFirstNumber(text)  -- 使用纯数字提取，取第一个数字（波次）
 end
 
 function GetResetWaveTargetValue()
