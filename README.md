@@ -1,5 +1,5 @@
 -- v191 | [融合版] 基于YYa至尊版 + DYHUB新功能
--- 移除付费限制，移除天文互斥锁，增加F键、恢复投票、商店小时购
+-- 移除付费限制，增加F键、恢复投票、商店小时购
 -- =========================
 version = "Rework"
 ver = "v023.93"
@@ -525,7 +525,7 @@ GlobalTables = {
 }
 
 -- ====================== CONFIG VARIABLES ======================
-skillList          = { "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U", "F" }   -- 增加 F
+skillList          = { "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U", "F" }
 skillDropdownValues = { "全部", "Q", "E", "R", "T", "Y", "G", "H", "Z", "X", "C", "V", "B", "U", "F" }
 
 -- ====================== FARM HELPERS ======================
@@ -683,12 +683,11 @@ circleRadius = Config:Get("CircleRadius", 5)
 circleDirectionIndex = 0
 circleAttackCount = 0
 
--- ====================== 新增：波次倒计时独立功能 ======================
-WaveTimerTeleportEnabled = true          -- 硬编码开启
-WaveTimerThreshold = 5                   -- 触发阈值（秒）
-WaveTimerArmed = false                   -- 武装状态
-WaveTimerLastTriggerKey = nil            -- 防重复
-WaveTimerGodModeCooldown = 0             -- 冷却（仅Astro模式使用）
+WaveTimerTeleportEnabled = true
+WaveTimerThreshold = 5
+WaveTimerArmed = false
+WaveTimerLastTriggerKey = nil
+WaveTimerGodModeCooldown = 0
 
 -- ====================== COLLECT VARIABLES ======================
 CollectItems = {
@@ -732,6 +731,7 @@ FARM_ASTRO_TIMER_SAFE_CF = FARM_ASTRO_TIMER_BOTTOM_CF
 FARM_ASTRO_TIMER_PART_OFFSET = CFrame.new(0, -4, 0)
 FARM_ASTRO_TWEEN_TIME  = 0.3
 FARM_ASTRO_TIMER_DROP_TIME = 0.35
+-- ====================== 更新等待区域碰撞 ======================
 function UpdateYYAWaitingPartCollision()
     if AutoFarmEnabled ~= true then
         if DestroyYYAWaitingPart then DestroyYYAWaitingPart() end
@@ -754,6 +754,7 @@ workspace.ChildRemoved:Connect(function(obj)
     end
 end)
 
+-- ====================== 战斗调试 ======================
 function CombatDebug(tag, message, cooldown, showNotify)
     if not CombatDebugEnabled then return end
     cooldown = cooldown or 3
@@ -773,6 +774,7 @@ function CombatDebug(tag, message, cooldown, showNotify)
     end
 end
 
+-- ====================== 杂项功能权限检查 ======================
 function IsMiscFarmAllowed()
     if FarmAstroTokenEnabled and SyncFarmOnly then return false end
     return AutoFarmEnabled or not SyncFarmOnly
@@ -810,7 +812,7 @@ function ApplyMiscFarmGate(reason)
     return true
 end
 
--- ====================== CAMERA MODE ======================
+-- ====================== 相机模式 ======================
 CameraLastApplyAt = 0
 CameraApplyCooldown = 0.22
 CameraSyncToken = 0
@@ -899,7 +901,7 @@ function GetRemote(name)
     return remote
 end
 
--- ====================== AUTO VOTE CORE / AUTO START SYNC ======================
+-- ====================== AUTO VOTE / AUTO START ======================
 function GetVoteUIFrame()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
@@ -967,7 +969,7 @@ function StartAutoVoteLoop()
     end)
 end
 
--- ====================== NEW PRIORITY SYSTEM CONFIG ======================
+-- ====================== 优先级系统 ======================
 HighHPThreshold        = Config:Get("HighHPThreshold", 200)
 _currentTargetPriority = 0
 _interruptSignal       = false
@@ -980,7 +982,7 @@ AutoBuyMiscEnabled     = Config:Get("AutoBuyMiscEnabled", false)
 SelectedWeapon         = Config:Get("SelectedWeapon", "电击枪")
 SelectedMiscItem       = Config:Get("SelectedMiscItem", "头戴式耳机")
 
--- ====================== FILL UP PART CONFIG ======================
+-- ====================== 填充位置 ======================
 FILLUP_PART_PATH   = { "HelicopterShop", "ShopXDD", "PartForShop" }
 FILLUP_TARGET_POS  = Vector3.new(44.2756729, 26.3595276, -32.7318268)
 FILLUP_POS_THRESHOLD = 0.5
@@ -1001,7 +1003,7 @@ function IsFillUpPartReady()
     return (p.CFrame.Position - FILLUP_TARGET_POS).Magnitude < FILLUP_POS_THRESHOLD
 end
 
--- ====================== ALLY SYSTEM ======================
+-- ====================== 盟友系统 ======================
 AllyNames = {
     ["Heavy Soldier Toilet V2"]  = true, ["Quad Laser Toilet"] = true,
     ["Strider Rocket Laser"] = true, ["Helicopter Camera"] = true,
@@ -1012,7 +1014,7 @@ AllyNames = {
 
 function IsAlly(mob) return AllyNames[mob.Name] ~= nil end
 
--- ====================== TP SYSTEM ======================
+-- ====================== TP 系统 ======================
 function tp(pu79)
     pcall(function()
         if not pu79 or not pu79.Target then return end
@@ -1063,7 +1065,7 @@ function tp1(p89)
     end
 end
 
--- ====================== UTILITY FUNCTIONS ======================
+-- ====================== 工具函数 ======================
 function IsValidMob(obj)
     if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
         if Players:GetPlayerFromCharacter(obj) then return false end
@@ -1313,10 +1315,7 @@ function IsFarmTargetSafeFromJeffrey(mob, forceRefresh)
     return true
 end
 
-
--- ============================================================
--- =============== BARRIER SAFE ESCAPE SYSTEM ==================
--- ============================================================
+-- ====================== 屏障安全逃离系统 ======================
 BarrierCacheParts = {}
 BarrierCacheAt = 0
 BarrierCacheTTL = 1.25
@@ -1734,10 +1733,7 @@ function StartJeffreyGuardLoop()
     end)
 end
 
-
--- ============================================================
 -- ====================== BYPASS JEFFREY ======================
--- ============================================================
 function GetBypassJeffreyObject(obj)
     if not obj then return nil end
     if IsJeffreyName(obj.Name) then return obj end
@@ -1844,7 +1840,6 @@ function HandleBypassJeffreyObject(obj)
     end
 end
 
-
 workspace.DescendantAdded:Connect(function(obj)
     if obj and IsJeffreyName(obj.Name) then
         JeffreyCacheAt = 0
@@ -1878,7 +1873,7 @@ function GetMobMaxHP(mob)
     return humanoid.MaxHealth or 0
 end
 
--- ====================== MOB CACHE SYSTEM ======================
+-- ====================== 怪物缓存系统 ======================
 MobCacheList = {}
 MobCacheDirty = true
 MobCacheFolder = nil
@@ -2015,7 +2010,7 @@ end
 
 SetupMobCacheWorkspaceHooks()
 
--- ====================== MOB SELECTION ======================
+-- ====================== 怪物选择 ======================
 function IsAstroMob(mob)
     return mob and mob.Name and mob.Name:lower():find("astro", 1, true) ~= nil
 end
@@ -2087,10 +2082,7 @@ function GetHighestMob()
     return highestMob
 end
 
--- ============================================================
--- ====================== PRIORITY SYSTEM =====================
--- ============================================================
-
+-- ====================== 优先级系统 ======================
 function GetHelicopter()
     for _, mob in ipairs(GetFarmCandidateMobs(false)) do
         if mob.Name:lower():find("helicopter") then return mob end
@@ -2195,10 +2187,7 @@ function CheckInterrupt(currentPriority)
     return false, currentPriority
 end
 
--- ============================================================
--- ====================== MOB VISUAL BOUNDS ===================
--- ============================================================
-
+-- ====================== MOB 视觉边界 ======================
 MobBoundsCache = {}
 MobBoundsCacheAt = {}
 MobBoundsCacheTTL = 0.25
@@ -2258,10 +2247,7 @@ function GetMobVisualBounds(mob)
     return center, minY, maxY
 end
 
--- ============================================================
--- ====================== MOB HEIGHT OVERRIDE =================
--- ============================================================
-
+-- ====================== MOB 高度覆盖 ======================
 PADDING_REDUCE_STEP    = Config:Get("PaddingReduceStep", 2)
 PADDING_SAFE_MIN       = Config:Get("PaddingSafeMin", -30)
 DMG_THRESHOLD          = Config:Get("DmgThreshold", 40)
@@ -2382,10 +2368,7 @@ function ResetMobOverride(mob)
     end)
 end
 
--- ============================================================
 -- ====================== ★ 修改：GetTargetCFrame =====================
--- 上方/下方保持纯垂直偏移，环绕改为固定方向（前方）+ 高度可调（使用HeightValue）
--- ============================================================
 function GetTargetCFrame(mob, position)
     local mobRoot = GetMobRootPart(mob)
     if not mobRoot then return nil end
@@ -2406,9 +2389,7 @@ function GetTargetCFrame(mob, position)
         return CFrame.new(targetPos, lookAtPos) * CFrame.Angles(math.rad(10), 0, 0)
 
     elseif position == "环绕" then
-        -- 环绕模式：仅限普通模式，固定于怪物前方，水平距离由 circleRadius 控制，垂直偏移由 HeightValue 控制
         if FarmTargetMode ~= "Normal Mode" then
-            -- 若非普通模式，回退到上方
             local safeTargetY = math.max(maxY + padding, maxY + 0.5)
             local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
             local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
@@ -2416,13 +2397,11 @@ function GetTargetCFrame(mob, position)
         end
 
         local forward = mobRoot.CFrame.LookVector
-        local yOffset = HeightValue  -- 使用刷怪高度滑块控制Y轴偏移
+        local yOffset = HeightValue
         local targetPos = Vector3.new(center.X + forward.X * circleRadius, center.Y + yOffset, center.Z + forward.Z * circleRadius)
-        -- 始终面向怪物中心
         return CFrame.new(targetPos, center)
     end
 
-    -- fallback
     local safeTargetY = math.max(maxY + padding, maxY + 0.5)
     local targetPos   = Vector3.new(center.X, safeTargetY, center.Z)
     local lookAtPos   = Vector3.new(center.X, maxY, center.Z)
@@ -2487,10 +2466,7 @@ function TeleportToMob(mob)
     end
 end
 
--- ============================================================
--- =========== DARK DIMENSION / Astro Holdout Mode MOVEMENT ===========
--- ============================================================
-
+-- ====================== DARK DIMENSION / ASTRO 移动 ======================
 function MoveSpecialCharacterCFrame(cf)
     if ResetWaveTeleporting then return false end
     RefreshCombatCharacter()
@@ -2561,7 +2537,6 @@ function StopFarmLockForSanityCollect(reason)
     task.wait(0.03)
     return DarkDimensionCollectToken
 end
-
 function GetSanityImageLabel()
     local gui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
     if not gui then return nil end
@@ -2819,7 +2794,6 @@ function LockToMob(mob)
     end)
 end
 
--- ====================== AUTO LOOPS ======================
 function RefreshCombatCharacter()
     if not Character or not Character.Parent then
         Character = LocalPlayer.Character
@@ -2870,7 +2844,6 @@ function SafeGetPriorityMob()
     return nil, nil, nil, 0
 end
 
--- ★ 修改 StartAutoAttack：删除环绕模式切换逻辑（因固定方向）
 function StartAutoAttack()
     if AutoAttackLoopRunning then return end
     AutoAttackLoopRunning = true
@@ -2984,7 +2957,6 @@ function IsLivingDescendant(obj)
     return false
 end
 
--- ====================== Delete Map (Delete Map) SYSTEM ======================
 BoostFPS_OriginalData = {}
 BoostFPS_Active = false
 BoostFPS_RestoreConnection = nil
@@ -3136,7 +3108,6 @@ task.spawn(function()
     end
 end)
 
--- ====================== PLAYER HP HELPERS ======================
 function GetPlayerHPInfo()
     local humanoid = Character and Character:FindFirstChild("Humanoid")
     if not humanoid then return 100, 100 end
@@ -3156,7 +3127,6 @@ function GetPlayerHealthPercent()
     return (humanoid.Health / humanoid.MaxHealth) * 100
 end
 
--- ====================== GOD MODE CORE ======================
 function IsCharacterDeadForGodMode(char, humanoid)
     return not char or not char.Parent or not humanoid or not humanoid.Parent
         or humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead
@@ -3201,7 +3171,6 @@ function ShouldBlockFarmAstroGodModePercent()
     return FarmAstroTokenEnabled == true and SyncFarmOnly == false and table.find(MiscOptions or {}, "上帝模式") ~= nil
 end
 
--- ====================== GOD MODE LOOP ======================
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -3225,7 +3194,6 @@ task.spawn(function()
     end
 end)
 
--- ====================== AUTO FILL UP ======================
 function DoFillUp()
     local remote = GetRemote("ShopSystem")
     if not remote then return end
@@ -3257,7 +3225,6 @@ function StartAutoFillUpLoop()
     end)
 end
 
--- ====================== BARRIER BYPASS ======================
 function startNoBarrier()
     if noBarrierConnection then return end
     noBarrierConnection = RunService.Heartbeat:Connect(function()
@@ -3283,8 +3250,6 @@ function stopNoBarrier()
     end
 end
 
--- ============================================================
--- ====================== AUTO START MODE ======================
 function FireGetReady(delayBefore)
     if delayBefore == nil then delayBefore = 0 end
     if delayBefore > 0 then task.wait(delayBefore) end
@@ -3345,7 +3310,6 @@ function StopAutoStart()
     SetupAutoStartOnly(false)
 end
 
--- ====================== TELEPORT TO IDLE ======================
 function StopIdleVelocity()
     pcall(function()
         if HumanoidRootPart then
@@ -3391,7 +3355,6 @@ function TeleportToIdle(force)
     end)
 end
 
--- ====================== PROXIMITY PROMPT HELPERS ======================
 function ActivateProximityPrompt(prompt)
     pcall(function()
         prompt.HoldDuration = 0
@@ -3469,8 +3432,6 @@ function ActivateAllFlushPrompts()
     end)
 end
 
--- ============================================================
--- ====================== 新增：波次倒计时独立函数 ======================
 function GetWaveTimerValue()
     local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
@@ -3506,39 +3467,65 @@ function IsWaveTimerEnding()
     return false
 end
 
-function TriggerWaveTimerAction()
-    local char = Character
-    if not char or not HumanoidRootPart then return false end
+local function AstroTimerResetOnce()
+    ForceGodModeOnce("Astro timer reset")
+    local newChar = LocalPlayer.CharacterAdded:Wait()
+    task.wait(0.3)
+    local hrp = newChar:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = FARM_ASTRO_TIMER_BOTTOM_CF
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end
+end
 
-    FarmForceRetarget = true
-    LockActive = false
-    _interruptSignal = true
-    task.wait(0.1)
+local function FarmTimerResetOnce()
+    ForceGodModeOnce("Farm timer reset")
+    local newChar = LocalPlayer.CharacterAdded:Wait()
+    task.wait(0.3)
+    local hrp = newChar:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = IdlePosition
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end
+end
 
-    if FarmTargetMode == "Astro Holdout Mode" then
-        local success = ForceGodModeOnce("Astro倒计时上帝模式")
-        if success then
-            CombatDebug("WaveTimer", "Astro模式：上帝模式已触发", 2, true)
-        else
-            CombatDebug("WaveTimer", "Astro模式：上帝模式触发失败", 2, true)
+function WaitFarmAstroRespawnAfterTimer(skipMove)
+    if not skipMove then
+        MoveFarmAstroToTimerSafe()
+    end
+    local lockStartedAt = tick()
+
+    while FarmAstroTokenEnabled do
+        FarmAstroRuntimeChecks()
+        if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
+            HoldFarmAstroBottomLockOnce()
         end
-        task.wait(0.5)
-        WaveTimerGodModeCooldown = tick() + 5
+
+        if tick() - lockStartedAt >= 0.25 and IsFarmAstroTimerResetForNextWave() then
+            break
+        end
+
+        task.wait(0.1)
     end
 
-    local targetCF = IdlePosition
-    pcall(function()
-        char:PivotTo(targetCF)
-        HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-        HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-    end)
+    FarmAstroTokenTimerHold = false
+    FarmAstroFinalLockActive = false
+    FarmAstroTimerDropping = false
+    FarmAstroBottomGodTriggered = false
+    FarmAstroReviveGodTriggered = false
+    FarmAstroReviveTimerArmed = false
+    FarmAstroLastReviveTimer = nil
+    FarmAstroWaveTimerArmed = false
+    FarmAstroLastWaveTimer = nil
+    FarmAstroTokenTimerIgnoreUntil = tick() + 2
+    ResumeFarmAstroGodModeAfterRespawn("Farm Astro timer reset")
+end
 
-    CombatDebug("WaveTimer", "已传送至安全位置", 2, true)
-
-    task.wait(0.2)
-    FarmForceRetarget = false
-    _interruptSignal = false
-    return true
+function IsFarmAstroTimerResetForNextWave()
+    local timerValue = GetFarmAstroTimerValue()
+    return timerValue ~= nil and timerValue > 10
 end
 
 function CheckWaveTimer()
@@ -3546,13 +3533,9 @@ function CheckWaveTimer()
     if not IsMiscFarmAllowed() then return end
     if FarmCollecting or WaitingRespawn or ResetWaveTeleporting then return end
     if IsWaveTimerEnding() then
-        TriggerWaveTimerAction()
+        FarmTimerResetOnce()
     end
 end
-
--- ============================================================
--- ====================== INFO TAB =============================
--- ============================================================
 
 Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 })
 Info:Divider()
@@ -3564,10 +3547,6 @@ Info:Paragraph({
 })
 Info:Divider()
 
--- ============================================================
--- ====================== MAIN TAB =============================
--- ============================================================
-
 Main:Section({ Title = "自动刷怪", Icon = "package" })
 
 AutoFarmToggle = Main:Toggle({
@@ -3575,7 +3554,23 @@ AutoFarmToggle = Main:Toggle({
     Desc = "基于优先级系统自动刷怪。",
     Value = AutoFarmEnabled,
     Callback = function(state)
-        -- 移除互斥锁：允许与Astro同时开启
+        if state and FarmAstroTokenEnabled then
+            FarmAstroTokenEnabled = false
+            Config:Set("FarmAstroTokenEnabled", false)
+            Config:Save()
+            pcall(function()
+                if FarmAstroTokenToggle and FarmAstroTokenToggle.Set then
+                    FarmAstroTokenToggle:Set(false)
+                end
+            end)
+            WindUI:Notify({
+                Title = "互斥",
+                Content = "已自动关闭 Farm Astro Token",
+                Duration = 3,
+                Icon = "info"
+            })
+        end
+
         AutoFarmEnabled = state
         UpdateYYAWaitingPartCollision()
         if state then
@@ -3721,7 +3716,23 @@ FarmAstroTokenToggle = Main:Toggle({
     Desc = "避开所有怪物以防止自己死亡，时间耗尽时前往中心",
     Value = FarmAstroTokenEnabled,
     Callback = function(state)
-        -- 移除互斥锁：允许与自动刷怪同时启用
+        if state and AutoFarmEnabled then
+            AutoFarmEnabled = false
+            Config:Set("AutoFarmEnabled", false)
+            Config:Save()
+            pcall(function()
+                if AutoFarmToggle and AutoFarmToggle.Set then
+                    AutoFarmToggle:Set(false)
+                end
+            end)
+            WindUI:Notify({
+                Title = "互斥",
+                Content = "已自动关闭 Auto Farm",
+                Duration = 3,
+                Icon = "info"
+            })
+        end
+
         FarmAstroTokenEnabled = state
         Config:Set("FarmAstroTokenEnabled", state)
         Config:Save()
@@ -3987,10 +3998,6 @@ Main:Toggle({
     end
 })
 
--- ============================================================
--- ====================== ESP TAB =============================
--- ============================================================
-
 Main4:Section({ Title = "启用透视", Icon = "eye" })
 
 EspEnableToggle = Main4:Toggle({
@@ -4081,10 +4088,6 @@ EspItemDropdown = Main4:Dropdown({
         if ESP.Enabled and ESP.ItemEnabled then pcall(ScanItems) end
     end,
 })
-
--- ============================================================
--- ====================== PLAYER TAB ==========================
--- ============================================================
 
 Main2:Section({ Title = "玩家", Icon = "user" })
 
@@ -4515,9 +4518,6 @@ Main2:Button({
     end,
 })
 
--- ============================================================
--- ============== 角色重生时重置飞行状态 ======================
--- ============================================================
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.7)
     if FlyNowe then
@@ -4536,10 +4536,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     if animate then animate.Disabled = false end
     updatePlayerStats(true)
 end)
-
--- ============================================================
--- ====================== SHOP TAB ============================
--- ============================================================
 
 Main5:Section({ Title = "角色扭蛋", Icon = "sparkles" })
 
@@ -4992,7 +4988,6 @@ _G.__YYA_ShopSystems = function()
         end
     })
 
-    -- ====================== 新增：商店小时购 ======================
     Main5:Section({ Title = "商店小时购", Icon = "clock" })
 
     local selectedShopHourlyItems   = Config:Get("SelectedShopHourlyItems", { "LuckPotionI" })
@@ -5154,7 +5149,6 @@ _G.__YYA_ShopSystems = function()
         end)
     end
 
-    -- ====================== 商店小时购后台循环 ======================
     local function IsBuyItemHourlyEnabled()
         return buyItemHourlyEnabled
     end
@@ -5199,10 +5193,6 @@ _G.__YYA_ShopSystems = function()
     if IsAnySyncedShopEnabled() then StartAutoSyncedShopLoop() end
     if buyItemHourlyEnabled then StartBuyItemHourlyLoop() end
 end
-
--- ============================================================
--- ====================== COLLECT TAB =========================
--- ============================================================
 
 Main6:Section({ Title = "自动收集", Icon = "package" })
 
@@ -5285,10 +5275,6 @@ CollectMovementDropdown = Main6:Dropdown({
     end
 })
 
--- ============================================================
--- ====================== GAMEMODE TAB ========================
--- ============================================================
-
 Main7:Section({ Title = "投票信息", TextXAlignment = "Center", TextSize = 17 })
 Main7:Divider()
 Main7:Paragraph({
@@ -5299,7 +5285,6 @@ Main7:Paragraph({
 })
 Main7:Divider()
 
--- ====================== 新增：恢复投票系统按钮 ======================
 Main7:Button({
     Title = "恢复投票系统",
     Desc = "⚠️ 首次使用自动投票模式前按一次。",
@@ -5550,9 +5535,6 @@ AutoVoteToggle = Main7:Toggle({
     end
 })
 
--- ============================================================
--- ====================== REQUEST / SKILL TREE HELPERS =======
--- ============================================================
 RequestWaveNotifyAt = 0
 AutoSkillTreeNotifyAt = 0
 
@@ -5763,10 +5745,6 @@ function FireAutoSkillTrees()
 
     return true
 end
-
--- ============================================================
--- ====================== SETTING TAB =========================
--- ============================================================
 
 Main3:Section({ Title = "保存配置", Icon = "save" })
 
@@ -6042,10 +6020,6 @@ antiafk = Main3:Toggle({
 })
 
 if AntiAFK then StartAntiAFK() end
-
--- ============================================================
--- ====================== ESP 核心函数 ======================
--- ============================================================
 
 function IsESPItemTarget(objectName, selectedList)
     for _, pattern in ipairs(selectedList) do
@@ -6378,10 +6352,6 @@ task.spawn(function()
     end
 end)
 
--- ============================================================
--- ====================== COLLECT SYSTEM ======================
--- ============================================================
-
 function MatchesPattern(objectName, pattern)
     local objL, patL = tostring(objectName or ""):lower(), tostring(pattern or ""):lower()
     if objL == patL then return true end
@@ -6637,13 +6607,7 @@ workspace.DescendantAdded:Connect(function(obj)
     end
 end)
 
--- ============================================================
--- ====================== FARM ASTRO TOKEN ====================
--- ============================================================
-
 function NotifyFarmAstroAutoFarm()
-    -- 移除自动刷怪冲突提示（因为不再互斥）
-    -- 可留空或简化
 end
 
 function NotifyFarmAstroCleanMode()
@@ -6680,7 +6644,7 @@ function GetFarmAstroTimerValue()
     local timerLabel = GetFarmAstroTimerLabel()
     if not timerLabel then return nil end
     local text = tostring(timerLabel.Text or "")
-    return ExtractLastNumber(text)  -- 使用纯数字提取
+    return ExtractLastNumber(text)
 end
 
 function UpdateFarmAstroWaveTimerArmed(timerValue)
@@ -6694,13 +6658,7 @@ function IsFarmAstroTimerEnding()
     if tick() < FarmAstroTokenTimerIgnoreUntil then return false end
     local timerValue = GetFarmAstroTimerValue()
     UpdateFarmAstroWaveTimerArmed(timerValue)
-    -- 改为 <= 5 触发上帝模式
     return timerValue ~= nil and timerValue <= 5 and FarmAstroWaveTimerArmed == true
-end
-
-function IsFarmAstroTimerResetForNextWave()
-    local timerValue = GetFarmAstroTimerValue()
-    return timerValue ~= nil and timerValue > 10
 end
 
 function ShouldKeepFarmAstroFinalLock()
@@ -6797,7 +6755,7 @@ function GetFarmAstroReviveTimerValue()
     local label = GetFarmAstroReviveTimerLabel()
     if not label then return nil end
     local text = tostring(label.Text or "")
-    return ExtractLastNumber(text)  -- 使用纯数字提取
+    return ExtractLastNumber(text)
 end
 
 function UpdateFarmAstroReviveTimerArmed(timerValue)
@@ -6992,110 +6950,6 @@ function MoveFarmAstroToTimerSafe()
     CheckFarmAstroBottomGodMode()
 end
 
-function WaitFarmAstroRespawnAfterTimer()
-    MoveFarmAstroToTimerSafe()
-    local lockStartedAt = tick()
-
-    while FarmAstroTokenEnabled do
-        FarmAstroRuntimeChecks()
-        if FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
-            HoldFarmAstroBottomLockOnce()
-        end
-
-        if tick() - lockStartedAt >= 0.25 and IsFarmAstroTimerResetForNextWave() then
-            break
-        end
-
-        task.wait(0.1)
-    end
-
-    FarmAstroTokenTimerHold = false
-    FarmAstroFinalLockActive = false
-    FarmAstroTimerDropping = false
-    FarmAstroBottomGodTriggered = false
-    FarmAstroReviveGodTriggered = false
-    FarmAstroReviveTimerArmed = false
-    FarmAstroLastReviveTimer = nil
-    FarmAstroWaveTimerArmed = false
-    FarmAstroLastWaveTimer = nil
-    FarmAstroTokenTimerIgnoreUntil = tick() + 2
-    ResumeFarmAstroGodModeAfterRespawn("Farm Astro timer reset")
-end
-
-FarmAstroNoClipParts = FarmAstroNoClipParts or {}
-FarmAstroNoClipChar = nil
-FarmAstroNoClipPartsAt = 0
-
-function RebuildFarmAstroNoClipParts(char)
-    FarmAstroNoClipParts = {}
-    FarmAstroNoClipChar = char
-    FarmAstroNoClipPartsAt = tick()
-    if not char then return end
-
-    pcall(function()
-        for _, obj in ipairs(char:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                table.insert(FarmAstroNoClipParts, obj)
-            end
-        end
-    end)
-end
-
-function ApplyFarmAstroNoClipToCharacter(char)
-    if not char then return end
-    if FarmAstroNoClipChar ~= char or tick() - (FarmAstroNoClipPartsAt or 0) > 1.25 then
-        RebuildFarmAstroNoClipParts(char)
-    end
-
-    for i = #FarmAstroNoClipParts, 1, -1 do
-        local obj = FarmAstroNoClipParts[i]
-        if obj and obj.Parent then
-            obj.CanCollide = false
-        else
-            table.remove(FarmAstroNoClipParts, i)
-        end
-    end
-end
-
-function StartFarmAstroNoClip()
-    if FarmAstroTokenNoClipConnection then return end
-    FarmAstroTokenNoClipConnection = RunService.Heartbeat:Connect(function()
-        if not FarmAstroTokenEnabled then return end
-        pcall(function()
-            local char, hrp, hum = GetFarmAstroCharacter()
-            if not char then return end
-            ApplyFarmAstroNoClipToCharacter(char)
-            if hum then hum.Sit = false; hum.PlatformStand = false end
-            if not FarmAstroTokenPauseCollect and hrp then
-                if FarmAstroTimerDropping then
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    hrp.AssemblyAngularVelocity = Vector3.zero
-                elseif FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
-                    char:PivotTo(FARM_ASTRO_TIMER_BOTTOM_CF)
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    hrp.AssemblyAngularVelocity = Vector3.zero
-                elseif FarmAstroTokenPart and FarmAstroTokenPart.Parent then
-                    char:PivotTo(FarmAstroTokenPart.CFrame * CFrame.new(0, 4, 0))
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    hrp.AssemblyAngularVelocity = Vector3.zero
-                end
-            end
-        end)
-    end)
-end
-
-function StopFarmAstroNoClip()
-    if FarmAstroTokenNoClipConnection then
-        FarmAstroTokenNoClipConnection:Disconnect()
-        FarmAstroTokenNoClipConnection = nil
-    end
-end
-
-function SetFarmAstroCollectPause(state)
-    FarmAstroTokenPauseCollect = state == true
-    CancelFarmAstroTween()
-end
-
 function TweenFarmAstroTokenTo(cf, duration)
     if not FarmAstroTokenPart or not FarmAstroTokenPart.Parent then return false end
     FarmAstroRuntimeChecks()
@@ -7138,7 +6992,6 @@ end
 
 function StartFarmAstroToken()
     if FarmAstroTokenRunning then return end
-    -- 移除与自动刷怪的冲突检测
     FarmAstroTokenRunning = true
     NeedNoClip = true
     LockActive = false
@@ -7167,7 +7020,11 @@ function StartFarmAstroToken()
             end
 
             if IsFarmAstroTimerEnding() then
-                WaitFarmAstroRespawnAfterTimer()
+                AstroTimerResetOnce()
+                FarmAstroTimerDropping = false
+                FarmAstroTokenTimerHold = true
+                FarmAstroFinalLockActive = true
+                WaitFarmAstroRespawnAfterTimer(true)
                 continue
             end
 
@@ -7177,14 +7034,22 @@ function StartFarmAstroToken()
 
             local topResult = TweenFarmAstroTokenTo(FARM_ASTRO_TOP_B, FARM_ASTRO_TWEEN_TIME)
             if topResult == "timer_end" then
-                WaitFarmAstroRespawnAfterTimer()
+                AstroTimerResetOnce()
+                FarmAstroTimerDropping = false
+                FarmAstroTokenTimerHold = true
+                FarmAstroFinalLockActive = true
+                WaitFarmAstroRespawnAfterTimer(true)
                 continue
             end
             if not topResult then break end
 
             if FarmAstroTokenPauseCollect then continue end
             if IsFarmAstroTimerEnding() then
-                WaitFarmAstroRespawnAfterTimer()
+                AstroTimerResetOnce()
+                FarmAstroTimerDropping = false
+                FarmAstroTokenTimerHold = true
+                FarmAstroFinalLockActive = true
+                WaitFarmAstroRespawnAfterTimer(true)
                 continue
             end
 
@@ -7193,7 +7058,11 @@ function StartFarmAstroToken()
 
             local lowResult = TweenFarmAstroTokenTo(FARM_ASTRO_LOW_B, FARM_ASTRO_TWEEN_TIME)
             if lowResult == "timer_end" then
-                WaitFarmAstroRespawnAfterTimer()
+                AstroTimerResetOnce()
+                FarmAstroTimerDropping = false
+                FarmAstroTokenTimerHold = true
+                FarmAstroFinalLockActive = true
+                WaitFarmAstroRespawnAfterTimer(true)
                 continue
             end
             if not lowResult then break end
@@ -7237,23 +7106,66 @@ function StopFarmAstroToken(saveState)
     CancelFarmAstroTween()
 end
 
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        if FarmAstroTokenEnabled then
-            FarmAstroRuntimeChecks()
-        else
-            FarmAstroReviveGodTriggered = false
-            FarmAstroBottomGodTriggered = false
-            FarmAstroWaveTimerArmed = false
-            FarmAstroLastWaveTimer = nil
-        end
-    end
-end)
+function StartFarmAstroNoClip()
+    if FarmAstroTokenNoClipConnection then return end
+    FarmAstroTokenNoClipConnection = RunService.Heartbeat:Connect(function()
+        if not FarmAstroTokenEnabled then return end
+        pcall(function()
+            local char, hrp, hum = GetFarmAstroCharacter()
+            if not char then return end
+            if FarmAstroNoClipChar ~= char or tick() - (FarmAstroNoClipPartsAt or 0) > 1.25 then
+                FarmAstroNoClipParts = {}
+                FarmAstroNoClipChar = char
+                FarmAstroNoClipPartsAt = tick()
+                pcall(function()
+                    for _, obj in ipairs(char:GetDescendants()) do
+                        if obj:IsA("BasePart") then
+                            table.insert(FarmAstroNoClipParts, obj)
+                        end
+                    end
+                end)
+            end
 
--- ============================================================
--- ====================== MAIN FARM LOOP ======================
--- ============================================================
+            for i = #FarmAstroNoClipParts, 1, -1 do
+                local obj = FarmAstroNoClipParts[i]
+                if obj and obj.Parent then
+                    obj.CanCollide = false
+                else
+                    table.remove(FarmAstroNoClipParts, i)
+                end
+            end
+
+            if hum then hum.Sit = false; hum.PlatformStand = false end
+            if not FarmAstroTokenPauseCollect and hrp then
+                if FarmAstroTimerDropping then
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                elseif FarmAstroFinalLockActive or FarmAstroTokenTimerHold then
+                    char:PivotTo(FARM_ASTRO_TIMER_BOTTOM_CF)
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                elseif FarmAstroTokenPart and FarmAstroTokenPart.Parent then
+                    char:PivotTo(FarmAstroTokenPart.CFrame * CFrame.new(0, 4, 0))
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                end
+            end
+        end)
+    end)
+end
+
+function StopFarmAstroNoClip()
+    if FarmAstroTokenNoClipConnection then
+        FarmAstroTokenNoClipConnection:Disconnect()
+        FarmAstroTokenNoClipConnection = nil
+    end
+end
+
+function SetFarmAstroCollectPause(state)
+    FarmAstroTokenPauseCollect = state == true
+    CancelFarmAstroTween()
+end
+
 FarmLoopToken = FarmLoopToken or 0
 
 function StartFarmLoop()
@@ -7288,9 +7200,7 @@ function StartFarmLoop()
             end)
 
             while AutoFarmEnabled and FarmLoopToken == thisFarmLoopToken do
-                -- ========== 新增：波次倒计时独立检测 ==========
                 CheckWaveTimer()
-                -- ===========================================
 
                 RefreshCombatCharacter()
 
@@ -7503,7 +7413,6 @@ function StartFarmLoop()
     end)
 end
 
--- ====================== RESET WAVE SYSTEM ======================
 function GetResetWaveLabel()
     local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
@@ -7525,7 +7434,7 @@ function GetCurrentResetWave()
     local label = GetResetWaveLabel()
     if not label then return nil end
     local text = tostring(label.Text or "")
-    return ExtractFirstNumber(text)  -- 使用纯数字提取，取第一个数字（波次）
+    return ExtractLastNumber(text)
 end
 
 function GetResetWaveTargetValue()
@@ -7711,7 +7620,6 @@ function StartResetWaveLoop()
     end)
 end
 
--- ====================== MISC OPTIONS HANDLER ======================
 function HandleMiscOptions(selectedOptions)
     selectedOptions = selectedOptions or {}
     MiscOptions = selectedOptions
@@ -7789,7 +7697,6 @@ function HandleMiscOptions(selectedOptions)
     Config:Save()
 end
 
--- ====================== CHARACTER RESPAWN HANDLER ======================
 LocalPlayer.CharacterAdded:Connect(function(char)
     local keepFarmAstroBottomLock = ShouldKeepFarmAstroFinalLock and ShouldKeepFarmAstroFinalLock()
 
@@ -7864,10 +7771,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     ApplyCameraMode(true)
 end)
 
--- ============================================================
--- ====================== 大厅等待 + 地图检测 ======================
--- ============================================================
-
 task.spawn(function()
     print("[YYa] 等待进入地图...")
     local maxWait = 60
@@ -7914,9 +7817,9 @@ task.spawn(function()
     end
 end)
 
--- ============================================================
--- ====================== APPLY SAVED CONFIG ON LOAD ======================
--- ============================================================
+_G.__YYA_ShopSystems()
+_G.__YYA_ShopSystems = nil
+
 function ApplySavedConfigOnStartup()
     task.wait(1)
     updatePlayerStats()
@@ -7959,19 +7862,9 @@ function ApplySavedConfigOnStartup()
     end
 end
 
--- ============================================================
--- ====================== 调用商店系统 ======================
--- ============================================================
-_G.__YYA_ShopSystems()
-_G.__YYA_ShopSystems = nil
-
 ApplySavedConfigOnStartup()
 
--- ============================================================
--- ====================== WINDOW ON CLOSE ======================
--- ============================================================
 Window.OnClose = function()
-    -- 无需清理，窗口关闭时自动处理
 end
 
 print("[YYa] 版本: " .. version .. " | 更新日志: " .. ver .. " 加载成功！")
@@ -7988,3 +7881,4 @@ print("[YYa] 至尊版 - 已移除收集列表中的“特殊请求”")
 print("[YYa] 至尊版 - 已移除付费限制，所有功能免费")
 print("[YYa] 至尊版 - 已移除AutoFarm与Astro互斥锁，可同时启用")
 print("[YYa] 至尊版 - 新增波次倒计时独立功能：普通模式仅传送，Astro模式上帝模式+传送")
+
