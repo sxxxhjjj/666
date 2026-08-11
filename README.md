@@ -1,5 +1,5 @@
 -- v191 | [融合版] 基于YYa至尊版 + 本次修改
--- 修改内容：天文币模式二（Astro Holdout Mode）倒计时≤5秒时，加上帝模式
+-- 修改内容：新增计时器上帝模式，天文币模式一和模式二使用独立上帝函数
 -- =========================
 version = "Rework"
 ver = "v023.93"
@@ -3129,6 +3129,7 @@ function GetPlayerHealthPercent()
     return (humanoid.Health / humanoid.MaxHealth) * 100
 end
 
+-- ====================== 原版血量上帝（不动） ======================
 function IsCharacterDeadForGodMode(char, humanoid)
     return not char or not char.Parent or not humanoid or not humanoid.Parent
         or humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead
@@ -3169,8 +3170,7 @@ function ForceGodModeOnce(reason)
     return ok and result == true
 end
 
--- ====================== 系统一：玩家手动上帝（独立血量上帝） ======================
--- 独立运行，不参与任何互斥，永久不被暂停
+-- ====================== 原版血量上帝循环（不动） ======================
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -3183,6 +3183,69 @@ task.spawn(function()
         end
     end
 end)
+
+-- ====================== ★ 新增函数一：计时器上帝模式（独立） ======================
+-- 只被计时器调用，不被血量系统调用，独立于原版 ForceGodModeOnce
+function TimerGodMode(reason)
+    local ok, result = pcall(function()
+        local char = LocalPlayer.Character
+        if not char then return false end
+
+        local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid")
+        if not humanoid then return false end
+        if IsCharacterDeadForGodMode(char, humanoid) then return false end
+
+        local destroyed = false
+
+        local head = char:FindFirstChild("Head")
+        if head then head:Destroy(); destroyed = true end
+
+        task.wait(0.05)
+
+        if IsCharacterDeadForGodMode(char, humanoid) then
+            CombatDebug("TimerGodMode", "计时器上帝模式已触发: " .. tostring(reason or "计时器触发"), 2)
+            return true
+        end
+
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+        if torso then torso:Destroy(); destroyed = true end
+
+        if not destroyed and not IsCharacterDeadForGodMode(char, humanoid) then
+            humanoid.Health = 0
+        end
+
+        CombatDebug("TimerGodMode", "计时器上帝模式已触发: " .. tostring(reason or "计时器触发"), 2)
+        return true
+    end)
+
+    return ok and result == true
+end
+
+-- ====================== ★ 新增函数二副本一：计时器重置传送（天文币模式一 / 农场天文币） ======================
+function TimerResetAndTeleport_FarmAstro()
+    TimerGodMode("天文币模式一 - 农场天文币倒计时触发")
+    local newChar = LocalPlayer.CharacterAdded:Wait()
+    task.wait(0.3)
+    local hrp = newChar:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = FARM_ASTRO_TIMER_BOTTOM_CF
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end
+end
+
+-- ====================== ★ 新增函数二副本二：计时器重置传送（天文币模式二 / 挂机天文币） ======================
+function TimerResetAndTeleport_AstroHoldout()
+    TimerGodMode("天文币模式二 - 挂机天文币倒计时触发")
+    local newChar = LocalPlayer.CharacterAdded:Wait()
+    task.wait(0.3)
+    local hrp = newChar:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = FARM_ASTRO_TIMER_BOTTOM_CF
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end
+end
 
 function DoFillUp()
     local remote = GetRemote("ShopSystem")
@@ -3458,7 +3521,7 @@ function IsWaveTimerEnding()
     return false
 end
 
--- ====================== 天文币模式二（Astro Holdout Mode）专用函数 ======================
+-- ====================== 天文币模式专用函数 ======================
 function GetFarmAstroTimerLabel()
     local playerGui = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
@@ -3476,52 +3539,7 @@ function GetFarmAstroTimerValue()
     return ExtractLastNumber(text)
 end
 
--- ====================== 本次修改核心：天文币模式二（Astro Holdout Mode） 添加上帝模式 ======================
--- 修改位置：在倒计时 ≤ 5 秒触发时，先调用上帝模式，再执行原版传送
-
-function FarmTimerResetOnce()
-    -- 调用上帝模式（角色死亡+重生）
-    ForceGodModeOnce("天文币模式二计时器触发 - 挂机天文币")
-    -- 等待角色重生
-    local newChar = LocalPlayer.CharacterAdded:Wait()
-    task.wait(0.3)
-    local hrp = newChar:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.CFrame = IdlePosition
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
-    end
-end
-
-function AstroTimerResetOnce()
-    -- 调用上帝模式（角色死亡+重生）
-    ForceGodModeOnce("天文币模式二计时器触发 - 挂机天文币")
-    -- 等待角色重生
-    local newChar = LocalPlayer.CharacterAdded:Wait()
-    task.wait(0.3)
-    local hrp = newChar:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.CFrame = FARM_ASTRO_TIMER_BOTTOM_CF
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
-    end
-end
-
-function CheckWaveTimer()
-    if not WaveTimerTeleportEnabled then return end
-    if not IsMiscFarmAllowed() then return end
-    if FarmCollecting or WaitingRespawn or ResetWaveTeleporting then return end
-    if IsWaveTimerEnding() then
-        -- 根据当前模式选择不同的传送位置
-        if FarmTargetMode == "Astro Holdout Mode" then
-            AstroTimerResetOnce()
-        else
-            FarmTimerResetOnce()
-        end
-    end
-end
-
--- ====================== Farm Astro Token 模式二核心循环 ======================
+-- ====================== ★ 修改：Farm Astro Token 模式核心循环 ======================
 function GetFarmAstroCharacter()
     local char = LocalPlayer.Character or Character
     if (not char or not char.Parent) and workspace:FindFirstChild("Living") then
@@ -3752,6 +3770,7 @@ function SetFarmAstroCollectPause(state)
     CancelFarmAstroTween()
 end
 
+-- ====================== ★ 修改：天文币模式一（Farm Astro Token）主循环 ======================
 function StartFarmAstroToken()
     if FarmAstroTokenRunning then return end
     FarmAstroTokenRunning = true
@@ -3778,11 +3797,9 @@ function StartFarmAstroToken()
                 continue
             end
 
-            -- ★ 本次修改：检测到倒计时 ≤ 5 秒时，先调用上帝模式，再传送
+            -- ★ 本次修改：天文币模式一 使用新增的独立函数
             if IsFarmAstroTimerEnding() then
-                -- 第一步：调用上帝模式（角色死亡+重生）
-                AstroTimerResetOnce()
-                -- 第二步：传送到安全点（原版逻辑）
+                TimerResetAndTeleport_FarmAstro()
                 FarmAstroTimerDropping = false
                 FarmAstroTokenTimerHold = true
                 FarmAstroFinalLockActive = true
@@ -3796,7 +3813,7 @@ function StartFarmAstroToken()
 
             local topResult = TweenFarmAstroTokenTo(FARM_ASTRO_TOP_B, FARM_ASTRO_TWEEN_TIME)
             if topResult == "timer_end" then
-                AstroTimerResetOnce()
+                TimerResetAndTeleport_FarmAstro()
                 FarmAstroTimerDropping = false
                 FarmAstroTokenTimerHold = true
                 FarmAstroFinalLockActive = true
@@ -3807,7 +3824,7 @@ function StartFarmAstroToken()
 
             if FarmAstroTokenPauseCollect then continue end
             if IsFarmAstroTimerEnding() then
-                AstroTimerResetOnce()
+                TimerResetAndTeleport_FarmAstro()
                 FarmAstroTimerDropping = false
                 FarmAstroTokenTimerHold = true
                 FarmAstroFinalLockActive = true
@@ -3820,7 +3837,7 @@ function StartFarmAstroToken()
 
             local lowResult = TweenFarmAstroTokenTo(FARM_ASTRO_LOW_B, FARM_ASTRO_TWEEN_TIME)
             if lowResult == "timer_end" then
-                AstroTimerResetOnce()
+                TimerResetAndTeleport_FarmAstro()
                 FarmAstroTimerDropping = false
                 FarmAstroTokenTimerHold = true
                 FarmAstroFinalLockActive = true
@@ -4743,7 +4760,7 @@ Info:Section({ Title = "最新更新", TextXAlignment = "Center", TextSize = 17 
 Info:Divider()
 Info:Paragraph({
     Title = "最新更新 | CL: " .. ver,
-    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 天文币模式二（挂机天文币）添加完整上帝模式\n• [新增] 倒计时≤5秒 → 上帝模式 → 传送\n• [修复] 普通模式与Astro模式上帝互不干扰\n• [优化] 独立血量上帝永久独立运行",
+    Desc = "更新日期: 07/03/2026 | CL: " .. ver .. "\n• [新增] 计时器上帝模式独立函数\n• [新增] 天文币模式一和模式二使用独立上帝模式\n• [新增] 两个模式共用同一个计时器上帝函数\n• [修复] 原版上帝模式与计时器上帝模式完全隔离",
     Image = "rbxassetid://103789103251622",
     ImageSize = 26,
 })
@@ -5002,7 +5019,7 @@ Main:Slider({
 
 Main:Slider({
     Title = "上帝模式 HP（%）",
-    Desc = "设置普通上帝模式的 HP 百分比阈值。Farm Astro Token 期间被阻止；改为复活控制。",
+    Desc = "设置普通上帝模式的 HP 百分比阈值。",
     Value = { Min = 1, Max = 99, Default = GodModeValue },
     Step = 1,
     Callback = function(value)
@@ -7880,4 +7897,4 @@ print("[YYa] 至尊版 - 上方/下方已还原（纯垂直偏移）")
 print("[YYa] 至尊版 - 已移除收集列表中的“特殊请求”")
 print("[YYa] 至尊版 - 已移除付费限制，所有功能免费")
 print("[YYa] 至尊版 - 已移除AutoFarm与Astro互斥锁，可同时启用")
-print("[YYa] 至尊版 - 本次修改：天文币模式二（挂机天文币）倒计时≤5秒时添加上帝模式")
+print("[YYa] 至尊版 - 本次修改：新增计时器上帝模式独立函数，天文币模式一和模式二使用独立上帝模式")
